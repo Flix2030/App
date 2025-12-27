@@ -144,6 +144,17 @@ async function handleApi(req, env) {
     const url = new URL(req.url);
     const path = url.pathname;
 
+    // /home und /packliste ohne .html auf die echte Datei mappen
+    if (path === "/home") {
+      return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
+    }
+    if (path === "/packliste") {
+      return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
+    }
+    if (path === "/vokabeln") {
+      return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
+    }
+
     // Health / Debug
     if (path === "/api/health" && req.method === "GET") {
       return json({
@@ -292,10 +303,16 @@ export default {
       return Response.redirect(loginUrl.toString(), 302);
     }
 
-    // 4) Eingeloggt → Assets ausliefern (home.html, packliste.html, vokabeln.html, etc.)
     if (env.ASSETS?.fetch) {
-      return env.ASSETS.fetch(req);
+      const res = await env.ASSETS.fetch(req);
+      // Keine geschützten Seiten im Cache/Back-Forward-Cache behalten
+      const h = new Headers(res.headers);
+      h.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      h.set("Pragma", "no-cache");
+      h.set("Expires", "0");
+      return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
     }
+
 
     return fetch(req);
   },

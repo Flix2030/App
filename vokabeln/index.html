@@ -57,5 +57,22 @@
     <!-- Zurück zur Startseite von app. -->
     <a class="back-link" href="../">&#x2B05; Zurück</a>
   </div>
+
+  <script>
+  // Wenn der Browser per "Zurück" eine gecachte Seite zeigt -> sofort Auth prüfen
+  async function enforceAuth() {
+    try {
+      const r = await fetch("/api/me", { credentials: "include" });
+      if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+    } catch (_) {
+      location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+    }
+  }
+
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) enforceAuth(); // BFCache
+  });
+</script>
+
 </body>
 </html>
