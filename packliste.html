@@ -508,6 +508,15 @@
 
   <script>
   (function() {
+
+    // ===== Safe event binder (verhindert null.addEventListener Crashes) =====
+    function on(id, evt, fn) {
+      const el = document.getElementById(id);
+      if (!el) { console.warn("Missing element:", id); return; }
+      el.addEventListener(evt, fn);
+    }
+
+
     // Daten und Zustandsvariablen
     let data = null;
     let currentUserId = null;
@@ -729,16 +738,23 @@ async function init() {
 }
 
 
+let uiBound = false;
+
+
+
 function bindUI() {
-      // Benutzer verwalten (Popup)
+      
+      if (uiBound) return;
+      uiBound = true;
+// Benutzer verwalten (Popup)
       const userModal = document.getElementById('user-modal');
-      document.getElementById('user-manage-btn').addEventListener('click', function() {
+      on('user-manage-btn', 'click', function() {
         userModal.classList.add('active');
       });
-      document.getElementById('user-close').addEventListener('click', function() {
+      on('user-close', 'click', function() {
         userModal.classList.remove('active');
       });
-      document.getElementById('user-add').addEventListener('click', function() {
+      on('user-add', 'click', function() {
         showPrompt('Name des neuen Benutzers:', '', function(name) {
           name = (name || '').trim();
           if (!name) return;
@@ -771,7 +787,7 @@ function bindUI() {
           })();
         });
       });
-      document.getElementById('user-delete').addEventListener('click', function() {
+      on('user-delete', 'click', function() {
         if (!currentUserId) return;
         const user = data.users.find(u => u.id === currentUserId);
         if (!user) return;
@@ -805,30 +821,23 @@ function bindUI() {
           })();
         });
       });
-      document.getElementById('import-new-list-btn').addEventListener('click', function() {
-        // importAll macht jetzt automatisch: fremdformat -> neue Liste im aktuellen Benutzer
-        importAll(function() {
-          loadLists();
-          if (currentListId) showListEditSection();
-        });
-      });
-      document.getElementById('user-export').addEventListener('click', function() {
+      on('user-export', 'click', function() {
         exportAll();
       });
-      document.getElementById('user-import').addEventListener('click', function() {
+      on('user-import', 'click', function() {
         importAll(function() {
           loadUsers();
           userModal.classList.remove('active');
         });
       });
-      document.getElementById('user-select').addEventListener('change', function() {
+      on('user-select', 'change', function() {
         currentUserId = this.value || null;
         currentListId = null;
         setRoute(currentUserId, null);
         loadLists();
       });
       // Event-Handler für Listen
-      document.getElementById('add-list-btn').addEventListener('click', function() {
+      on('add-list-btn', 'click', function() {
         const user = getCurrentUser();
         if (!user) return;
         showPrompt('Name der neuen Liste:', '', function(name) {
@@ -840,33 +849,33 @@ function bindUI() {
         });
       });
       // Neue Liste importieren (als eigene Liste)
-      document.getElementById('import-new-list-btn').addEventListener('click', function() {
+      on('import-new-list-btn', 'click', function() {
         importAsNewList();
       });
       // Bearbeiten in Listenübersicht (zeigt Aktionen pro Liste)
-      document.getElementById('lists-edit-toggle').addEventListener('click', function() {
+      on('lists-edit-toggle', 'click', function() {
         listsEditMode = !listsEditMode;
         document.getElementById('lists-edit-hint').style.display = listsEditMode ? 'inline' : 'none';
         this.textContent = listsEditMode ? 'Fertig' : 'Bearbeiten';
         loadLists();
       });
-      document.getElementById('back-to-lists-btn').addEventListener('click', function() {
+      on('back-to-lists-btn', 'click', function() {
         currentListId = null;
         setRoute(currentUserId, null);
         showListsSection();
       });
       // Event-Handler für Artikel hinzufügen
-      document.getElementById('new-item-qty').addEventListener('input', function() {
+      on('new-item-qty', 'input', function() {
         document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
       });
-      document.getElementById('add-item-btn').addEventListener('click', addItem);
+      on('add-item-btn', 'click', addItem);
       // Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
-      document.getElementById('bulk-delete').addEventListener('click', bulkDeleteSelected);
-      document.getElementById('bulk-duplicate').addEventListener('click', function() { openAssignModal('duplicate'); });
-      document.getElementById('bulk-share').addEventListener('click', function() { openAssignModal('share'); });
+      on('bulk-delete', 'click', bulkDeleteSelected);
+      on('bulk-duplicate', 'click', function() { openAssignModal('duplicate'); });
+      on('bulk-share', 'click', function() { openAssignModal('share'); });
 
       // Alle abhaken (nur im Fortschrittsmodus)
-      document.getElementById('check-all-btn').addEventListener('click', function() {
+      on('check-all-btn', 'click', function() {
         if (editMode) return;
         const list = getCurrentList();
         if (!list) return;
@@ -886,10 +895,10 @@ function bindUI() {
 
       // Assign-Modal
       const assignModal = document.getElementById('assign-modal');
-      document.getElementById('assign-cancel').addEventListener('click', function() {
+      on('assign-cancel', 'click', function() {
         assignModal.classList.remove('active');
       });
-      document.getElementById('assign-confirm').addEventListener('click', function() {
+      on('assign-confirm', 'click', function() {
         confirmAssign();
       });
       // Popup-Range-Update
@@ -1704,74 +1713,23 @@ function bindUI() {
       }, 0);
     }
 
-    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-
-    function normalizeItemsArrayToList(rawArray, listName) {
-      const items = rawArray.map((it, idx) => {
-        const qty = Math.max(1, Number(it?.qty ?? it?.quantity ?? 1));
-        let progress = Number(it?.progress ?? it?.current ?? 0);
-        const done = Boolean(it?.done ?? it?.checked ?? false);
-
-        if (!Number.isFinite(progress)) progress = 0;
-        progress = clamp(progress, 0, qty);
-        if (done) progress = qty;
-
-        return {
-          id: makeId('item'),
-          name: String(it?.name ?? it?.title ?? 'Item'),
-          qty,
-          progress,
-          checked: done,     // dein Code nutzt oft "checked"
-          order: idx
-        };
-      });
-
-      return {
-        id: makeId('list'),
-        name: String(listName || 'Import'),
-        items
-      };
-    }
-
-    function detectImportKind(imported) {
-      // 1) Voll-Export deiner App
-      if (imported && typeof imported === 'object' && Array.isArray(imported.users)) return 'FULL_APP';
-
-      // 2) Einzel-Liste als Objekt { name, items:[...] }
-      if (imported && typeof imported === 'object' && Array.isArray(imported.items)) return 'LIST_OBJECT';
-
-      // 3) Fremdformat: Array von Items [{name, quantity, current, checked}, ...]
-      if (Array.isArray(imported) && imported.length && typeof imported[0] === 'object') return 'ITEMS_ARRAY';
-
-      return 'UNKNOWN';
-    }
-
     function importAll(onDone) {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'application/json';
-
       input.addEventListener('change', function() {
         const file = input.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function() {
-          let imported;
           try {
-            imported = JSON.parse(reader.result);
-          } catch (e) {
-            showConfirm('Ungültige JSON-Datei.', function() {});
-            return;
-          }
-
-          const kind = detectImportKind(imported);
-
-          // ✅ A) Voll-Export deiner App: ersetzt alles (wie vorher)
-          if (kind === 'FULL_APP') {
+            const imported = JSON.parse(reader.result);
+            if (!imported || !Array.isArray(imported.users)) {
+              showConfirm('Ungültige JSON-Datei.', function() {});
+              return;
+            }
             data = imported;
-
-            // Sicherheits-Normalisierung (wie vorher)
+            // Sicherheits-Normalisierung
             data.users = data.users.map(u => ({
               id: u.id || makeId('user'),
               name: u.name || 'Benutzer',
@@ -1781,55 +1739,18 @@ function bindUI() {
                 items: Array.isArray(l.items) ? l.items : []
               })) : []
             }));
-
             saveData();
             currentUserId = data.users[0]?.id || null;
             currentListId = null;
             listsEditMode = false;
             selectedItemIds.clear();
             if (onDone) onDone();
-            return;
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
           }
-
-          // ✅ B) Fremdformat / Einzelliste: als NEUE Liste in den aktuellen Benutzer importieren
-          const user = data.users.find(u => u.id === currentUserId) || data.users[0];
-          if (!user) {
-            showConfirm('Kein Benutzer vorhanden. Erstelle zuerst einen Benutzer.', function() {});
-            return;
-          }
-          if (!Array.isArray(user.lists)) user.lists = [];
-
-          const baseName = (file.name || 'Import').replace(/\.json$/i, '') || 'Import';
-          let newList = null;
-
-          if (kind === 'LIST_OBJECT') {
-            const listName = String(imported.name || baseName || 'Import');
-            const rawItems = imported.items;
-            newList = normalizeItemsArrayToList(rawItems, listName);
-          } else if (kind === 'ITEMS_ARRAY') {
-            newList = normalizeItemsArrayToList(imported, baseName);
-          } else {
-            showConfirm('Unbekanntes Import-Format.', function() {});
-            return;
-          }
-
-          // neue Liste oben rein
-          user.lists.unshift(newList);
-
-          saveData();
-          currentListId = newList.id;
-          listsEditMode = false;
-          selectedItemIds.clear();
-
-          // Wenn du Routing hast: URL aktualisieren
-          try { setRoute(currentUserId, currentListId); } catch (_) {}
-
-          if (onDone) onDone();
         };
-
         reader.readAsText(file);
       });
-
       input.click();
     }
 
@@ -1963,54 +1884,6 @@ function bindUI() {
       renderItems();
       updateBulkbar();
     }
-
-    document.getElementById("import-json").addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const text = await file.text();
-      let raw;
-      try {
-        raw = JSON.parse(text);
-      } catch {
-        alert("Import fehlgeschlagen: Keine gültige JSON-Datei.");
-        return;
-      }
-
-      // Dateiname als Listenname (ohne .json)
-      const baseName = (file.name || "Import").replace(/\.json$/i, "") || "Import";
-      const normalized = normalizeImportedJson(raw, baseName);
-
-      if (!normalized.lists.length) {
-        alert("Import fehlgeschlagen: Unbekanntes Format.");
-        return;
-      }
-
-      // ✅ Import-Regel: als neue Liste(n) zum AKTUELLEN Benutzer hinzufügen
-      const user = data.users.find(u => u.id === currentUserId);
-      if (!user) {
-        alert("Kein Benutzer ausgewählt.");
-        return;
-      }
-      if (!Array.isArray(user.lists)) user.lists = [];
-
-      normalized.lists.forEach(l => {
-        // neue IDs, damit nix kollidiert
-        const newList = {
-          id: makeId("l"),
-          name: l.name,
-          items: (l.items || []).map((it, idx) => ({
-            id: makeId("i"),
-            name: it.name,
-            qty: it.qty,
-            progress: it.progress,
-            done: it.done,
-            order: idx
-          }))
-        };
-        user.lists.unshift(newList); // ganz oben
-      });
-
       saveData();     // deine vorhandene Save-Funktion (Cloud + local)
       loadUsers();    // UI neu aufbauen
       alert(`Import ok: ${normalized.lists.length} Liste(n) hinzugefügt.`);
