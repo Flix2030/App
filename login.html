@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login</title>
+</head>
+<body style="font-family:system-ui;max-width:420px;margin:40px auto">
+  <h2>Login</h2>
+  <input id="u" placeholder="Benutzername" style="width:100%;padding:10px;margin:6px 0">
+  <input id="p" type="password" placeholder="Passwort" style="width:100%;padding:10px;margin:6px 0">
+  <button id="b" style="width:100%;padding:10px;margin-top:10px">Anmelden</button>
+  <p id="m" style="color:#c00"></p>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get("returnTo") || "/packliste";
+
+    document.getElementById("b").onclick = async () => {
+      const username = document.getElementById("u").value.trim();
+      const password = document.getElementById("p").value;
+
+      const r = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password })
+      });
+
+      if (!r.ok) {
+        document.getElementById("m").textContent = "Login fehlgeschlagen";
+        return;
+      }
+
+      location.href = returnTo.startsWith("/") ? returnTo : "/packliste";
+    };
+  </script>
+</body>
+</html>
