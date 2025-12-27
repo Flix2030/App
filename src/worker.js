@@ -1,5 +1,7 @@
 // src/worker.js
+
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 function b64urlEncode(buf) {
   const bytes = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf;
@@ -7,6 +9,7 @@ function b64urlEncode(buf) {
   for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
+
 function b64urlDecodeToBytes(s) {
   s = s.replace(/-/g, "+").replace(/_/g, "/");
   while (s.length % 4) s += "=";
@@ -15,16 +18,18 @@ function b64urlDecodeToBytes(s) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+
 async function hmacSign(secret, dataBytes) {
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign", "verify"]
+    ["sign"]
   );
   return crypto.subtle.sign("HMAC", key, dataBytes);
 }
+
 async function hmacVerify(secret, dataBytes, sigBytes) {
   const key = await crypto.subtle.importKey(
     "raw",
@@ -35,19 +40,24 @@ async function hmacVerify(secret, dataBytes, sigBytes) {
   );
   return crypto.subtle.verify("HMAC", key, sigBytes, dataBytes);
 }
+
 function parseCookies(req) {
   const h = req.headers.get("Cookie") || "";
   const out = {};
-  h.split(";").forEach(p => {
+  h.split(";").forEach((p) => {
     const i = p.indexOf("=");
     if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
   });
   return out;
 }
+
 function json(res, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(res), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...extraHeaders }
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      ...extraHeaders,
+    },
   });
 }
 
@@ -67,17 +77,20 @@ async function pbkdf2Hash(password, saltBytes, iterations = 150000) {
   );
   return new Uint8Array(bits);
 }
+
 function timingSafeEq(a, b) {
   if (a.length !== b.length) return false;
   let v = 0;
-  for (let i = 0; i < a.length; i++) v |= (a[i] ^ b[i]);
+  for (let i = 0; i < a.length; i++) v |= a[i] ^ b[i];
   return v === 0;
 }
+
 async function makePassRecord(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await pbkdf2Hash(password, salt);
   return `pbkdf2$150000$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
 }
+
 async function verifyPass(password, record) {
   const parts = record.split("$");
   if (parts.length !== 5 || parts[0] !== "pbkdf2") return false;
@@ -90,6 +103,7 @@ async function verifyPass(password, record) {
 
 // Cookie Token: header.payload.sig (HMAC SHA-256)
 async function makeToken(env, userId) {
+  if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
   const header = b64urlEncode(encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
   const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30 Tage
   const payload = b64urlEncode(encoder.encode(JSON.stringify({ u: userId, exp })));
@@ -97,116 +111,172 @@ async function makeToken(env, userId) {
   const sig = b64urlEncode(await hmacSign(env.AUTH_SECRET, encoder.encode(data)));
   return `${data}.${sig}`;
 }
+
 async function readToken(env, req) {
+  if (!env.AUTH_SECRET) return null;
   const cookies = parseCookies(req);
   const t = cookies["session"];
   if (!t) return null;
   const parts = t.split(".");
   if (parts.length !== 3) return null;
+
   const data = `${parts[0]}.${parts[1]}`;
   const sig = b64urlDecodeToBytes(parts[2]);
+
   const ok = await hmacVerify(env.AUTH_SECRET, encoder.encode(data), sig);
   if (!ok) return null;
-  const payload = JSON.parse(new TextDecoder().decode(b64urlDecodeToBytes(parts[1])));
+
+  const payload = JSON.parse(decoder.decode(b64urlDecodeToBytes(parts[1])));
   if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
   return payload.u;
 }
 
 async function handleApi(req, env) {
-  const url = new URL(req.url);
-  const path = url.pathname;
+  // WICHTIG: Alles im Try/Catch, damit du NIE wieder HTML-Fehler bekommst, sondern JSON
+  try {
+    const url = new URL(req.url);
+    const path = url.pathname;
 
-  // 1) Einmaliger Register-Endpoint: nur wenn noch KEIN User existiert
-  if (path === "/api/register" && req.method === "POST") {
-    const body = await req.json().catch(() => null);
-    if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
-
-    const exists = await env.DB.prepare("SELECT COUNT(*) as c FROM users").first();
-    if ((exists?.c || 0) > 0) return json({ error: "disabled" }, 403);
-
-    const pass = await makePassRecord(body.password);
-    await env.DB.prepare(
-      "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)"
-    ).bind(body.username, pass, new Date().toISOString()).run();
-
-    return json({ ok: true });
-  }
-
-  // 2) Login
-  if (path === "/api/login" && req.method === "POST") {
-    const body = await req.json().catch(() => null);
-    if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
-
-    const user = await env.DB.prepare("SELECT id, password_hash FROM users WHERE username = ?")
-      .bind(body.username).first();
-
-    if (!user) return json({ error: "invalid" }, 401);
-    const ok = await verifyPass(body.password, user.password_hash);
-    if (!ok) return json({ error: "invalid" }, 401);
-
-    const token = await makeToken(env, user.id);
-    return json(
-      { ok: true },
-      200,
-      {
-        "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${60*60*24*30}`
-      }
-    );
-  }
-
-  // 3) Logout
-  if (path === "/api/logout" && req.method === "POST") {
-    return json(
-      { ok: true },
-      200,
-      { "Set-Cookie": "session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0" }
-    );
-  }
-
-  // 4) Me
-  if (path === "/api/me" && req.method === "GET") {
-    const uid = await readToken(env, req);
-    if (!uid) return json({ loggedIn: false }, 401);
-    return json({ loggedIn: true, userId: uid });
-  }
-
-  // 5) Daten GET/PUT (gesamter App-State als JSON)
-  if (path === "/api/data") {
-    const uid = await readToken(env, req);
-    if (!uid) return json({ error: "unauthorized" }, 401);
-
-    if (req.method === "GET") {
-      const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
-        .bind(uid).first();
-      return json({ ok: true, data: row?.json ? JSON.parse(row.json) : null });
+    // Health / Debug
+    if (path === "/api/health" && req.method === "GET") {
+      return json({
+        ok: true,
+        hasAuthSecret: !!env.AUTH_SECRET,
+        hasDB: !!env.DB,
+        time: new Date().toISOString(),
+      });
     }
 
-    if (req.method === "PUT") {
+    // 1) Einmaliger Register-Endpoint: nur wenn noch KEIN User existiert
+    if (path === "/api/register" && req.method === "POST") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
       const body = await req.json().catch(() => null);
-      if (!body) return json({ error: "bad_json" }, 400);
-      const now = new Date().toISOString();
+      if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
+
+      const exists = await env.DB.prepare("SELECT COUNT(*) as c FROM users").first();
+      if ((exists?.c || 0) > 0) return json({ error: "disabled" }, 403);
+
+      const pass = await makePassRecord(body.password);
+
       await env.DB.prepare(
-        "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-        "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-      ).bind(uid, JSON.stringify(body), now).run();
+        "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)"
+      )
+        .bind(body.username, pass, new Date().toISOString())
+        .run();
+
       return json({ ok: true });
     }
 
-    return json({ error: "method" }, 405);
-  }
+    // 2) Login
+    if (path === "/api/login" && req.method === "POST") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+      if (!env.AUTH_SECRET) return json({ error: "AUTH_SECRET not set" }, 500);
 
-  return json({ error: "not_found" }, 404);
+      const body = await req.json().catch(() => null);
+      if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
+
+      const user = await env.DB.prepare(
+        "SELECT id, password_hash FROM users WHERE username = ?"
+      )
+        .bind(body.username)
+        .first();
+
+      if (!user) return json({ error: "invalid" }, 401);
+
+      const ok = await verifyPass(body.password, user.password_hash);
+      if (!ok) return json({ error: "invalid" }, 401);
+
+      const token = await makeToken(env, user.id);
+
+      return json(
+        { ok: true },
+        200,
+        {
+          "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${
+            60 * 60 * 24 * 30
+          }`,
+        }
+      );
+    }
+
+    // 3) Logout
+    if (path === "/api/logout" && req.method === "POST") {
+      return json(
+        { ok: true },
+        200,
+        { "Set-Cookie": "session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0" }
+      );
+    }
+
+    // 4) Me
+    if (path === "/api/me" && req.method === "GET") {
+      const uid = await readToken(env, req);
+      if (!uid) return json({ loggedIn: false }, 401);
+      return json({ loggedIn: true, userId: uid });
+    }
+
+    // 5) Daten GET/PUT (gesamter App-State als JSON)
+    if (path === "/api/data") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      if (req.method === "GET") {
+        const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
+          .bind(uid)
+          .first();
+        return json({ ok: true, data: row?.json ? JSON.parse(row.json) : null });
+      }
+
+      if (req.method === "PUT") {
+        const body = await req.json().catch(() => null);
+        if (!body) return json({ error: "bad_json" }, 400);
+
+        const now = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+            "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+        )
+          .bind(uid, JSON.stringify(body), now)
+          .run();
+
+        return json({ ok: true });
+      }
+
+      return json({ error: "method" }, 405);
+    }
+
+    return json({ error: "not_found", path }, 404);
+  } catch (e) {
+    // Hier kommt bei CRASH immer JSON raus:
+    return json(
+      {
+        error: "worker_crash",
+        message: String(e?.message || e),
+        stack: String(e?.stack || ""),
+      },
+      500
+    );
+  }
 }
 
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+
+    // API
     if (url.pathname.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // Assets ausliefern (deine HTML/CSS/JS)
-    if (env.ASSETS?.fetch) return env.ASSETS.fetch(req);
+    // Static Assets
+    if (env.ASSETS?.fetch) {
+      return env.ASSETS.fetch(req);
+    }
+
+    // Fallback
     return fetch(req);
-  }
+  },
 };
