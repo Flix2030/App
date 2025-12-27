@@ -374,27 +374,22 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // 1) API immer direkt abarbeiten (Auth macht handleApi selbst)
+    // 1) API immer direkt behandeln (API macht Auth selbst)
     if (path.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // 2) Assets öffentlich (wichtig für Login & JS/CSS)
-    if (path.startsWith("/assets/") && env.ASSETS?.fetch) {
-      return env.ASSETS.fetch(req);
-    }
-
-    // 3) Login-Seite IM WORKER ausliefern (damit es nie crasht)
+    // 2) Login-Seite anzeigen (ohne Auth)
     if (path === "/login" && req.method === "GET") {
       const returnTo = url.searchParams.get("returnTo") || "/packliste";
       const safeReturn = returnTo.startsWith("/") ? returnTo : "/packliste";
 
-      const html = `<!doctype html>
+      return new Response(`<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <title>Login</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body style="font-family:system-ui;max-width:420px;margin:40px auto">
 <h2>Login</h2>
@@ -410,26 +405,24 @@ document.getElementById('b').onclick = async () => {
   const r = await fetch('/api/login', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({username, password}),
-    credentials:'include'
+    credentials:'include',
+    body: JSON.stringify({ username, password })
   });
   const j = await r.json().catch(()=>null);
   if (!r.ok) {
-    document.getElementById('m').textContent = (j && j.error) ? j.error : 'Login fehlgeschlagen';
+    document.getElementById('m').textContent = 'Login fehlgeschlagen';
     return;
   }
   location.href = returnTo;
 };
 </script>
 </body>
-</html>`;
-
-      return new Response(html, {
+</html>`, {
         headers: { "Content-Type": "text/html; charset=utf-8" }
       });
     }
 
-    // 4) Gate für ALLE anderen Seiten
+    // 3) ALLES andere ist geschützt → erst Login prüfen
     const uid = await readToken(env, req);
     if (!uid) {
       const loginUrl = new URL("/login", url.origin);
@@ -437,7 +430,7 @@ document.getElementById('b').onclick = async () => {
       return Response.redirect(loginUrl.toString(), 302);
     }
 
-    // 5) Seiten ausliefern
+    // 4) Statische Seiten ausliefern
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
