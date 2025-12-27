@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Einstellungen</title>
+  <style>
+    :root {
+      --primary-color: #4B0082;
+      --secondary-color: #6A5ACD;
+      --text-color: #ffffff;
+      --bg-color: #f0f0f5;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: var(--bg-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: #ffffff;
+      padding: 40px 60px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 600px;
+    }
+    h1 {
+      color: var(--primary-color);
+      margin-bottom: 20px;
+    }
+    p {
+      color: #333333;
+      line-height: 1.5;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 12px 24px;
+      background: var(--primary-color);
+      color: var(--text-color);
+      border-radius: 6px;
+      text-decoration: none;
+      transition: background 0.3s ease;
+    }
+    .back-link:hover {
+      background: var(--secondary-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Einstellungen</h1>
+    <p>Hier können Sie Ihre persönlichen Einstellungen vornehmen.</p>
+    <!-- Zurück zur Startseite von app. -->
+    <a class="back-link" href="../">&#x2B05; Zurück</a>
+  </div>
+</body>
+</html>
