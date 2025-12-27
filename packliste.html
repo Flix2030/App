@@ -1,11 +1,1609 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Packliste</title>
-  <meta http-equiv="refresh" content="0; url=packliste/index.html" />
-  <script>location.replace('packliste/index.html');</script>
+  <meta charset="UTF-8">
+  <title>Packlisten verwalten</title>
+  <style>
+    /* Dark UI (angelehnt an dein Beispiel) */
+    :root {
+      --bg0: #05080f;
+      --bg1: #070c16;
+      --panel: rgba(17, 24, 39, 0.72);
+      --panel2: rgba(20, 28, 46, 0.78);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.62);
+      --accent: #3ee38c;
+      --accent2: #2fce7a;
+      --danger: #ff4d6d;
+      --shadow: 0 18px 60px rgba(0,0,0,0.55);
+      --radius: 18px;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 34px 16px 40px;
+      box-sizing: border-box;
+    }
+
+    .container {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 26px 26px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    h1 {
+      color: var(--text);
+      margin: 0 0 18px;
+      font-size: 2rem;
+      letter-spacing: 0.2px;
+    }
+
+    h2 {
+      color: var(--text);
+      margin-top: 22px;
+      margin-bottom: 10px;
+      font-size: 1.45rem;
+      letter-spacing: 0.2px;
+    }
+
+    /* Button-Grundstile */
+    .btn {
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: #03130a;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 4px;
+      transition: transform 0.15s ease, filter 0.2s ease;
+      box-shadow: 0 10px 24px rgba(62,227,140,0.14);
+    }
+    .btn:hover { filter: brightness(1.03); }
+    .btn:active { transform: translateY(1px); }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    .btn-secondary:hover { filter: brightness(1.06); }
+
+    /* Listen & Elemente */
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      gap: 12px;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .list-item .item-name {
+      flex: 1;
+      cursor: pointer;
+    }
+    .actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    /* Eingabefelder */
+    input[type="text"] {
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      outline: none;
+      min-width: 220px;
+    }
+    input[type="text"]::placeholder { color: rgba(235,244,255,0.55); }
+
+    select {
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      outline: none;
+      min-width: 220px;
+    }
+    select:focus{ border-color: rgba(62,227,140,0.45); box-shadow: 0 0 0 3px rgba(62,227,140,0.12); }
+    /* Dropdown-Optionen (damit es im Darkmode nicht grau/hell aussieht) */
+    option {
+      background: #0b1220;
+      color: rgba(255,255,255,0.92);
+    }
+    option{ background: #0b1220; color: rgba(255,255,255,0.92); }
+
+    .toolbar {
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap:12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .toolbar .left, .toolbar .right{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+
+    .bulkbar{
+      display:none;
+      align-items:center;
+      justify-content: space-between;
+      gap:10px;
+      background: rgba(62,227,140,0.08);
+      border: 1px solid rgba(62,227,140,0.20);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+    .bulkbar .count{ color: var(--accent); font-weight:800; }
+    .selected {
+      outline: 2px solid rgba(59,130,246,0.80);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+    }
+
+    /* Keine Browser-Textauswahl beim Auswählen/Dragging */
+    body.noselect, body.noselect * {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Select / Dropdown dunkler (so gut es der Browser erlaubt) */
+    select {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    select:focus {
+      border-color: rgba(62,227,140,0.55);
+      box-shadow: 0 0 0 4px rgba(62,227,140,0.12);
+    }
+    option {
+      background: #0e1624;
+      color: #ffffff;
+    }
+
+    /* Kopfbereich + Fortschritt */
+    .list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .progress-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(62,227,140,0.25);
+      background: rgba(62,227,140,0.10);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      box-shadow: 0 10px 30px rgba(62,227,140,0.08);
+    }
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 16px rgba(62,227,140,0.65);
+    }
+    .progress-bar {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin: 12px 0 10px;
+    }
+    .progress-bar > div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), rgba(62,227,140,0.35));
+      border-radius: 999px;
+      transition: width 220ms ease;
+    }
+
+    /* Add-Row (nicht gequetscht) */
+    .add-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .add-row input[type="range"] { flex: 1; min-width: 200px; }
+    .qty-label {
+      min-width: 64px;
+      text-align: right;
+      color: rgba(235,244,255,0.75);
+      font-weight: 700;
+    }
+
+    .qty-text {
+      min-width: 64px;
+      text-align: right;
+      color: rgba(235,244,255,0.78);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 40px;
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      text-decoration: none;
+      transition: filter 0.2s ease, transform 0.15s ease;
+    }
+    .back-link:hover {
+      filter: brightness(1.08);
+    }
+
+    /* Popup-Overlay für Dialoge */
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .popup-overlay.active {
+      display: flex;
+    }
+    .popup {
+      background: rgba(15, 20, 34, 0.92);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 20px 22px;
+      border-radius: 16px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+      min-width: 280px;
+    }
+    .popup p {
+      margin: 0;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .popup input[type="text"], .popup input[type="range"] {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+    }
+    .popup-buttons {
+      text-align: right;
+    }
+
+    /* Anzeige der Mengenangabe im Popup */
+    #popup-qty-label {
+      /* Der Text wird rechts ausgerichtet und mit Abstand versehen. */
+      text-align: right;
+      margin-bottom: 10px;
+    }
+
+    /* Animation für verschobene Elemente */
+    .list-item.moved {
+      animation: flash-bg 0.4s;
+    }
+    @keyframes flash-bg {
+      from { background-color: #e4e0f2; }
+      to { background-color: #f8f8fc; }
+    }
+
+    /* Stil für Drag-Handle in Bearbeitungsmodus */
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+      margin-right: 8px;
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+
+    /* Drag & Drop Animation wie in Apps: Item hebt ab, Platzhalter */
+    .list-item.dragging {
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      transform: scale(1.02);
+      opacity: 0.65; /* leicht durchsichtig, damit man darunter sieht */
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    .drop-placeholder {
+      height: 12px;
+      border: 2px dashed rgba(62,227,140,0.55);
+      border-radius: 12px;
+      margin: 8px 0;
+      background: rgba(62,227,140,0.06);
+    }
+
+    /* UL als Bezug für Breite/Spur */
+    #items-list { position: relative; }
+  </style>
 </head>
-<body></body>
+<body>
+  <div class="container">
+    <h1>Packlisten verwalten</h1>
+    <div id="user-section">
+      <h2>Benutzer</h2>
+      <div style="display:flex; align-items:center; flex-wrap: wrap; margin-bottom: 10px;">
+        <select id="user-select"></select>
+        <button id="user-manage-btn" class="btn btn-small btn-secondary">Benutzer verwalten</button>
+      </div>
+    </div>
+    <!-- Listen-Übersicht -->
+    <div id="lists-section" class="hidden">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Listen</h2>
+          <button id="add-list-btn" class="btn btn-small">Neue Liste</button>
+          <button id="import-new-list-btn" class="btn btn-small btn-secondary">Importieren</button>
+          <button id="lists-edit-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+        </div>
+        <div class="right">
+          <span class="hint" id="lists-edit-hint" style="display:none;">Bearbeiten aktiv</span>
+        </div>
+      </div>
+      <ul id="lists-list"></ul>
+    </div>
+    <!-- Listen-Bearbeitung -->
+    <div id="list-edit-section" class="hidden">
+      <!-- Kopfbereich mit Titel und Fortschrittsanzeige -->
+      <div class="list-header">
+        <h2 id="current-list-title" style="margin:0;"></h2>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+          <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
+          <div class="progress-pill">
+            <span class="progress-dot"></span>
+            <span id="completion-percentage">0% geschafft</span>
+          </div>
+        </div>
+      </div>
+      <div class="progress-bar"><div id="completion-bar"></div></div>
+      <!-- Umschalter für Bearbeitungsmodus -->
+      <div class="toolbar" style="margin-top:10px;">
+        <div class="left">
+          <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+        </div>
+        <div class="right">
+          <!-- Nur im Fortschrittsmodus sichtbar -->
+          <button id="check-all-btn" class="btn btn-small btn-secondary">Alle abhaken</button>
+          <!-- Nur im Bearbeitungsmodus sichtbar (und nur wenn Auswahl vorhanden) -->
+          <button id="bulk-delete" class="btn btn-small btn-secondary" style="display:none;">Auswahl löschen</button>
+          <button id="bulk-duplicate" class="btn btn-small btn-secondary" style="display:none;">Duplizieren</button>
+          <button id="bulk-share" class="btn btn-small btn-secondary" style="display:none;">Teilen</button>
+        </div>
+      </div>
+      <!-- Abschnitt zum Hinzufügen neuer Artikel (wird nur im Bearbeitungsmodus angezeigt) -->
+      <div id="new-item-section" style="margin-top:10px; display:none;">
+        <div class="add-row">
+          <input type="text" id="new-item-text" placeholder="Neuer Artikel" />
+          <input type="range" id="new-item-qty" min="1" max="30" value="1" />
+          <span id="new-item-qty-label" class="qty-label">Menge: 1</span>
+          <button id="add-item-btn" class="btn btn-small">Hinzufügen</button>
+        </div>
+      </div>
+      <!-- Liste der Artikel -->
+      <ul id="items-list"></ul>
+      <!-- Zurück-Button -->
+    </div>
+    <a id="back-home-link" class="back-link" href="../home.html">&#x2B05; Home</a>
+  </div>
+
+  <!-- Benutzer verwalten Popup -->
+  <div id="user-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 style="margin:0 0 8px;">Benutzer verwalten</h3>
+      <p style="margin:0 0 14px; color: var(--muted);">Benutzer hinzufügen/löschen oder Daten importieren/exportieren.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="user-add" class="btn btn-small">Hinzufügen</button>
+        <button id="user-delete" class="btn btn-small btn-secondary">Löschen</button>
+        <button id="user-export" class="btn btn-small btn-secondary">Exportieren</button>
+        <button id="user-import" class="btn btn-small btn-secondary">Importieren</button>
+      </div>
+      <div style="text-align:right; margin-top:14px;">
+        <button id="user-close" class="btn btn-small btn-secondary">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duplizieren / Teilen Popup -->
+  <div id="assign-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 id="assign-title" style="margin:0 0 8px;">Ausgewählte Artikel kopieren</h3>
+      <p id="assign-desc" style="margin:0 0 14px; color: var(--muted);">Die Artikel werden beim aktuellen Benutzer behalten und zusätzlich kopiert.</p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <label style="color:var(--muted); font-size:0.9rem;">Ziel-Benutzer</label>
+        <select id="assign-user"></select>
+        <label style="color:var(--muted); font-size:0.9rem;">Ziel-Liste</label>
+        <select id="assign-list"></select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+        <button id="assign-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
+        <button id="assign-confirm" class="btn btn-small">Kopieren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup für Bestätigungen und Eingaben -->
+  <div id="popup-overlay" class="popup-overlay">
+    <div class="popup">
+      <p id="popup-message"></p>
+      <!-- Textfeld für generische Eingaben -->
+      <input type="text" id="popup-input" class="hidden" />
+      <!-- Slider und Label für Mengenauswahl -->
+      <input type="range" id="popup-range" class="hidden" min="1" max="30" value="1" />
+      <span id="popup-qty-label" class="hidden">1</span>
+      <div class="popup-buttons">
+        <button id="popup-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
+        <button id="popup-confirm" class="btn btn-small">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    // Daten und Zustandsvariablen
+    let data = null;
+    let currentUserId = null;
+    let currentListId = null;
+    let popupCallback = null;
+    // Bearbeitungsmodus steuert, ob wir Artikel bearbeiten (hinzufügen/reordern) oder abhaken
+    let editMode = false;
+    // Bearbeiten-Modus in der Listenübersicht (zeigt Rename/Delete/Export pro Liste)
+    let listsEditMode = false;
+    // Mehrfachauswahl von Artikeln im Bearbeitungsmodus
+    let selectedItemIds = new Set();
+    // Drag & Drop State (nur im Bearbeitungsmodus, gestartet über den Griff)
+    let draggingEl = null;
+    let placeholderEl = null;
+    let dragStartY = 0;
+    let dragOffsetY = 0;
+    // Modal für Duplizieren/Teilen
+    let copyAction = 'share'; // 'duplicate' | 'share'
+    const overlay = document.getElementById('popup-overlay');
+    const popupMessage = document.getElementById('popup-message');
+    const popupInput = document.getElementById('popup-input');
+    const popupRange = document.getElementById('popup-range');
+    const popupQtyLabel = document.getElementById('popup-qty-label');
+
+    document.getElementById('popup-confirm').addEventListener('click', function() {
+      if (popupCallback) popupCallback(true);
+    });
+    document.getElementById('popup-cancel').addEventListener('click', function() {
+      if (popupCallback) popupCallback(false);
+    });
+
+    // Daten aus dem lokalen Speicher laden und speichern
+    function loadData() {
+      try {
+        const stored = localStorage.getItem('packlisteData');
+        if (stored) return JSON.parse(stored);
+      } catch (e) {}
+      return { users: [] };
+    }
+    function saveData() {
+      localStorage.setItem('packlisteData', JSON.stringify(data));
+    }
+
+    async function apiGetData() {
+      try {
+        const r = await fetch("/api/data", { credentials: "include" });
+        if (r.status === 401) return { __unauth: true };
+        if (!r.ok) return { __error: true };
+        const j = await r.json().catch(() => ({}));
+        return { data: (j && Object.prototype.hasOwnProperty.call(j, 'data')) ? j.data : null };
+      } catch (e) {
+        return { __error: true };
+      }
+    }
+
+    async function apiSaveData(state) {
+      const r = await fetch("/api/data", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state)
+      });
+      if (!r.ok) throw new Error("apiSaveData failed: " + r.status);
+    }
+
+
+    // Initialisierung der Seite
+    async function init() {
+      // Seite schützen: nur eingeloggt
+      try {
+        const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
+        if (!me || !me.loggedIn) {
+          location.href = "../home.html";
+          return;
+        }
+      } catch (e) {
+        location.href = "../home.html";
+        return;
+      }
+
+      // Cloud → localStorage (Cloud ist Master)
+      const cloudRes = await apiGetData();
+      if (cloudRes && cloudRes.__unauth) {
+        location.href = "../home.html";
+        return;
+      }
+      if (cloudRes && cloudRes.data) {
+        data = cloudRes.data;
+      } else {
+        // Fallback: bisherige lokale Daten (oder Default) und einmalig in die Cloud schreiben
+        data = loadData();
+        if (!data || !Array.isArray(data.users)) data = { users: [] };
+        try { await apiSaveData(data); } catch (_) {}
+      }
+      localStorage.setItem('packlisteData', JSON.stringify(data));
+
+// Benutzer verwalten (Popup)
+      const userModal = document.getElementById('user-modal');
+      document.getElementById('user-manage-btn').addEventListener('click', function() {
+        userModal.classList.add('active');
+      });
+      document.getElementById('user-close').addEventListener('click', function() {
+        userModal.classList.remove('active');
+      });
+      document.getElementById('user-add').addEventListener('click', function() {
+        showPrompt('Name des neuen Benutzers:', '', function(name) {
+          if (!name) return;
+          const id = Date.now().toString();
+          data.users.push({ id, name, lists: [] });
+          saveData();
+          currentUserId = id;
+          currentListId = null;
+          loadUsers();
+          userModal.classList.remove('active');
+        });
+      });
+      document.getElementById('user-delete').addEventListener('click', function() {
+        if (!currentUserId) return;
+        const user = data.users.find(u => u.id === currentUserId);
+        if (!user) return;
+        showConfirm(`Benutzer "${user.name}" wirklich löschen?`, function() {
+          data.users = data.users.filter(u => u.id !== currentUserId);
+          currentUserId = null;
+          currentListId = null;
+          listsEditMode = false;
+          selectedItemIds.clear();
+          saveData();
+          loadUsers();
+          userModal.classList.remove('active');
+        });
+      });
+      document.getElementById('user-export').addEventListener('click', function() {
+        exportAll();
+      });
+      document.getElementById('user-import').addEventListener('click', function() {
+        importAll(function() {
+          loadUsers();
+          userModal.classList.remove('active');
+        });
+      });
+      document.getElementById('user-select').addEventListener('change', function() {
+        currentUserId = this.value || null;
+        currentListId = null;
+        loadLists();
+      });
+      // Event-Handler für Listen
+      document.getElementById('add-list-btn').addEventListener('click', function() {
+        const user = getCurrentUser();
+        if (!user) return;
+        showPrompt('Name der neuen Liste:', '', function(name) {
+          if (!name) return;
+          const id = Date.now().toString();
+          user.lists.push({ id: id, name: name, items: [] });
+          saveData();
+          loadLists();
+        });
+      });
+      // Neue Liste importieren (als eigene Liste)
+      document.getElementById('import-new-list-btn').addEventListener('click', function() {
+        importAsNewList();
+      });
+      // Bearbeiten in Listenübersicht (zeigt Aktionen pro Liste)
+      document.getElementById('lists-edit-toggle').addEventListener('click', function() {
+        listsEditMode = !listsEditMode;
+        document.getElementById('lists-edit-hint').style.display = listsEditMode ? 'inline' : 'none';
+        this.textContent = listsEditMode ? 'Fertig' : 'Bearbeiten';
+        loadLists();
+      });
+      document.getElementById('back-to-lists-btn').addEventListener('click', function() {
+        currentListId = null;
+        showListsSection();
+      });
+      // Event-Handler für Artikel hinzufügen
+      document.getElementById('new-item-qty').addEventListener('input', function() {
+        document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
+      });
+      document.getElementById('add-item-btn').addEventListener('click', addItem);
+      // Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
+      document.getElementById('bulk-delete').addEventListener('click', bulkDeleteSelected);
+      document.getElementById('bulk-duplicate').addEventListener('click', function() { openAssignModal('duplicate'); });
+      document.getElementById('bulk-share').addEventListener('click', function() { openAssignModal('share'); });
+
+      // Alle abhaken (nur im Fortschrittsmodus)
+      document.getElementById('check-all-btn').addEventListener('click', function() {
+        if (editMode) return;
+        const list = getCurrentList();
+        if (!list) return;
+        const total = list.items.length;
+        if (total === 0) return;
+        const allDone = list.items.every(it => (it.progress || 0) >= (it.qty || 1));
+        const msg = allDone ? 'Alles wieder abwählen?' : 'Alles abhaken?';
+        showConfirm(msg, function() {
+          list.items.forEach(it => {
+            const qty = it.qty || 1;
+            it.progress = allDone ? 0 : qty;
+          });
+          saveData();
+          renderItems();
+        });
+      });
+
+      // Assign-Modal
+      const assignModal = document.getElementById('assign-modal');
+      document.getElementById('assign-cancel').addEventListener('click', function() {
+        assignModal.classList.remove('active');
+      });
+      document.getElementById('assign-confirm').addEventListener('click', function() {
+        confirmAssign();
+      });
+      // Popup-Range-Update
+      popupRange.addEventListener('input', function() {
+        popupQtyLabel.textContent = this.value;
+      });
+
+      // Umschalter für Bearbeitungsmodus
+      const editToggle = document.getElementById('edit-mode-toggle');
+      if (editToggle) {
+        editToggle.addEventListener('click', function() {
+          // Modus wechseln
+          editMode = !editMode;
+          // Buttontext anpassen
+          this.textContent = editMode ? 'Fertig' : 'Bearbeiten';
+          // Auswahl zurücksetzen, wenn wir Bearbeiten beenden
+          if (!editMode) {
+            selectedItemIds.clear();
+          }
+          updateBulkbar();
+          // Eingabebereich für neue Artikel ein-/ausblenden
+          const newSection = document.getElementById('new-item-section');
+          if (newSection) newSection.style.display = editMode ? 'block' : 'none';
+          // Liste neu rendern
+          renderItems();
+        });
+      }
+      loadUsers();
+    }
+
+    // Popups
+    function showPrompt(message, defaultValue, onConfirm) {
+      popupMessage.textContent = message;
+      popupInput.value = defaultValue || '';
+      popupInput.classList.remove('hidden');
+      popupRange.classList.add('hidden');
+      popupQtyLabel.classList.add('hidden');
+      overlay.classList.add('active');
+      popupCallback = function(ok) {
+        overlay.classList.remove('active');
+        if (ok) {
+          const val = popupInput.value.trim();
+          onConfirm(val);
+        }
+        popupInput.classList.add('hidden');
+      };
+    }
+    function showConfirm(message, onConfirm) {
+      popupMessage.textContent = message;
+      popupInput.classList.add('hidden');
+      popupRange.classList.add('hidden');
+      popupQtyLabel.classList.add('hidden');
+      overlay.classList.add('active');
+      popupCallback = function(ok) {
+        overlay.classList.remove('active');
+        if (ok) {
+          onConfirm();
+        }
+      };
+    }
+    function showItemEditor(item, onConfirm) {
+      popupMessage.textContent = 'Artikel bearbeiten:';
+      popupInput.classList.remove('hidden');
+      popupRange.classList.remove('hidden');
+      popupQtyLabel.classList.remove('hidden');
+      popupInput.value = item.name;
+      popupRange.value = item.qty;
+      popupQtyLabel.textContent = item.qty;
+      overlay.classList.add('active');
+      popupCallback = function(ok) {
+        overlay.classList.remove('active');
+        if (ok) {
+          const newName = popupInput.value.trim();
+          const newQty = parseInt(popupRange.value);
+          if (newName) onConfirm(newName, newQty);
+        }
+        popupInput.classList.add('hidden');
+        popupRange.classList.add('hidden');
+        popupQtyLabel.classList.add('hidden');
+      };
+    }
+
+    // Helper: aktuell ausgewählten Benutzer und Liste ermitteln
+    function getCurrentUser() {
+      return data.users.find(u => u.id === currentUserId) || null;
+    }
+    function getCurrentList() {
+      const user = getCurrentUser();
+      if (!user) return null;
+      return user.lists.find(l => l.id === currentListId) || null;
+    }
+
+    // Kleine ID-Hilfe (für Items, damit Auswahl stabil bleibt)
+    function makeId(prefix) {
+      return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    // Benutzer laden
+    function loadUsers() {
+      const select = document.getElementById('user-select');
+      select.innerHTML = '';
+      if (data.users.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '— keinen Benutzer —';
+        select.appendChild(opt);
+        select.disabled = true;
+        document.getElementById('lists-section').classList.add('hidden');
+        document.getElementById('list-edit-section').classList.add('hidden');
+        currentUserId = null;
+        return;
+      }
+      select.disabled = false;
+      data.users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name;
+        select.appendChild(opt);
+      });
+      if (!currentUserId || !data.users.some(u => u.id === currentUserId)) {
+        currentUserId = data.users[0].id;
+      }
+      select.value = currentUserId;
+      loadLists();
+    }
+
+    // Listen laden oder Editor anzeigen
+    function loadLists() {
+      const user = getCurrentUser();
+      if (!user) {
+        document.getElementById('lists-section').classList.add('hidden');
+        document.getElementById('list-edit-section').classList.add('hidden');
+        return;
+      }
+      if (currentListId) {
+        showListEditSection();
+        return;
+      }
+      // Listenübersicht anzeigen
+      document.getElementById('user-section').classList.remove('hidden');
+      document.getElementById('back-home-link').classList.remove('hidden');
+      document.getElementById('lists-section').classList.remove('hidden');
+      document.getElementById('list-edit-section').classList.add('hidden');
+      const ul = document.getElementById('lists-list');
+      ul.innerHTML = '';
+      user.lists.forEach(list => {
+        const li = document.createElement('li');
+        li.className = 'list-item';
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'item-name';
+        nameSpan.textContent = list.name;
+        li.appendChild(nameSpan);
+        // Klick auf den Namen öffnet die Listenbearbeitung
+        nameSpan.addEventListener('click', function() {
+          currentListId = list.id;
+          showListEditSection();
+        });
+        if (listsEditMode) {
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+
+          // Namen ändern (bleibt in der Übersicht)
+          const editBtn = document.createElement('button');
+          editBtn.textContent = 'Namen ändern';
+          editBtn.className = 'btn btn-small btn-secondary';
+          editBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPrompt('Neuer Name der Liste:', list.name, function(newName) {
+              if (!newName) return;
+              list.name = newName;
+              saveData();
+              loadLists();
+            });
+          });
+          actions.appendChild(editBtn);
+
+          // Löschen
+          const delBtn = document.createElement('button');
+          delBtn.textContent = 'Löschen';
+          delBtn.className = 'btn btn-small btn-secondary';
+          delBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showConfirm(`Liste "${list.name}" wirklich löschen?`, function() {
+              const user = getCurrentUser();
+              user.lists = user.lists.filter(l => l.id !== list.id);
+              saveData();
+              loadLists();
+            });
+          });
+          actions.appendChild(delBtn);
+
+          // Exportieren
+          const expBtn = document.createElement('button');
+          expBtn.textContent = 'Exportieren';
+          expBtn.className = 'btn btn-small btn-secondary';
+          expBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            exportList(list.id);
+          });
+          actions.appendChild(expBtn);
+
+          li.appendChild(actions);
+        }
+        ul.appendChild(li);
+      });
+    }
+
+    // Editor für eine Liste anzeigen
+    function showListEditSection() {
+      const list = getCurrentList();
+      if (!list) {
+        showListsSection();
+        return;
+      }
+      document.getElementById('user-section').classList.add('hidden');
+      // den Zurück-Link ausblenden, während wir eine Liste bearbeiten
+      const backLinkEl = document.getElementById('back-home-link');
+      backLinkEl.style.display = 'none';
+      document.getElementById('lists-section').classList.add('hidden');
+      document.getElementById('list-edit-section').classList.remove('hidden');
+      // Titel setzen
+      document.getElementById('current-list-title').textContent = list.name;
+      // Bearbeitungsmodus zurücksetzen
+      editMode = false;
+      const toggleBtn = document.getElementById('edit-mode-toggle');
+      if (toggleBtn) toggleBtn.textContent = 'Bearbeiten';
+      // Eingabebereich für neue Artikel ausblenden
+      const newSection = document.getElementById('new-item-section');
+      if (newSection) newSection.style.display = 'none';
+      renderItems();
+    }
+    function showListsSection() {
+      currentListId = null;
+      document.getElementById('list-edit-section').classList.add('hidden');
+      document.getElementById('user-section').classList.remove('hidden');
+      // Zurück-Link wieder einblenden, wenn Listenübersicht angezeigt wird
+      const backLinkEl2 = document.getElementById('back-home-link');
+      backLinkEl2.style.display = '';
+      loadLists();
+    }
+
+    // Artikel rendern
+    function renderItems() {
+      const list = getCurrentList();
+      if (!list) {
+        return;
+      }
+      // Sicherstellen, dass alle Elemente qty und progress besitzen
+      list.items = list.items.map(function(it) {
+        if (typeof it === 'string') {
+          return { id: makeId('item'), name: it, qty: 1, progress: 0 };
+        }
+        if (it && typeof it === 'object') {
+          if (!it.id) it.id = makeId('item');
+          if (typeof it.qty !== 'number' || it.qty < 1) it.qty = 1;
+          if (typeof it.progress !== 'number') it.progress = 0;
+          if (it.progress > it.qty) it.progress = it.qty;
+          return it;
+        }
+        return { id: makeId('item'), name: '', qty: 1, progress: 0 };
+      });
+      const ul = document.getElementById('items-list');
+      ul.innerHTML = '';
+      // Fortschrittsanzeige aktualisieren
+      updateCompletion();
+      list.items.forEach(function(item, idx) {
+        const li = document.createElement('li');
+        li.className = 'list-item';
+        li.setAttribute('data-index', idx);
+        li.setAttribute('data-item-id', item.id);
+        if (editMode && selectedItemIds.has(item.id)) {
+          li.classList.add('selected');
+        }
+        if (editMode) {
+          // Drag-Handle
+          const handle = document.createElement('span');
+          handle.className = 'drag-handle';
+          handle.textContent = '☰';
+          li.appendChild(handle);
+
+          // Name
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'item-name';
+          nameSpan.style.flex = '1';
+          nameSpan.textContent = item.name;
+          li.appendChild(nameSpan);
+
+          // Anzahl im Bearbeitungsmodus anzeigen (kein Slider, nur "10/13")
+          const qtyText = document.createElement('span');
+          qtyText.className = 'qty-text';
+          qtyText.textContent = (item.progress || 0) + '/' + (item.qty || 1);
+          li.appendChild(qtyText);
+
+          // Auswahl per Klick (mehrfach möglich) – NICHT beim Ziehen
+          li.addEventListener('click', function(e) {
+            if (draggingEl) return;
+            // Nicht auswählen, wenn man auf Buttons oder den Griff klickt
+            const t = e.target;
+            if (t && (t.tagName === 'BUTTON' || t.classList.contains('drag-handle'))) return;
+            if (selectedItemIds.has(item.id)) {
+              selectedItemIds.delete(item.id);
+              li.classList.remove('selected');
+            } else {
+              selectedItemIds.add(item.id);
+              li.classList.add('selected');
+            }
+            updateBulkbar();
+          });
+
+          // Aktionsbereich
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          // Bearbeiten
+          const editBtn = document.createElement('button');
+          editBtn.textContent = 'Bearbeiten';
+          editBtn.className = 'btn btn-small btn-secondary';
+          editBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showItemEditor(item, function(newName, newQty) {
+              item.name = newName;
+              item.qty = newQty;
+              if (item.progress > item.qty) {
+                item.progress = item.qty;
+              }
+              saveData();
+              renderItems();
+            });
+          });
+          actions.appendChild(editBtn);
+          // Entfernen
+          const removeBtn = document.createElement('button');
+          removeBtn.textContent = 'Entfernen';
+          removeBtn.className = 'btn btn-small btn-secondary';
+          removeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showConfirm(`Eintrag "${item.name}" entfernen?`, function() {
+              list.items.splice(idx, 1);
+              saveData();
+              renderItems();
+            });
+          });
+          actions.appendChild(removeBtn);
+          li.appendChild(actions);
+
+          // Drag & Drop startet NUR über den Griff (wie in Apps)
+          handle.addEventListener('pointerdown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            startDragFromHandle(e, li);
+          });
+        } else {
+          // Fortschrittsmodus
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.style.marginRight = '10px';
+          checkbox.checked = (item.progress >= item.qty);
+          let sliderRef = null;
+          let qtyTextRef = null;
+          checkbox.addEventListener('change', function() {
+            if (checkbox.checked) {
+              item.progress = item.qty;
+            } else {
+              item.progress = 0;
+            }
+            saveData();
+            if (sliderRef) {
+              sliderRef.value = item.progress;
+            }
+            if (qtyTextRef) qtyTextRef.textContent = item.progress + '/' + item.qty;
+            updateCompletion();
+          });
+          li.appendChild(checkbox);
+
+          const nameSpan = document.createElement('span');
+          nameSpan.style.flex = '1';
+          nameSpan.textContent = item.name;
+          li.appendChild(nameSpan);
+
+          if (item.qty > 1) {
+            const right = document.createElement('div');
+            right.style.display = 'flex';
+            right.style.alignItems = 'center';
+            right.style.gap = '10px';
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = 0;
+            slider.max = item.qty;
+            slider.value = item.progress;
+            slider.style.minWidth = '220px';
+            slider.addEventListener('input', function() {
+              item.progress = parseInt(slider.value);
+              checkbox.checked = (item.progress >= item.qty);
+              if (qtyTextRef) qtyTextRef.textContent = item.progress + '/' + item.qty;
+              saveData();
+              updateCompletion();
+            });
+            sliderRef = slider;
+
+            const qtyText = document.createElement('span');
+            qtyText.className = 'qty-text';
+            qtyText.textContent = item.progress + '/' + item.qty;
+            qtyTextRef = qtyText;
+
+            right.appendChild(slider);
+            right.appendChild(qtyText);
+            li.appendChild(right);
+          }
+        }
+        ul.appendChild(li);
+      });
+    }
+
+    function toggleSelectItem(itemId, liEl) {
+      if (!editMode) return;
+      if (selectedItemIds.has(itemId)) {
+        selectedItemIds.delete(itemId);
+        liEl.classList.remove('selected');
+      } else {
+        selectedItemIds.add(itemId);
+        liEl.classList.add('selected');
+      }
+      updateBulkbar();
+    }
+
+    function updateBulkbar() {
+      const n = selectedItemIds.size;
+      const delBtn = document.getElementById('bulk-delete');
+      const dupBtn = document.getElementById('bulk-duplicate');
+      const shareBtn = document.getElementById('bulk-share');
+      const checkAllBtn = document.getElementById('check-all-btn');
+
+      // "Alle abhaken" nur im Fortschrittsmodus
+      if (checkAllBtn) checkAllBtn.style.display = editMode ? 'none' : 'inline-flex';
+
+      // Bulk-Buttons nur im Bearbeiten-Modus und nur bei Auswahl
+      const showBulk = editMode && n > 0;
+      if (delBtn) delBtn.style.display = showBulk ? 'inline-flex' : 'none';
+      if (dupBtn) dupBtn.style.display = showBulk ? 'inline-flex' : 'none';
+      if (shareBtn) shareBtn.style.display = showBulk ? 'inline-flex' : 'none';
+    }
+
+    // Drag & Drop (mit Animation) – startet nur über den Griff
+    function startDragFromHandle(e, li) {
+      if (!editMode) return;
+      const list = getCurrentList();
+      if (!list) return;
+
+      draggingEl = li;
+      dragStartY = e.clientY;
+
+      // Verhindert, dass der Browser Text markiert
+      document.body.classList.add('noselect');
+
+      // Platzhalter (Drop-Linie)
+      placeholderEl = document.createElement('div');
+      placeholderEl.className = 'drop-placeholder';
+
+      // Insert placeholder where item was
+      const parent = li.parentElement;
+      parent.insertBefore(placeholderEl, li.nextSibling);
+
+      // Fix width/height feel & lift effect
+      const rect = li.getBoundingClientRect();
+      const ulRect = parent.getBoundingClientRect();
+      dragOffsetY = dragStartY - rect.top;
+
+      // Platzhalter bekommt die Höhe des Items, damit nichts "zusammenklappt"
+      placeholderEl.style.height = rect.height + 'px';
+
+      li.classList.add('dragging');
+      // In der "Spur" bleiben: wir pinnen das gezogene Element auf die UL-Breite/Position
+      li.style.width = ulRect.width + 'px';
+      li.style.pointerEvents = 'none';
+      li.style.position = 'fixed';
+      li.style.left = ulRect.left + 'px';
+      li.style.top = (e.clientY - dragOffsetY) + 'px';
+
+      // Capture pointer to keep receiving moves
+      try { li.setPointerCapture(e.pointerId); } catch (_) {}
+
+      window.addEventListener('pointermove', onDragMove);
+      window.addEventListener('pointerup', endDrag, { once: true });
+    }
+
+    function onDragMove(e) {
+      if (!draggingEl || !placeholderEl) return;
+      // Move floating item
+      draggingEl.style.top = (e.clientY - dragOffsetY) + 'px';
+
+      const ul = document.getElementById('items-list');
+      const items = Array.from(ul.querySelectorAll('.list-item'))
+        .filter(el => el !== draggingEl);
+
+      // Vorher-Positionen für FLIP-Animation merken
+      const before = new Map();
+      items.forEach(el => before.set(el, el.getBoundingClientRect()));
+
+      // Find nearest insertion point
+      let inserted = false;
+      for (const it of items) {
+        const r = it.getBoundingClientRect();
+        const midY = r.top + r.height / 2;
+        if (e.clientY < midY) {
+          ul.insertBefore(placeholderEl, it);
+          inserted = true;
+          break;
+        }
+      }
+      if (!inserted) {
+        ul.appendChild(placeholderEl);
+      }
+
+      // FLIP: andere Items weich "nachrutschen" lassen
+      items.forEach(el => {
+        const after = el.getBoundingClientRect();
+        const b = before.get(el);
+        if (!b) return;
+        const dy = b.top - after.top;
+        if (Math.abs(dy) < 0.5) return;
+        el.style.transition = 'none';
+        el.style.transform = `translateY(${dy}px)`;
+        requestAnimationFrame(() => {
+          el.style.transition = 'transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+          el.style.transform = '';
+        });
+      });
+    }
+
+    function endDrag() {
+      if (!draggingEl || !placeholderEl) return;
+
+      window.removeEventListener('pointermove', onDragMove);
+
+      const ul = document.getElementById('items-list');
+      // Put item back into list at placeholder position
+      ul.insertBefore(draggingEl, placeholderEl);
+      placeholderEl.remove();
+
+      // Reset floating styles
+      draggingEl.classList.remove('dragging');
+      draggingEl.style.pointerEvents = '';
+      draggingEl.style.position = '';
+      draggingEl.style.left = '';
+      draggingEl.style.top = '';
+      draggingEl.style.width = '';
+
+      // Textauswahl wieder erlauben
+      document.body.classList.remove('noselect');
+
+      // Rebuild list.items in new DOM order using stable item ids (data-item-id)
+      const list2 = getCurrentList();
+      if (list2) {
+        const byId = new Map(list2.items.map(it => [it.id, it]));
+        const ordered = [];
+        Array.from(ul.querySelectorAll('.list-item')).forEach(el => {
+          const id = el.getAttribute('data-item-id');
+          if (id && byId.has(id)) ordered.push(byId.get(id));
+        });
+        if (ordered.length === list2.items.length) {
+          list2.items = ordered;
+        }
+        saveData();
+      }
+
+      // Final refresh for correct indexes + clean UI
+      draggingEl = null;
+      placeholderEl = null;
+      renderItems();
+    }
+
+    // Artikel verschieben (nach oben oder unten)
+    function moveItem(index, direction) {
+      const list = getCurrentList();
+      if (!list) return;
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= list.items.length) return;
+      const items = list.items;
+      const tmp = items[index];
+      items[index] = items[newIndex];
+      items[newIndex] = tmp;
+      saveData();
+      // Element mit Highlight neu rendern
+      renderItems();
+      const ul = document.getElementById('items-list');
+      const movedItem = ul.children[newIndex];
+      if (movedItem) {
+        movedItem.classList.add('moved');
+        setTimeout(() => movedItem.classList.remove('moved'), 400);
+      }
+    }
+
+    // Berechnet und aktualisiert die prozentuale Fertigstellung der Liste
+    function updateCompletion() {
+      const list = getCurrentList();
+      const percEl = document.getElementById('completion-percentage');
+      const barEl = document.getElementById('completion-bar');
+      if (!list || !percEl) {
+        return;
+      }
+      const total = list.items.length;
+      if (total === 0) {
+        percEl.textContent = '0% geschafft';
+        if (barEl) barEl.style.width = '0%';
+        return;
+      }
+      let sum = 0;
+      list.items.forEach(function(item) {
+        const qty = item.qty || 1;
+        const progress = item.progress || 0;
+        sum += qty ? (progress / qty) : 1;
+      });
+      const percent = (sum / total) * 100;
+      const rounded = Math.round(percent);
+      percEl.textContent = rounded + '% geschafft';
+      if (barEl) barEl.style.width = Math.max(0, Math.min(100, percent)).toFixed(2) + '%';
+    }
+
+    // Artikel hinzufügen
+    function addItem() {
+      const list = getCurrentList();
+      if (!list) return;
+      const textInput = document.getElementById('new-item-text');
+      const qtyInput = document.getElementById('new-item-qty');
+      const name = textInput.value.trim();
+      if (!name) return;
+      const qty = parseInt(qtyInput.value);
+      // Neuen Artikel mit Anfangsfortschritt 0 hinzufügen
+      list.items.push({ id: makeId('item'), name: name, qty: qty, progress: 0 });
+      textInput.value = '';
+      qtyInput.value = '1';
+      document.getElementById('new-item-qty-label').textContent = 'Menge: 1';
+      saveData();
+      renderItems();
+    }
+
+    // Listen exportieren und importieren
+    function exportList(listId) {
+      const user = getCurrentUser();
+      if (!user) return;
+      const list = user.lists.find(l => l.id === listId);
+      if (!list) return;
+      const dataStr = JSON.stringify({ name: list.name, items: list.items }, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${list.name.replace(/\s+/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+    function importList(listId) {
+      const user = getCurrentUser();
+      if (!user) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const imported = JSON.parse(reader.result);
+            const list = user.lists.find(l => l.id === listId);
+            if (!list) return;
+            if (Array.isArray(imported.items)) {
+              list.items = imported.items.map(function(it) {
+                if (typeof it === 'string') {
+                  return { name: it, qty: 1, progress: 0 };
+                }
+                if (it && typeof it === 'object') {
+                  return {
+                    name: it.name || '',
+                    qty: it.qty || 1,
+                    progress: typeof it.progress === 'number' ? Math.min(it.progress, it.qty || 1) : 0
+                  };
+                }
+                return { name: '', qty: 1, progress: 0 };
+              });
+            }
+            if (imported.name) {
+              list.name = imported.name;
+            }
+            saveData();
+            loadLists();
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // --- Export/Import GANZE App (alle Benutzer) ---
+    function exportAll() {
+      const dataStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `packliste_backup.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+
+    function importAll(onDone) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const imported = JSON.parse(reader.result);
+            if (!imported || !Array.isArray(imported.users)) {
+              showConfirm('Ungültige JSON-Datei.', function() {});
+              return;
+            }
+            data = imported;
+            // Sicherheits-Normalisierung
+            data.users = data.users.map(u => ({
+              id: u.id || makeId('user'),
+              name: u.name || 'Benutzer',
+              lists: Array.isArray(u.lists) ? u.lists.map(l => ({
+                id: l.id || makeId('list'),
+                name: l.name || 'Liste',
+                items: Array.isArray(l.items) ? l.items : []
+              })) : []
+            }));
+            saveData();
+            currentUserId = data.users[0]?.id || null;
+            currentListId = null;
+            listsEditMode = false;
+            selectedItemIds.clear();
+            if (onDone) onDone();
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // Import als NEUE Liste beim aktuellen Benutzer
+    function importAsNewList() {
+      const user = getCurrentUser();
+      if (!user) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const imported = JSON.parse(reader.result);
+            const name = (imported && imported.name) ? String(imported.name) : 'Importierte Liste';
+            const items = Array.isArray(imported.items) ? imported.items : [];
+            user.lists.unshift({ id: makeId('list'), name, items });
+            saveData();
+            loadLists();
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // --- Bulk Aktionen (Bearbeiten-Modus) ---
+    function getSelectedIndices() {
+      const list = getCurrentList();
+      if (!list) return [];
+      const idToIndex = new Map();
+      list.items.forEach((it, i) => idToIndex.set(it.id, i));
+      return Array.from(selectedItemIds).map(id => idToIndex.get(id)).filter(i => typeof i === 'number').sort((a,b)=>a-b);
+    }
+
+    function bulkDeleteSelected() {
+      const list = getCurrentList();
+      if (!list) return;
+      const indices = getSelectedIndices();
+      if (indices.length === 0) return;
+      showConfirm(indices.length + ' Einträge wirklich löschen?', function() {
+        // von hinten löschen
+        indices.slice().reverse().forEach(i => list.items.splice(i, 1));
+        selectedItemIds.clear();
+        saveData();
+        renderItems();
+        updateBulkbar();
+      });
+    }
+
+    function bulkDuplicateSelected() {
+      const list = getCurrentList();
+      if (!list) return;
+      const indices = getSelectedIndices();
+      if (indices.length === 0) return;
+      // Duplikate direkt nach dem letzten ausgewählten einfügen
+      const clones = indices.map(i => {
+        const it = list.items[i];
+        return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
+      });
+      const insertAt = indices[indices.length - 1] + 1;
+      list.items.splice(insertAt, 0, ...clones);
+      saveData();
+      renderItems();
+      updateBulkbar();
+    }
+
+    function openAssignModal(action) {
+      if (selectedItemIds.size === 0) return;
+      copyAction = action || 'share';
+      const modal = document.getElementById('assign-modal');
+      const titleEl = document.getElementById('assign-title');
+      const descEl = document.getElementById('assign-desc');
+      const confirmBtn = document.getElementById('assign-confirm');
+      if (titleEl) titleEl.textContent = (copyAction === 'duplicate') ? 'Ausgewählte Artikel duplizieren' : 'Ausgewählte Artikel teilen';
+      if (descEl) descEl.textContent = 'Die Artikel bleiben beim aktuellen Benutzer erhalten und werden zusätzlich in die gewählte Liste kopiert.';
+      if (confirmBtn) confirmBtn.textContent = (copyAction === 'duplicate') ? 'Duplizieren' : 'Teilen';
+      const userSel = document.getElementById('assign-user');
+      const listSel = document.getElementById('assign-list');
+      userSel.innerHTML = '';
+      data.users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name;
+        userSel.appendChild(opt);
+      });
+      // default: anderer Benutzer, sonst aktueller
+      const firstOther = data.users.find(u => u.id !== currentUserId) || data.users[0];
+      userSel.value = (firstOther && firstOther.id) ? firstOther.id : currentUserId;
+      const fillLists = () => {
+        const u = data.users.find(x => x.id === userSel.value);
+        listSel.innerHTML = '';
+        (u?.lists || []).forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l.id;
+          opt.textContent = l.name;
+          listSel.appendChild(opt);
+        });
+      };
+      userSel.onchange = fillLists;
+      fillLists();
+      modal.classList.add('active');
+    }
+
+    function confirmAssign() {
+      const modal = document.getElementById('assign-modal');
+      const targetUserId = document.getElementById('assign-user').value;
+      const targetListId = document.getElementById('assign-list').value;
+      const list = getCurrentList();
+      const targetUser = data.users.find(u => u.id === targetUserId);
+      const targetList = targetUser?.lists?.find(l => l.id === targetListId);
+      if (!list || !targetList) {
+        modal.classList.remove('active');
+        return;
+      }
+      const indices = getSelectedIndices();
+      const copies = indices.map(i => {
+        const it = list.items[i];
+        return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
+      });
+      targetList.items.push(...copies);
+      saveData();
+      modal.classList.remove('active');
+      // Auswahl bleibt (User wollte: beim aktuellen Benutzer behalten)
+      renderItems();
+      updateBulkbar();
+    }
+
+    // Kickstart
+    document.addEventListener('DOMContentLoaded', init);
+  })();
+  </script>
+</body>
 </html>
