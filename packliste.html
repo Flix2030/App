@@ -452,7 +452,7 @@
       <ul id="items-list"></ul>
       <!-- Zurück-Button -->
     </div>
-    <a id="back-home-link" class="back-link" href="../home.html">&#x2B05; Home</a>
+    <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
   </div>
 
   <!-- Benutzer verwalten Popup -->
@@ -555,9 +555,10 @@
 
     async function apiGetData() {
       const r = await fetch("/api/data", { credentials: "include" });
-      if (!r.ok) return null;
-      const j = await r.json();
-      return j.data || null;
+      if (r.status === 401) return { unauth: true, data: null };
+      if (!r.ok) throw new Error("apiGetData failed: " + r.status);
+      const j = await r.json().catch(() => null);
+      return { unauth: false, data: (j && ("data" in j) ? j.data : null) };
     }
 
     async function apiSaveData(data) {
@@ -571,41 +572,47 @@
 
 // Initialisierung der Seite
 async function init() {
+  // Helper: immer auf /login (mit returnTo) statt /home
+  function goLogin() {
+    const returnTo = location.pathname + location.search;
+    location.href = "/login?returnTo=" + encodeURIComponent(returnTo);
+  }
+
   // 1) Seite schützen: nur eingeloggt
   try {
-    const me = await fetch("/api/me", { credentials: "include" })
-      .then(r => r.json());
-
-    if (!me || !me.loggedIn) {
-      location.href = "../home.html";
-      return;
-    }
-  } catch (e) {
-    location.href = "../home.html";
+    const meRes = await fetch("/api/me", { credentials: "include" });
+    if (meRes.status === 401) { goLogin(); return; }
+    const me = await meRes.json().catch(() => null);
+    if (!me || !me.loggedIn) { goLogin(); return; }
+  } catch (_) {
+    goLogin();
     return;
   }
 
   // 2) Cloud laden (Cloud ist Master)
-  let cloudData = null;
+  let cloud = null;
   try {
-    cloudData = await apiGetData(); // gibt DIREKT das gespeicherte JSON zurück oder null
+    cloud = await apiGetData(); // { unauth, data }
   } catch (_) {
-    cloudData = null;
+    cloud = null; // API down → NICHT in die Cloud schreiben!
   }
 
-  if (cloudData) {
-    // → Daten aus der Cloud übernehmen
-    data = cloudData;
-  } else {
-    // → Fallback: lokale Daten oder Default
+  if (cloud && cloud.unauth) {
+    goLogin();
+    return;
+  }
+
+  if (cloud && cloud.data) {
+    data = cloud.data;
+  } else if (cloud && cloud.data === null) {
+    // Cloud erreichbar, aber noch keine Daten gespeichert → seed aus local/default
     data = loadData();
-    if (!data || !Array.isArray(data.users)) {
-      data = { users: [] };
-    }
-    // → einmalig in die Cloud schreiben
-    try {
-      await apiSaveData(data);
-    } catch (_) {}
+    if (!data || !Array.isArray(data.users)) data = { users: [] };
+    try { await apiSaveData(data); } catch (_) {}
+  } else {
+    // Cloud nicht erreichbar → nur lokal arbeiten
+    data = loadData();
+    if (!data || !Array.isArray(data.users)) data = { users: [] };
   }
 
   // 3) localStorage synchron halten
@@ -615,9 +622,9 @@ async function init() {
   // UI-Events binden (nur einmal)
   bindUI();
   loadUsers();
-
   render();
 }
+
 
 function bindUI() {
       // Benutzer verwalten (Popup)

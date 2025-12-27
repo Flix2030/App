@@ -138,18 +138,6 @@ async function readToken(env, req) {
   return payload.u;
 }
 
-
-function isPublicPath(path) {
-  // Public endpoints required to reach the login
-  if (path === "/login") return true;
-  if (path === "/api/login") return true;
-  // Optional: allow one-time initial register (your existing logic already blocks after first user)
-  if (path === "/api/register") return true;
-  // Health check can stay public
-  if (path === "/api/health") return true;
-  return false;
-}
-
 async function handleApi(req, env) {
   // WICHTIG: Alles im Try/Catch, damit du NIE wieder HTML-Fehler bekommst, sondern JSON
   try {
@@ -284,76 +272,18 @@ async function handleApi(req, env) {
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
-    const path = url.pathname;
 
-    // /home oder /home.html immer auf /login umleiten (GANZ AM ANFANG)
-    if (path === "/home" || path === "/home.html" || path === "/home/") {
-      const loginUrl = new URL("/login", url.origin);
-      loginUrl.searchParams.set("returnTo", "/packliste");
-      return Response.redirect(loginUrl.toString(), 302);
-    }
-
-    // 1) API immer direkt behandeln (API macht Auth selbst)
-    if (path.startsWith("/api/")) {
+    // API
+    if (url.pathname.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // 2) Login-Seite anzeigen (ohne Auth)
-    if (path === "/login" && req.method === "GET") {
-      const returnTo = url.searchParams.get("returnTo") || "/packliste";
-      const safeReturn = returnTo.startsWith("/") ? returnTo : "/packliste";
-
-      return new Response(`<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<title>Login</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body style="font-family:system-ui;max-width:420px;margin:40px auto">
-<h2>Login</h2>
-<input id="u" placeholder="Benutzername" style="width:100%;padding:10px;margin:6px 0">
-<input id="p" type="password" placeholder="Passwort" style="width:100%;padding:10px;margin:6px 0">
-<button id="b" style="width:100%;padding:10px;margin-top:10px">Anmelden</button>
-<p id="m" style="color:#c00"></p>
-<script>
-const returnTo = ${JSON.stringify(safeReturn)};
-document.getElementById('b').onclick = async () => {
-  const username = document.getElementById('u').value.trim();
-  const password = document.getElementById('p').value;
-  const r = await fetch('/api/login', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    credentials:'include',
-    body: JSON.stringify({ username, password })
-  });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok) {
-    document.getElementById('m').textContent = 'Login fehlgeschlagen';
-    return;
-  }
-  location.href = returnTo;
-};
-</script>
-</body>
-</html>`, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    // 3) ALLES andere ist geschützt → erst Login prüfen
-    const uid = await readToken(env, req);
-    if (!uid) {
-      const loginUrl = new URL("/login", url.origin);
-      loginUrl.searchParams.set("returnTo", path + url.search);
-      return Response.redirect(loginUrl.toString(), 302);
-    }
-
-    // 4) Statische Seiten ausliefern
+    // Static Assets
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
 
+    // Fallback
     return fetch(req);
   },
 };
