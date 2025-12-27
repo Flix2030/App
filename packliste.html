@@ -1618,7 +1618,7 @@ function bindUI() {
         return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
       });
       targetList.items = targetList.items || [];
-      targetList.items.push(...copies);
+      targetList.items = targetList.items.concat(copies);
       saveData();
       modal.classList.remove('active');
       // Auswahl bleibt (User wollte: beim aktuellen Benutzer behalten)
