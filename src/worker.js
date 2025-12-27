@@ -285,22 +285,23 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // Pretty-URLs → echte Dateien
+    // 0) Pretty-URLs auf echte Dateien mappen (optional, aber praktisch)
     if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
     if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
     if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
+    if (path === "/settings") return Response.redirect(new URL("/settings.html", url.origin).toString(), 302);
 
-    // 1) API immer direkt (API antwortet mit 401 JSON, kein Redirect!)
+    // 1) API darf NIE umgeleitet werden (sonst kaputt)
     if (path.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // 2) Login-Seite ist die EINZIGE öffentliche Seite
+    // 2) Login ist die EINZIGE öffentliche Seite
     if (path === "/login") {
       return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
     }
 
-    // 3) Alles andere ist geschützt → erst Login prüfen
+    // 3) ✅ DAS ist das "Gate": alles andere nur, wenn eingeloggt
     const uid = await readToken(env, req);
     if (!uid) {
       const loginUrl = new URL("/login", url.origin);
@@ -308,17 +309,7 @@ export default {
       return Response.redirect(loginUrl.toString(), 302);
     }
 
-    if (env.ASSETS?.fetch) {
-      const res = await env.ASSETS.fetch(req);
-      // Keine geschützten Seiten im Cache/Back-Forward-Cache behalten
-      const h = new Headers(res.headers);
-      h.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-      h.set("Pragma", "no-cache");
-      h.set("Expires", "0");
-      return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
-    }
-
-
-    return fetch(req);
+    // 4) Eingeloggt → normale Dateien ausliefern (egal welche Seite)
+    return env.ASSETS.fetch(req);
   },
 };
