@@ -547,8 +547,10 @@
       } catch (e) {}
       return { users: [] };
     }
+    
     function saveData() {
       localStorage.setItem('packlisteData', JSON.stringify(data));
+      apiSaveData(data).catch(()=>{});
     }
 
     async function apiGetData() {
@@ -1608,6 +1610,7 @@ function bindUI() {
         const it = list.items[i];
         return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
       });
+      targetList.items = targetList.items || [];
       targetList.items.push(...copies);
       saveData();
       modal.classList.remove('active');
