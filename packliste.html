@@ -755,7 +755,7 @@ init();
         });
       }
       loadUsers();
-    }
+    };
 
     // Popups
     function showPrompt(message, defaultValue, onConfirm) {
@@ -774,6 +774,7 @@ init();
         popupInput.classList.add('hidden');
       };
     }
+
     function showConfirm(message, onConfirm) {
       popupMessage.textContent = message;
       popupInput.classList.add('hidden');
@@ -787,6 +788,7 @@ init();
         }
       };
     }
+
     function showItemEditor(item, onConfirm) {
       popupMessage.textContent = 'Artikel bearbeiten:';
       popupInput.classList.remove('hidden');
