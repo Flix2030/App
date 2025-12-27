@@ -551,6 +551,21 @@
       localStorage.setItem('packlisteData', JSON.stringify(data));
     }
 
+    async function apiGetData() {
+      const r = await fetch("/api/data");
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j.data || null;
+    }
+
+    async function apiSaveData(data) {
+      await fetch("/api/data", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+    }
+
     // Initialisierung der Seite
     function init() {
       data = loadData();
