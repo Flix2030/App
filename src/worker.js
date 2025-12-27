@@ -14,12 +14,12 @@ function b64urlDecodeToBytes(s) {
   s = s.replace(/-/g, "+").replace(/_/g, "/");
   while (s.length % 4) s += "=";
   const bin = atob(s);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
 
-async function hmacSign(secret, data) {
+async function hmacSign(secret, dataBytes) {
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
@@ -27,57 +27,36 @@ async function hmacSign(secret, data) {
     false,
     ["sign"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
-  return b64urlEncode(new Uint8Array(sig));
+  return crypto.subtle.sign("HMAC", key, dataBytes);
 }
 
-async function hmacVerify(secret, data, signatureB64Url) {
-  const expected = await hmacSign(secret, data);
-  return expected === signatureB64Url;
+async function hmacVerify(secret, dataBytes, sigBytes) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+  return crypto.subtle.verify("HMAC", key, sigBytes, dataBytes);
 }
 
-// session token: base64url(payload).base64url(sig)
-// payload: JSON {"uid":"...","exp":...}
-async function makeToken(env, uid, maxAgeSeconds = 60 * 60 * 24 * 30) {
-  const exp = Math.floor(Date.now() / 1000) + maxAgeSeconds;
-  const payload = JSON.stringify({ uid, exp });
-  const payloadB64 = b64urlEncode(encoder.encode(payload));
-  const sig = await hmacSign(env.AUTH_SECRET, payloadB64);
-  return `${payloadB64}.${sig}`;
+function parseCookies(req) {
+  const h = req.headers.get("Cookie") || "";
+  const out = {};
+  h.split(";").forEach((p) => {
+    const i = p.indexOf("=");
+    if (i > -1) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+  });
+  return out;
 }
 
-async function readToken(env, req) {
-  if (!env.AUTH_SECRET) return null;
-  const cookie = req.headers.get("Cookie") || "";
-  const m = cookie.match(/(?:^|;\s*)session=([^;]+)/);
-  if (!m) return null;
-  const token = m[1];
-
-  const parts = token.split(".");
-  if (parts.length !== 2) return null;
-  const [payloadB64, sigB64] = parts;
-
-  const ok = await hmacVerify(env.AUTH_SECRET, payloadB64, sigB64);
-  if (!ok) return null;
-
-  let payload;
-  try {
-    payload = JSON.parse(decoder.decode(b64urlDecodeToBytes(payloadB64)));
-  } catch {
-    return null;
-  }
-  if (!payload?.uid || !payload?.exp) return null;
-  if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-  return payload.uid;
-}
-
-function json(obj, status = 200, headers = {}) {
-  return new Response(JSON.stringify(obj), {
+function json(res, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(res), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      ...headers,
+      ...extraHeaders,
     },
   });
 }
@@ -92,34 +71,71 @@ async function pbkdf2Hash(password, saltBytes, iterations = 150000) {
     ["deriveBits"]
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt: saltBytes, iterations, hash: "SHA-256" },
+    { name: "PBKDF2", hash: "SHA-256", salt: saltBytes, iterations },
     keyMaterial,
     256
   );
   return new Uint8Array(bits);
 }
 
-async function verifyPassword(stored, password) {
-  // stored: pbkdf2$iter$saltB64$hashB64
-  try {
-    const [scheme, iterStr, saltB64, hashB64] = stored.split("$");
-    if (scheme !== "pbkdf2") return false;
-    const iterations = parseInt(iterStr, 10);
-    if (!iterations) return false;
+function timingSafeEq(a, b) {
+  if (a.length !== b.length) return false;
+  let v = 0;
+  for (let i = 0; i < a.length; i++) v |= a[i] ^ b[i];
+  return v === 0;
+}
 
-    const salt = b64urlDecodeToBytes(saltB64);
-    const hash = b64urlDecodeToBytes(hashB64);
+async function makePassRecord(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iterations = 100000;
+  const hash = await pbkdf2Hash(password, salt, iterations);
+  // Format: pbkdf2$ITER$SALT$HASH
+  return `pbkdf2$${iterations}$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
+}
 
-    const got = await pbkdf2Hash(password, salt, iterations);
-    if (got.length !== hash.length) return false;
+async function verifyPass(password, record) {
+  const parts = record.split("$");
+  // erwartet: ["pbkdf2", "100000", "<salt>", "<hash>"]
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
 
-    // constant-time compare
-    let diff = 0;
-    for (let i = 0; i < got.length; i++) diff |= got[i] ^ hash[i];
-    return diff === 0;
-  } catch {
-    return false;
-  }
+  const iter = parseInt(parts[1], 10);
+  if (!Number.isFinite(iter) || iter < 1 || iter > 100000) return false;
+
+  const salt = b64urlDecodeToBytes(parts[2]);
+  const expected = b64urlDecodeToBytes(parts[3]);
+
+  const got = await pbkdf2Hash(password, salt, iter);
+  return timingSafeEq(got, expected);
+}
+
+// Cookie Token: header.payload.sig (HMAC SHA-256)
+async function makeToken(env, userId) {
+  if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
+  const header = b64urlEncode(encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30 Tage
+  const payload = b64urlEncode(encoder.encode(JSON.stringify({ u: userId, exp })));
+  const data = `${header}.${payload}`;
+  const sig = b64urlEncode(await hmacSign(env.AUTH_SECRET, encoder.encode(data)));
+  return `${data}.${sig}`;
+}
+
+async function readToken(env, req) {
+  if (!env.AUTH_SECRET) return null;
+  const cookies = parseCookies(req);
+  const t = cookies["session"];
+  if (!t) return null;
+  const parts = t.split(".");
+  if (parts.length !== 3) return null;
+
+  const data = `${parts[0]}.${parts[1]}`;
+  const sig = b64urlDecodeToBytes(parts[2]);
+
+  const ok = await hmacVerify(env.AUTH_SECRET, encoder.encode(data), sig);
+  if (!ok) return null;
+
+  const payload = JSON.parse(decoder.decode(b64urlDecodeToBytes(parts[1])));
+  if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+  return payload.u;
 }
 
 async function handleApi(req, env) {
@@ -138,14 +154,36 @@ async function handleApi(req, env) {
     if (path === "/vokabeln") {
       return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
     }
-    if (path === "/settings") {
-      return Response.redirect(new URL("/settings.html", url.origin).toString(), 302);
+
+    // Health / Debug
+    if (path === "/api/health" && req.method === "GET") {
+      return json({
+        ok: true,
+        hasAuthSecret: !!env.AUTH_SECRET,
+        hasDB: !!env.DB,
+        time: new Date().toISOString(),
+      });
     }
 
-    // 1) Who am I
-    if (path === "/api/me" && req.method === "GET") {
-      const uid = await readToken(env, req);
-      return json({ loggedIn: !!uid, uid: uid || null });
+    // 1) Einmaliger Register-Endpoint: nur wenn noch KEIN User existiert
+    if (path === "/api/register" && req.method === "POST") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const body = await req.json().catch(() => null);
+      if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
+
+      const exists = await env.DB.prepare("SELECT COUNT(*) as c FROM users").first();
+      if ((exists?.c || 0) > 0) return json({ error: "disabled" }, 403);
+
+      const pass = await makePassRecord(body.password);
+
+      await env.DB.prepare(
+        "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)"
+      )
+        .bind(body.username, pass, new Date().toISOString())
+        .run();
+
+      return json({ ok: true });
     }
 
     // 2) Login
@@ -162,12 +200,13 @@ async function handleApi(req, env) {
         .bind(body.username)
         .first();
 
-      if (!user) return json({ error: "bad_credentials" }, 401);
+      if (!user) return json({ error: "invalid" }, 401);
 
-      const ok = await verifyPassword(user.password_hash, body.password);
-      if (!ok) return json({ error: "bad_credentials" }, 401);
+      const ok = await verifyPass(body.password, user.password_hash);
+      if (!ok) return json({ error: "invalid" }, 401);
 
-      const token = await makeToken(env, String(user.id));
+      const token = await makeToken(env, user.id);
+
       return json(
         { ok: true },
         200,
@@ -188,15 +227,19 @@ async function handleApi(req, env) {
       );
     }
 
-    // 4b) Profile API (pro Profil getrennt, aber unter demselben Login-Account)
-    // GET  /api/profiles              -> Liste {profiles:[{id,name,updatedAt}]}
-    // POST /api/profiles {name}       -> erstellt Profil, legt Seed-Daten an
-    // GET  /api/profiles/:id          -> Profil-Daten
-    // PUT  /api/profiles/:id          -> Profil-Daten speichern
-    // DELETE /api/profiles/:id        -> Profil + Daten löschen
+    // 4) Me
+    if (path === "/api/me" && req.method === "GET") {
+      const uid = await readToken(env, req);
+      if (!uid) return json({ loggedIn: false }, 401);
+      return json({ loggedIn: true, userId: uid });
+    }
 
+    // 5) Daten GET/PUT (gesamter App-State als JSON)
+    
+    // 4b) Profile API (pro Profil getrennt, aber unter demselben Login-Account)
     if (path === "/api/profiles") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
+
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
@@ -211,8 +254,8 @@ async function handleApi(req, env) {
           profiles: (rows?.results || []).map(r => ({
             id: r.profile_id,
             name: r.name,
-            updatedAt: r.updated_at,
-          })),
+            updatedAt: r.updated_at
+          }))
         });
       }
 
@@ -241,6 +284,7 @@ async function handleApi(req, env) {
 
     if (path.startsWith("/api/profiles/")) {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
+
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
@@ -248,9 +292,10 @@ async function handleApi(req, env) {
       if (!profileId) return json({ error: "missing_id" }, 400);
 
       if (req.method === "GET") {
-        const row = await env.DB.prepare(
-          "SELECT json FROM profile_data WHERE owner_id = ? AND profile_id = ?"
-        ).bind(uid, profileId).first();
+        const row = await env.DB
+          .prepare("SELECT json FROM profile_data WHERE owner_id = ? AND profile_id = ?")
+          .bind(uid, profileId)
+          .first();
 
         return json({ ok: true, data: row?.json ? JSON.parse(row.json) : null });
       }
@@ -282,17 +327,19 @@ async function handleApi(req, env) {
 
       if (req.method === "DELETE") {
         await env.DB.prepare("DELETE FROM profile_data WHERE owner_id = ? AND profile_id = ?")
-          .bind(uid, profileId).run();
+          .bind(uid, profileId)
+          .run();
         await env.DB.prepare("DELETE FROM profiles WHERE owner_id = ? AND profile_id = ?")
-          .bind(uid, profileId).run();
+          .bind(uid, profileId)
+          .run();
+
         return json({ ok: true });
       }
 
       return json({ error: "method" }, 405);
     }
 
-    // 4) Daten holen/speichern (Legacy: ein JSON pro Login) – bleibt drin, falls du es noch nutzt
-    if (path === "/api/data") {
+if (path === "/api/data") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
       const uid = await readToken(env, req);
@@ -312,7 +359,7 @@ async function handleApi(req, env) {
         const now = new Date().toISOString();
         await env.DB.prepare(
           "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+            "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
         )
           .bind(uid, JSON.stringify(body), now)
           .run();
@@ -353,9 +400,9 @@ export default {
       return handleApi(req, env);
     }
 
-    // 2) Login-Seite darf jeder sehen
-    if (path === "/login" || path === "/login.html") {
-      return env.ASSETS.fetch(req);
+    // 2) Login ist die EINZIGE öffentliche Seite
+    if (path === "/login") {
+      return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
     }
 
     // 3) ✅ DAS ist das "Gate": alles andere nur, wenn eingeloggt
@@ -366,15 +413,15 @@ export default {
       return Response.redirect(loginUrl.toString(), 302);
     }
 
-    // 4) Eingeloggt → Client-side Routing unterstützen:
-    // /packliste/<profilId> und /packliste/<profilId>/<listId> sollen packliste.html laden
+    // 4) Eingeloggt → normale Dateien ausliefern (egal welche Seite)
+    
+    // Client-side Routing: /packliste/<profil>/<liste> soll trotzdem packliste.html laden
     if (path.startsWith("/packliste/")) {
       const newUrl = new URL("/packliste.html", url.origin);
       const req2 = new Request(newUrl.toString(), req);
       return env.ASSETS.fetch(req2);
     }
 
-    // 4) Eingeloggt → normale Dateien ausliefern (egal welche Seite)
-    return env.ASSETS.fetch(req);
+return env.ASSETS.fetch(req);
   },
 };
