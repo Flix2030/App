@@ -9,8 +9,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "DEIN_D1_NAME",
-      "database_id": "DEINE_DATABASE_ID"
+      "database_name": "App",
+      "database_id": "621593a3-7a7b-40dc-8693-edd71bbff14f"
     }
   ]
 }
