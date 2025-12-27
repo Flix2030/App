@@ -508,65 +508,11 @@
 
   <script>
   (function() {
-
-    // ===== Safe event binder (verhindert null.addEventListener Crashes) =====
-    function on(id, evt, fn) {
-      const el = document.getElementById(id);
-      if (!el) { console.warn("Missing element:", id); return; }
-      el.addEventListener(evt, fn);
-    }
-
-
     // Daten und Zustandsvariablen
     let data = null;
     let currentUserId = null;
     let currentListId = null;
     let popupCallback = null;
-
-    // --- Routing: /packliste/<userId>/<listId> ---
-    function getRouteParts() {
-      const parts = location.pathname.split("/").filter(Boolean);
-      if (parts[0] !== "packliste") return { userId: null, listId: null };
-      return {
-        userId: parts[1] ? decodeURIComponent(parts[1]) : null,
-        listId: parts[2] ? decodeURIComponent(parts[2]) : null
-      };
-    }
-
-    function setRoute(userId, listId, replace = false) {
-      const base = "/packliste";
-      const u = userId ? "/" + encodeURIComponent(userId) : "";
-      const l = (userId && listId) ? "/" + encodeURIComponent(listId) : "";
-      const url = base + u + l;
-      if (replace) history.replaceState({}, "", url);
-      else history.pushState({}, "", url);
-    }
-
-    function applyRouteToState() {
-      const r = getRouteParts();
-
-      // user
-      if (r.userId && data?.users?.some(u => u.id === r.userId)) {
-        currentUserId = r.userId;
-      } else if (!currentUserId && data?.users?.length) {
-        currentUserId = data.users[0].id;
-        setRoute(currentUserId, null, true);
-      }
-
-      // list
-      currentListId = null;
-      if (currentUserId && r.listId) {
-        const user = data.users.find(u => u.id === currentUserId);
-        const exists = user?.lists?.some(l => l.id === r.listId);
-        if (exists) currentListId = r.listId;
-      }
-    }
-
-    window.addEventListener("popstate", () => {
-      applyRouteToState();
-      loadUsers();
-    });
-    // --- /Routing ---
     // Bearbeitungsmodus steuert, ob wir Artikel bearbeiten (hinzufügen/reordern) oder abhaken
     let editMode = false;
     // Bearbeiten-Modus in der Listenübersicht (zeigt Rename/Delete/Export pro Liste)
@@ -602,72 +548,27 @@
       return { users: [] };
     }
     
-    function saveData(extraProfilesToSave) {
-      // lokal (optional)
-      try { localStorage.setItem('packlisteData', JSON.stringify(data)); } catch (_) {}
-
-      // Cloud: nur aktuelles Profil speichern (Felix überschreibt Günther nicht)
-      const u = data?.users?.find(x => x.id === currentUserId);
-      if (u) {
-        apiSaveProfile(u.id, u).catch(()=>{});
-      }
-
-      // Optional: weitere Profile speichern (für Kopieren/Verschieben über Benutzer hinweg)
-      if (Array.isArray(extraProfilesToSave)) {
-        extraProfilesToSave.forEach(p => {
-          if (p?.id) apiSaveProfile(p.id, p).catch(()=>{});
-        });
-      }
+    function saveData() {
+      localStorage.setItem('packlisteData', JSON.stringify(data));
+      apiSaveData(data).catch(()=>{});
     }
 
-    async function apiListProfiles() {
-      const r = await fetch("/api/profiles", { credentials: "include" });
-      if (r.status === 401) return { unauth: true, profiles: [] };
-      if (!r.ok) throw new Error("apiListProfiles failed: " + r.status);
-      const j = await r.json().catch(() => null);
-      return { unauth: false, profiles: Array.isArray(j?.profiles) ? j.profiles : [] };
-    }
-
-    async function apiCreateProfile(name) {
-      const r = await fetch("/api/profiles", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
-      });
-      if (r.status === 401) return { unauth: true, id: null };
-      if (!r.ok) throw new Error("apiCreateProfile failed: " + r.status);
-      const j = await r.json().catch(() => null);
-      return { unauth: false, id: j?.id || null };
-    }
-
-    async function apiGetProfile(profileId) {
-      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), { credentials: "include" });
+    async function apiGetData() {
+      const r = await fetch("/api/data", { credentials: "include" });
       if (r.status === 401) return { unauth: true, data: null };
-      if (!r.ok) throw new Error("apiGetProfile failed: " + r.status);
+      if (!r.ok) throw new Error("apiGetData failed: " + r.status);
       const j = await r.json().catch(() => null);
       return { unauth: false, data: (j && ("data" in j) ? j.data : null) };
     }
 
-    async function apiSaveProfile(profileId, profileData) {
-      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
+    async function apiSaveData(data) {
+      await fetch("/api/data", {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profileData)
+        body: JSON.stringify(data)
       });
-      if (!r.ok) throw new Error("apiSaveProfile failed: " + r.status);
     }
-
-    async function apiDeleteProfile(profileId) {
-      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
-        method: "DELETE",
-        credentials: "include"
-      });
-      if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
-}
-
-// Initialisierung der Seite
 
 // Initialisierung der Seite
 async function init() {
@@ -688,44 +589,31 @@ async function init() {
     return;
   }
 
-  // 2) Profile aus Cloud laden (pro Profil getrennt)
-  let list = null;
+  // 2) Cloud laden (Cloud ist Master)
+  let cloud = null;
   try {
-    list = await apiListProfiles(); // { unauth, profiles }
+    cloud = await apiGetData(); // { unauth, data }
   } catch (_) {
-    list = null;
+    cloud = null; // API down → NICHT in die Cloud schreiben!
   }
 
-  if (list && list.unauth) {
+  if (cloud && cloud.unauth) {
     goLogin();
     return;
   }
 
-  data = { users: [] };
-
-  if (list && Array.isArray(list.profiles) && list.profiles.length) {
-    for (const p of list.profiles) {
-      try {
-        const got = await apiGetProfile(p.id);
-        if (got.unauth) { goLogin(); return; }
-
-        let u = got.data;
-        if (!u || typeof u !== "object") u = {};
-        u.id = String(u.id || p.id);
-        u.name = String(u.name || p.name || "Benutzer");
-        if (!Array.isArray(u.lists)) u.lists = [];
-        data.users.push(u);
-      } catch (_) {
-        data.users.push({ id: p.id, name: p.name || "Benutzer", lists: [] });
-      }
-    }
+  if (cloud && cloud.data) {
+    data = cloud.data;
+  } else if (cloud && cloud.data === null) {
+    // Cloud erreichbar, aber noch keine Daten gespeichert → seed aus local/default
+    data = loadData();
+    if (!data || !Array.isArray(data.users)) data = { users: [] };
+    try { await apiSaveData(data); } catch (_) {}
   } else {
-    // keine Profile in Cloud → leer starten (Benutzer muss erst erstellt werden)
-    data = { users: [] };
+    // Cloud nicht erreichbar → nur lokal arbeiten
+    data = loadData();
+    if (!data || !Array.isArray(data.users)) data = { users: [] };
   }
-
-  // Route anwenden (setzt currentUserId/currentListId aus URL)
-  applyRouteToState();
 
   // 3) localStorage synchron halten
   localStorage.setItem("packlisteData", JSON.stringify(data));
@@ -737,106 +625,58 @@ async function init() {
 }
 
 
-let uiBound = false;
-
-
-
 function bindUI() {
-      
-      if (uiBound) return;
-      uiBound = true;
-// Benutzer verwalten (Popup)
+      // Benutzer verwalten (Popup)
       const userModal = document.getElementById('user-modal');
-      on('user-manage-btn', 'click', function() {
+      document.getElementById('user-manage-btn').addEventListener('click', function() {
         userModal.classList.add('active');
       });
-      on('user-close', 'click', function() {
+      document.getElementById('user-close').addEventListener('click', function() {
         userModal.classList.remove('active');
       });
-      on('user-add', 'click', function() {
+      document.getElementById('user-add').addEventListener('click', function() {
         showPrompt('Name des neuen Benutzers:', '', function(name) {
-          name = (name || '').trim();
           if (!name) return;
-
-          (async () => {
-            try {
-              const created = await apiCreateProfile(name);
-              if (created.unauth || !created.id) { location.href = "/login"; return; }
-
-              const id = created.id;
-              const userObj = { id, name, lists: [] };
-
-              data.users.push(userObj);
-
-              // direkt zu /packliste/<user>
-              currentUserId = id;
-              currentListId = null;
-              setRoute(currentUserId, null);
-
-              // Cloud: nur dieses Profil speichern
-              try { await apiSaveProfile(id, userObj); } catch (_) {}
-              saveData();
-
-              loadUsers();
-              userModal.classList.remove('active');
-            } catch (e) {
-              console.error(e);
-              alert('Profil konnte nicht erstellt werden.');
-            }
-          })();
+          const id = Date.now().toString();
+          data.users.push({ id, name, lists: [] });
+          saveData();
+          currentUserId = id;
+          currentListId = null;
+          loadUsers();
+          userModal.classList.remove('active');
         });
       });
-      on('user-delete', 'click', function() {
+      document.getElementById('user-delete').addEventListener('click', function() {
         if (!currentUserId) return;
         const user = data.users.find(u => u.id === currentUserId);
         if (!user) return;
         showConfirm(`Benutzer "${user.name}" wirklich löschen?`, function() {
-          (async () => {
-            try {
-              await apiDeleteProfile(currentUserId);
-            } catch (e) {
-              console.error(e);
-              alert('Profil konnte nicht gelöscht werden.');
-              return;
-            }
-
-            data.users = data.users.filter(u => u.id !== currentUserId);
-            currentUserId = null;
-            currentListId = null;
-            listsEditMode = false;
-            selectedItemIds.clear();
-
-            // wenn noch User da sind, auf ersten springen
-            if (data.users.length) {
-              currentUserId = data.users[0].id;
-              setRoute(currentUserId, null, true);
-            } else {
-              setRoute(null, null, true);
-            }
-
-            saveData();
-            loadUsers();
-            userModal.classList.remove('active');
-          })();
+          data.users = data.users.filter(u => u.id !== currentUserId);
+          currentUserId = null;
+          currentListId = null;
+          listsEditMode = false;
+          selectedItemIds.clear();
+          saveData();
+          loadUsers();
+          userModal.classList.remove('active');
         });
       });
-      on('user-export', 'click', function() {
+      document.getElementById('user-export').addEventListener('click', function() {
         exportAll();
       });
-      on('user-import', 'click', function() {
+      document.getElementById('user-import').addEventListener('click', function() {
         importAll(function() {
           loadUsers();
           userModal.classList.remove('active');
         });
       });
-      on('user-select', 'change', function() {
+      document.getElementById('user-select').addEventListener('change', function() {
         currentUserId = this.value || null;
         currentListId = null;
-        setRoute(currentUserId, null);
         loadLists();
       });
       // Event-Handler für Listen
-      on('add-list-btn', 'click', function() {
+      document.getElementById('add-list-btn').addEventListener('click', function() {
         const user = getCurrentUser();
         if (!user) return;
         showPrompt('Name der neuen Liste:', '', function(name) {
@@ -848,33 +688,32 @@ function bindUI() {
         });
       });
       // Neue Liste importieren (als eigene Liste)
-      on('import-new-list-btn', 'click', function() {
+      document.getElementById('import-new-list-btn').addEventListener('click', function() {
         importAsNewList();
       });
       // Bearbeiten in Listenübersicht (zeigt Aktionen pro Liste)
-      on('lists-edit-toggle', 'click', function() {
+      document.getElementById('lists-edit-toggle').addEventListener('click', function() {
         listsEditMode = !listsEditMode;
         document.getElementById('lists-edit-hint').style.display = listsEditMode ? 'inline' : 'none';
         this.textContent = listsEditMode ? 'Fertig' : 'Bearbeiten';
         loadLists();
       });
-      on('back-to-lists-btn', 'click', function() {
+      document.getElementById('back-to-lists-btn').addEventListener('click', function() {
         currentListId = null;
-        setRoute(currentUserId, null);
         showListsSection();
       });
       // Event-Handler für Artikel hinzufügen
-      on('new-item-qty', 'input', function() {
+      document.getElementById('new-item-qty').addEventListener('input', function() {
         document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
       });
-      on('add-item-btn', 'click', addItem);
+      document.getElementById('add-item-btn').addEventListener('click', addItem);
       // Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
-      on('bulk-delete', 'click', bulkDeleteSelected);
-      on('bulk-duplicate', 'click', function() { openAssignModal('duplicate'); });
-      on('bulk-share', 'click', function() { openAssignModal('share'); });
+      document.getElementById('bulk-delete').addEventListener('click', bulkDeleteSelected);
+      document.getElementById('bulk-duplicate').addEventListener('click', function() { openAssignModal('duplicate'); });
+      document.getElementById('bulk-share').addEventListener('click', function() { openAssignModal('share'); });
 
       // Alle abhaken (nur im Fortschrittsmodus)
-      on('check-all-btn', 'click', function() {
+      document.getElementById('check-all-btn').addEventListener('click', function() {
         if (editMode) return;
         const list = getCurrentList();
         if (!list) return;
@@ -894,10 +733,10 @@ function bindUI() {
 
       // Assign-Modal
       const assignModal = document.getElementById('assign-modal');
-      on('assign-cancel', 'click', function() {
+      document.getElementById('assign-cancel').addEventListener('click', function() {
         assignModal.classList.remove('active');
       });
-      on('assign-confirm', 'click', function() {
+      document.getElementById('assign-confirm').addEventListener('click', function() {
         confirmAssign();
       });
       // Popup-Range-Update
@@ -1018,108 +857,11 @@ function bindUI() {
         opt.textContent = u.name;
         select.appendChild(opt);
       });
-      // URL anwenden, falls direkt /packliste/<user>/<list> geöffnet wurde
-      applyRouteToState();
-
       if (!currentUserId || !data.users.some(u => u.id === currentUserId)) {
         currentUserId = data.users[0].id;
-        setRoute(currentUserId, null, true);
       }
       select.value = currentUserId;
       loadLists();
-
-      // wenn die URL eine Liste enthält, direkt in den Editor springen
-      if (currentListId) {
-        showListEditSection();
-      }
-    }
-
-    function makeId(prefix = "i") {
-      return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
-    }
-
-    /**
-     * Nimmt JEDE importierte JSON-Struktur und macht daraus:
-     *   { lists: [ { id, name, items:[{id,name,qty,progress,done,order}] } ] }
-     */
-    function normalizeImportedJson(raw, fallbackListName = "Import") {
-      // 1) Fall: schon dein App-Export (mit users)
-      if (raw && typeof raw === "object" && Array.isArray(raw.users)) {
-        // Sammle alle Listen aus allen Users
-        const lists = [];
-        raw.users.forEach(u => {
-          (u?.lists || []).forEach(l => {
-            lists.push({
-              id: makeId("l"),
-              name: String(l?.name || fallbackListName),
-              items: Array.isArray(l?.items) ? l.items.map((it, idx) => ({
-                id: makeId("i"),
-                name: String(it?.name || "Item"),
-                qty: Math.max(1, Number(it?.qty ?? it?.quantity ?? 1)),
-                progress: Math.max(0, Number(it?.progress ?? it?.current ?? 0)),
-                done: Boolean(it?.done ?? it?.checked ?? false),
-                order: idx
-              })) : []
-            });
-          });
-        });
-
-        // Clamp + done => progress=qty
-        lists.forEach(l => l.items.forEach(it => {
-          if (it.done) it.progress = it.qty;
-          if (it.progress > it.qty) it.progress = it.qty;
-        }));
-
-        return { lists };
-      }
-
-      // 2) Fall: eine Liste als Objekt {name, items:[...]} oder {items:[...]}
-      if (raw && typeof raw === "object" && Array.isArray(raw.items)) {
-        const listName = String(raw.name || fallbackListName);
-        const items = raw.items.map((it, idx) => {
-          const qty = Math.max(1, Number(it?.qty ?? it?.quantity ?? 1));
-          let progress = Math.max(0, Number(it?.progress ?? it?.current ?? 0));
-          const done = Boolean(it?.done ?? it?.checked ?? false);
-          if (done) progress = qty;
-          if (progress > qty) progress = qty;
-
-          return {
-            id: makeId("i"),
-            name: String(it?.name || "Item"),
-            qty,
-            progress,
-            done,
-            order: idx
-          };
-        });
-
-        return { lists: [{ id: makeId("l"), name: listName, items }] };
-      }
-
-      // 3) Fall: DEINE Datei: Array von Items [{name, quantity, current, checked}, ...]
-      if (Array.isArray(raw) && raw.length && typeof raw[0] === "object") {
-        const items = raw.map((it, idx) => {
-          const qty = Math.max(1, Number(it?.qty ?? it?.quantity ?? 1));
-          let progress = Math.max(0, Number(it?.progress ?? it?.current ?? 0));
-          const done = Boolean(it?.done ?? it?.checked ?? false);
-          if (done) progress = qty;
-          if (progress > qty) progress = qty;
-
-          return {
-            id: makeId("i"),
-            name: String(it?.name || "Item"),
-            qty,
-            progress,
-            done,
-            order: idx
-          };
-        });
-
-        return { lists: [{ id: makeId("l"), name: fallbackListName, items }] };
-      }
-
-      // sonst: unbekannt
-      return { lists: [] };
     }
 
     // Listen laden oder Editor anzeigen
@@ -1151,7 +893,6 @@ function bindUI() {
         // Klick auf den Namen öffnet die Listenbearbeitung
         nameSpan.addEventListener('click', function() {
           currentListId = list.id;
-          setRoute(currentUserId, currentListId);
           showListEditSection();
         });
         if (listsEditMode) {
@@ -1883,6 +1624,7 @@ function bindUI() {
       renderItems();
       updateBulkbar();
     }
+
     // Kickstart
     document.addEventListener('DOMContentLoaded', init);
   })();
