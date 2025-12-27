@@ -4,21 +4,193 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Login</title>
+  <style>
+    :root{
+      --bg0:#05080f;
+      --bg1:#070c16;
+      --panel:rgba(17,24,39,.72);
+      --panel2:rgba(20,28,46,.78);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --accent:#3ee38c;
+      --accent2:#2fce7a;
+      --danger:#ff4d6d;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% 20%, rgba(62,227,140,.16), transparent 60%),
+        radial-gradient(900px 520px at 80% 70%, rgba(62,227,140,.10), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .card{
+      width:min(520px, 100%);
+      background:linear-gradient(180deg, var(--panel2), var(--panel));
+      border:1px solid var(--border);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:28px;
+      position:relative;
+      overflow:hidden;
+    }
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:radial-gradient(600px 240px at 30% 0%, rgba(62,227,140,.18), transparent 60%);
+      pointer-events:none;
+    }
+    h1{
+      margin:0 0 8px 0;
+      font-size:28px;
+      letter-spacing:.2px;
+    }
+    .sub{
+      margin:0 0 22px 0;
+      color:var(--muted);
+      line-height:1.35;
+    }
+    label{
+      display:block;
+      margin:14px 0 6px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      outline:none;
+    }
+    input:focus{
+      border-color:rgba(62,227,140,.55);
+      box-shadow:0 0 0 3px rgba(62,227,140,.12);
+    }
+    .row{
+      display:flex;
+      gap:12px;
+      margin-top:18px;
+      align-items:center;
+    }
+    button{
+      flex:1;
+      border:0;
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:700;
+      cursor:pointer;
+      color:#052012;
+      background:linear-gradient(180deg, var(--accent), var(--accent2));
+      box-shadow:0 10px 26px rgba(62,227,140,.22);
+    }
+    button:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+    .hint{
+      margin-top:12px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .msg{
+      margin-top:14px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid transparent;
+      display:none;
+      font-size:13px;
+      line-height:1.35;
+    }
+    .msg.error{
+      display:block;
+      color:rgba(255,255,255,.92);
+      background:rgba(255,77,109,.10);
+      border-color:rgba(255,77,109,.35);
+    }
+    .badge{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(62,227,140,.25);
+      background:rgba(62,227,140,.08);
+      color:rgba(255,255,255,.86);
+      font-size:12px;
+      margin-bottom:14px;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 0 4px rgba(62,227,140,.18);
+    }
+  </style>
 </head>
-<body style="font-family:system-ui;max-width:420px;margin:40px auto">
-  <h2>Login</h2>
-  <input id="u" placeholder="Benutzername" style="width:100%;padding:10px;margin:6px 0">
-  <input id="p" type="password" placeholder="Passwort" style="width:100%;padding:10px;margin:6px 0">
-  <button id="b" style="width:100%;padding:10px;margin-top:10px">Anmelden</button>
-  <p id="m" style="color:#c00"></p>
+<body>
+  <div class="card">
+    <div class="badge"><span class="dot"></span> Packliste – Anmeldung</div>
+    <h1>Anmelden</h1>
+    <p class="sub">Bitte Benutzernamen und Passwort eingeben. Danach kannst du dich frei in der App bewegen.</p>
+
+    <label for="u">Benutzername</label>
+    <input id="u" autocomplete="username" placeholder="z. B. flix">
+
+    <label for="p">Passwort</label>
+    <input id="p" type="password" autocomplete="current-password" placeholder="••••••••">
+
+    <div class="row">
+      <button id="b">Anmelden</button>
+    </div>
+
+    <div id="m" class="msg"></div>
+    <div class="hint">Tipp: Wenn du schon eingeloggt bist, wirst du automatisch weitergeleitet.</div>
+  </div>
 
   <script>
     const params = new URLSearchParams(location.search);
     const returnTo = params.get("returnTo") || "/packliste";
 
-    document.getElementById("b").onclick = async () => {
-      const username = document.getElementById("u").value.trim();
-      const password = document.getElementById("p").value;
+    const u = document.getElementById("u");
+    const p = document.getElementById("p");
+    const b = document.getElementById("b");
+    const m = document.getElementById("m");
+
+    function showError(text){
+      m.textContent = text;
+      m.className = "msg error";
+    }
+    function clearMsg(){
+      m.textContent = "";
+      m.className = "msg";
+      m.style.display = "none";
+    }
+
+    async function tryLogin(){
+      clearMsg();
+      b.disabled = true;
+
+      const username = u.value.trim();
+      const password = p.value;
+
+      if (!username || !password) {
+        b.disabled = false;
+        showError("Bitte Benutzername und Passwort eingeben.");
+        return;
+      }
 
       const r = await fetch("/api/login", {
         method: "POST",
@@ -28,12 +200,30 @@
       });
 
       if (!r.ok) {
-        document.getElementById("m").textContent = "Login fehlgeschlagen";
+        b.disabled = false;
+        showError("Anmeldung fehlgeschlagen. Benutzername oder Passwort falsch.");
         return;
       }
 
-      location.href = returnTo.startsWith("/") ? returnTo : "/packliste";
-    };
+      const safe = returnTo.startsWith("/") ? returnTo : "/packliste";
+      location.href = safe;
+    }
+
+    b.addEventListener("click", tryLogin);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") tryLogin();
+    });
+
+    // optional: wenn schon eingeloggt -> weiter
+    fetch("/api/me", { credentials:"include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (j && j.loggedIn) {
+          const safe = returnTo.startsWith("/") ? returnTo : "/packliste";
+          location.href = safe;
+        }
+      })
+      .catch(()=>{});
   </script>
 </body>
 </html>
