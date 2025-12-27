@@ -106,6 +106,8 @@
       padding: 12px 14px;
       margin-bottom: 10px;
       gap: 12px;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .list-item .item-name {
       flex: 1;
@@ -172,6 +174,12 @@
     .selected {
       outline: 2px solid rgba(59,130,246,0.80);
       box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+    }
+
+    /* Keine Browser-Textauswahl beim Auswählen/Dragging */
+    body.noselect, body.noselect * {
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     /* Select / Dropdown dunkler (so gut es der Browser erlaubt) */
@@ -362,15 +370,20 @@
       z-index: 10;
       box-shadow: 0 12px 28px rgba(0,0,0,0.18);
       transform: scale(1.02);
+      opacity: 0.65; /* leicht durchsichtig, damit man darunter sieht */
     }
     .drag-handle:active { cursor: grabbing; }
 
     .drop-placeholder {
-      height: 0;
-      border-top: 3px solid var(--accent);
-      border-radius: 3px;
-      margin: 6px 0;
+      height: 12px;
+      border: 2px dashed rgba(62,227,140,0.55);
+      border-radius: 12px;
+      margin: 8px 0;
+      background: rgba(62,227,140,0.06);
     }
+
+    /* UL als Bezug für Breite/Spur */
+    #items-list { position: relative; }
   </style>
 </head>
 <body>
@@ -1103,6 +1116,9 @@
       draggingEl = li;
       dragStartY = e.clientY;
 
+      // Verhindert, dass der Browser Text markiert
+      document.body.classList.add('noselect');
+
       // Platzhalter (Drop-Linie)
       placeholderEl = document.createElement('div');
       placeholderEl.className = 'drop-placeholder';
@@ -1113,13 +1129,18 @@
 
       // Fix width/height feel & lift effect
       const rect = li.getBoundingClientRect();
+      const ulRect = parent.getBoundingClientRect();
       dragOffsetY = dragStartY - rect.top;
 
+      // Platzhalter bekommt die Höhe des Items, damit nichts "zusammenklappt"
+      placeholderEl.style.height = rect.height + 'px';
+
       li.classList.add('dragging');
-      li.style.width = rect.width + 'px';
+      // In der "Spur" bleiben: wir pinnen das gezogene Element auf die UL-Breite/Position
+      li.style.width = ulRect.width + 'px';
       li.style.pointerEvents = 'none';
       li.style.position = 'fixed';
-      li.style.left = rect.left + 'px';
+      li.style.left = ulRect.left + 'px';
       li.style.top = (e.clientY - dragOffsetY) + 'px';
 
       // Capture pointer to keep receiving moves
@@ -1190,6 +1211,9 @@
       draggingEl.style.left = '';
       draggingEl.style.top = '';
       draggingEl.style.width = '';
+
+      // Textauswahl wieder erlauben
+      document.body.classList.remove('noselect');
 
       // First: rebuild list.items in new DOM order using data-index mapping
       const list2 = getCurrentList();
