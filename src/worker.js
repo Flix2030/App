@@ -198,7 +198,7 @@ function loginPageHtml(returnTo = "/") {
   </div>
 
   <script>
-    const _rt = ${json.dumps(safeReturn)};
+    const _rt = ${JSON.stringify(safeReturn)};
     const form = document.getElementById("f");
     const msg = document.getElementById("m");
 
