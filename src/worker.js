@@ -379,34 +379,63 @@ return json({ error: "not_found", path }, 404);
 
 export default {
   async fetch(req, env, ctx) {
-    const url = new URL(req.url);
-    const path = url.pathname;
+    try {
+      const url = new URL(req.url);
+      const path = url.pathname;
 
-    // 0) Pretty-URLs auf echte Dateien mappen (optional, aber praktisch)
-    if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
-    if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
-    if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
-    if (path === "/settings") return Response.redirect(new URL("/settings.html", url.origin).toString(), 302);
+      // 0) Pretty-URLs auf echte Dateien mappen
+      if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
+      if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
+      if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
+      if (path === "/settings") return Response.redirect(new URL("/settings.html", url.origin).toString(), 302);
 
-    // 1) API darf NIE umgeleitet werden (sonst kaputt)
-    if (path.startsWith("/api/")) {
-      return handleApi(req, env);
+      // 1) API darf NIE umgeleitet werden (sonst kaputt)
+      if (path.startsWith("/api/")) {
+        return handleApi(req, env);
+      }
+
+      // 2) Login ist die EINZIGE öffentliche Seite
+      if (path === "/login") {
+        return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
+      }
+
+      // 3) Gate: alles andere nur, wenn eingeloggt
+      const uid = await readToken(env, req);
+      if (!uid) {
+        const loginUrl = new URL("/login", url.origin);
+        loginUrl.searchParams.set("returnTo", path + url.search);
+        return Response.redirect(loginUrl.toString(), 302);
+      }
+
+      // 4) Eingeloggt → normale Dateien ausliefern
+      return env.ASSETS.fetch(req);
+
+    } catch (err) {
+      // ✅ NIE 1101-Screen: immer kontrollierte Antwort
+      const url = new URL(req.url);
+      const path = url.pathname;
+
+      // API: JSON-Fehler statt Redirect
+      if (path.startsWith("/api/")) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "worker_exception",
+          message: String(err && err.message ? err.message : err),
+        }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8" }
+        });
+      }
+
+      // HTML/Seitenaufruf: zurück zu Home + Flag für Meldung
+      // Loop verhindern
+      if (path === "/home" || path === "/" || path === "/home.html") {
+        return new Response("Fehler im Worker. Bitte Workers Logs prüfen.", { status: 500 });
+      }
+
+      const target = new URL("/home.html", url.origin);
+      target.searchParams.set("msg", "loadfail");
+      return Response.redirect(target.toString(), 302);
     }
-
-    // 2) Login ist die EINZIGE öffentliche Seite
-    if (path === "/login") {
-      return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
-    }
-
-    // 3) ✅ DAS ist das "Gate": alles andere nur, wenn eingeloggt
-    const uid = await readToken(env, req);
-    if (!uid) {
-      const loginUrl = new URL("/login", url.origin);
-      loginUrl.searchParams.set("returnTo", path + url.search);
-      return Response.redirect(loginUrl.toString(), 302);
-    }
-
-    // 4) Eingeloggt → normale Dateien ausliefern (egal welche Seite)
-    return env.ASSETS.fetch(req);
   },
 };
