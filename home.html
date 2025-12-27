@@ -89,8 +89,18 @@
   }
 
   window.addEventListener("pageshow", (e) => {
-    if (e.persisted) enforceAuth(); // BFCache
-  });
+      if (e.persisted) enforceAuth(); // BFCache
+    });
+
+    (function(){
+    const p = new URLSearchParams(location.search);
+    if (p.get("msg") === "loadfail") {
+      alert("Laden der Webseite fehlgeschlagen. Zurück zum Home.");
+      // URL wieder sauber machen, damit es nicht bei jedem Reload nochmal kommt
+      history.replaceState({}, "", location.pathname);
+    }
+  })();
+  
 </script>
 
 </body>
