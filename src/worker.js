@@ -286,16 +286,16 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // 1) API immer direkt behandeln (API macht Auth selbst)
-    if (path.startsWith("/api/")) {
-      return handleApi(req, env);
-    }
-    
-    // /home oder /home.html immer auf /login umleiten
-    if (path === "/home" || path === "/home.html") {
+    // /home oder /home.html immer auf /login umleiten (GANZ AM ANFANG)
+    if (path === "/home" || path === "/home.html" || path === "/home/") {
       const loginUrl = new URL("/login", url.origin);
       loginUrl.searchParams.set("returnTo", "/packliste");
       return Response.redirect(loginUrl.toString(), 302);
+    }
+
+    // 1) API immer direkt behandeln (API macht Auth selbst)
+    if (path.startsWith("/api/")) {
+      return handleApi(req, env);
     }
 
     // 2) Login-Seite anzeigen (ohne Auth)
