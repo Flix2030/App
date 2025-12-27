@@ -170,8 +170,26 @@
     }
     .bulkbar .count{ color: var(--accent); font-weight:800; }
     .selected {
-      outline: 2px solid rgba(62,227,140,0.55);
-      box-shadow: 0 0 0 4px rgba(62,227,140,0.10);
+      outline: 2px solid rgba(59,130,246,0.80);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+    }
+
+    /* Select / Dropdown dunkler (so gut es der Browser erlaubt) */
+    select {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    select:focus {
+      border-color: rgba(62,227,140,0.55);
+      box-shadow: 0 0 0 4px rgba(62,227,140,0.12);
+    }
+    option {
+      background: #0e1624;
+      color: #ffffff;
     }
 
     /* Kopfbereich + Fortschritt */
@@ -386,11 +404,11 @@
       <div class="list-header">
         <h2 id="current-list-title" style="margin:0;"></h2>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+          <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
           <div class="progress-pill">
             <span class="progress-dot"></span>
             <span id="completion-percentage">0% geschafft</span>
           </div>
-          <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
         </div>
       </div>
       <div class="progress-bar"><div id="completion-bar"></div></div>
@@ -400,17 +418,12 @@
           <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
         </div>
         <div class="right">
-          <button id="bulk-delete" class="btn btn-small btn-secondary" style="display:none;">Löschen</button>
+          <!-- Nur im Fortschrittsmodus sichtbar -->
+          <button id="check-all-btn" class="btn btn-small btn-secondary">Alle abhaken</button>
+          <!-- Nur im Bearbeitungsmodus sichtbar (und nur wenn Auswahl vorhanden) -->
+          <button id="bulk-delete" class="btn btn-small btn-secondary" style="display:none;">Auswahl löschen</button>
           <button id="bulk-duplicate" class="btn btn-small btn-secondary" style="display:none;">Duplizieren</button>
-          <button id="bulk-assign" class="btn btn-small btn-secondary" style="display:none;">An anderen Benutzer geben</button>
-        </div>
-      </div>
-      <div id="bulkbar" class="bulkbar">
-        <div class="count" id="bulk-count">0 ausgewählt</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-          <button id="bulkbar-delete" class="btn btn-small btn-secondary">Löschen</button>
-          <button id="bulkbar-duplicate" class="btn btn-small btn-secondary">Duplizieren</button>
-          <button id="bulkbar-assign" class="btn btn-small btn-secondary">Geben</button>
+          <button id="bulk-share" class="btn btn-small btn-secondary" style="display:none;">Teilen</button>
         </div>
       </div>
       <!-- Abschnitt zum Hinzufügen neuer Artikel (wird nur im Bearbeitungsmodus angezeigt) -->
@@ -446,11 +459,11 @@
     </div>
   </div>
 
-  <!-- Assign Popup -->
+  <!-- Duplizieren / Teilen Popup -->
   <div id="assign-modal" class="popup-overlay">
     <div class="popup">
-      <h3 style="margin:0 0 8px;">Ausgewählte Artikel geben</h3>
-      <p style="margin:0 0 14px; color: var(--muted);">Die Artikel werden beim aktuellen Benutzer behalten und zusätzlich kopiert.</p>
+      <h3 id="assign-title" style="margin:0 0 8px;">Ausgewählte Artikel kopieren</h3>
+      <p id="assign-desc" style="margin:0 0 14px; color: var(--muted);">Die Artikel werden beim aktuellen Benutzer behalten und zusätzlich kopiert.</p>
       <div style="display:flex; flex-direction:column; gap:10px;">
         <label style="color:var(--muted); font-size:0.9rem;">Ziel-Benutzer</label>
         <select id="assign-user"></select>
@@ -498,6 +511,8 @@
     let placeholderEl = null;
     let dragStartY = 0;
     let dragOffsetY = 0;
+    // Modal für Duplizieren/Teilen
+    let copyAction = 'share'; // 'duplicate' | 'share'
     const overlay = document.getElementById('popup-overlay');
     const popupMessage = document.getElementById('popup-message');
     const popupInput = document.getElementById('popup-input');
@@ -607,10 +622,29 @@
         document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
       });
       document.getElementById('add-item-btn').addEventListener('click', addItem);
-      // Bulk-Aktionen (Auswahl im Bearbeiten-Modus)
-      document.getElementById('bulkbar-delete').addEventListener('click', bulkDeleteSelected);
-      document.getElementById('bulkbar-duplicate').addEventListener('click', bulkDuplicateSelected);
-      document.getElementById('bulkbar-assign').addEventListener('click', openAssignModal);
+      // Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
+      document.getElementById('bulk-delete').addEventListener('click', bulkDeleteSelected);
+      document.getElementById('bulk-duplicate').addEventListener('click', function() { openAssignModal('duplicate'); });
+      document.getElementById('bulk-share').addEventListener('click', function() { openAssignModal('share'); });
+
+      // Alle abhaken (nur im Fortschrittsmodus)
+      document.getElementById('check-all-btn').addEventListener('click', function() {
+        if (editMode) return;
+        const list = getCurrentList();
+        if (!list) return;
+        const total = list.items.length;
+        if (total === 0) return;
+        const allDone = list.items.every(it => (it.progress || 0) >= (it.qty || 1));
+        const msg = allDone ? 'Alles wieder abwählen?' : 'Alles abhaken?';
+        showConfirm(msg, function() {
+          list.items.forEach(it => {
+            const qty = it.qty || 1;
+            it.progress = allDone ? 0 : qty;
+          });
+          saveData();
+          renderItems();
+        });
+      });
 
       // Assign-Modal
       const assignModal = document.getElementById('assign-modal');
@@ -636,8 +670,8 @@
           // Auswahl zurücksetzen, wenn wir Bearbeiten beenden
           if (!editMode) {
             selectedItemIds.clear();
-            updateBulkbar();
           }
+          updateBulkbar();
           // Eingabebereich für neue Artikel ein-/ausblenden
           const newSection = document.getElementById('new-item-section');
           if (newSection) newSection.style.display = editMode ? 'block' : 'none';
@@ -905,27 +939,18 @@
           nameSpan.textContent = item.name;
           li.appendChild(nameSpan);
 
-          // Auswahl per Klick (wie "blau umranden")
-          nameSpan.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleSelectItem(item.id, li);
-          });
+          // Anzahl im Bearbeitungsmodus anzeigen (kein Slider, nur "10/13")
+          const qtyText = document.createElement('span');
+          qtyText.className = 'qty-text';
+          qtyText.textContent = (item.progress || 0) + '/' + (item.qty || 1);
+          li.appendChild(qtyText);
 
-          // Auswahl (nur im Bearbeitungsmodus): Klick auf den Namen toggelt blau/grün umrandet
-          nameSpan.addEventListener('click', function(e) {
-            e.stopPropagation();
-            toggleSelection(item.id, li);
-          });
-
-          // Auswahl (Klick auf den Namen/Row) – blau/grün umranden
-          if (selectedItemIds.has(item.id)) {
-            li.classList.add('selected');
-          }
-          nameSpan.addEventListener('click', function(e) {
-            // Nicht auswählen, wenn man gerade zieht
+          // Auswahl per Klick (mehrfach möglich) – NICHT beim Ziehen
+          li.addEventListener('click', function(e) {
             if (draggingEl) return;
-            e.stopPropagation();
+            // Nicht auswählen, wenn man auf Buttons oder den Griff klickt
+            const t = e.target;
+            if (t && (t.tagName === 'BUTTON' || t.classList.contains('drag-handle'))) return;
             if (selectedItemIds.has(item.id)) {
               selectedItemIds.delete(item.id);
               li.classList.remove('selected');
@@ -1053,17 +1078,20 @@
     }
 
     function updateBulkbar() {
-      const bar = document.getElementById('bulkbar');
-      const countEl = document.getElementById('bulk-count');
       const n = selectedItemIds.size;
-      if (!bar) return;
-      if (n > 0 && editMode) {
-        bar.style.display = 'flex';
-        if (countEl) countEl.textContent = n + ' ausgewählt';
-      } else {
-        bar.style.display = 'none';
-        if (countEl) countEl.textContent = '0 ausgewählt';
-      }
+      const delBtn = document.getElementById('bulk-delete');
+      const dupBtn = document.getElementById('bulk-duplicate');
+      const shareBtn = document.getElementById('bulk-share');
+      const checkAllBtn = document.getElementById('check-all-btn');
+
+      // "Alle abhaken" nur im Fortschrittsmodus
+      if (checkAllBtn) checkAllBtn.style.display = editMode ? 'none' : 'inline-flex';
+
+      // Bulk-Buttons nur im Bearbeiten-Modus und nur bei Auswahl
+      const showBulk = editMode && n > 0;
+      if (delBtn) delBtn.style.display = showBulk ? 'inline-flex' : 'none';
+      if (dupBtn) dupBtn.style.display = showBulk ? 'inline-flex' : 'none';
+      if (shareBtn) shareBtn.style.display = showBulk ? 'inline-flex' : 'none';
     }
 
     // Drag & Drop (mit Animation) – startet nur über den Griff
@@ -1439,9 +1467,16 @@
       updateBulkbar();
     }
 
-    function openAssignModal() {
+    function openAssignModal(action) {
       if (selectedItemIds.size === 0) return;
+      copyAction = action || 'share';
       const modal = document.getElementById('assign-modal');
+      const titleEl = document.getElementById('assign-title');
+      const descEl = document.getElementById('assign-desc');
+      const confirmBtn = document.getElementById('assign-confirm');
+      if (titleEl) titleEl.textContent = (copyAction === 'duplicate') ? 'Ausgewählte Artikel duplizieren' : 'Ausgewählte Artikel teilen';
+      if (descEl) descEl.textContent = 'Die Artikel bleiben beim aktuellen Benutzer erhalten und werden zusätzlich in die gewählte Liste kopiert.';
+      if (confirmBtn) confirmBtn.textContent = (copyAction === 'duplicate') ? 'Duplizieren' : 'Teilen';
       const userSel = document.getElementById('assign-user');
       const listSel = document.getElementById('assign-list');
       userSel.innerHTML = '';
