@@ -1,5 +1,13 @@
 {
   "name": "app",
   "compatibility_date": "2025-12-27",
-  "assets": { "directory": "./App" }
+  "main": "src/worker.js",
+  "assets": { "directory": "." },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "app",
+      "database_id": "DEINE_DB_ID"
+    }
+  ]
 }
