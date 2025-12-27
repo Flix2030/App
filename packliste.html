@@ -805,6 +805,13 @@ function bindUI() {
           })();
         });
       });
+      document.getElementById('import-new-list-btn').addEventListener('click', function() {
+        // importAll macht jetzt automatisch: fremdformat -> neue Liste im aktuellen Benutzer
+        importAll(function() {
+          loadLists();
+          if (currentListId) showListEditSection();
+        });
+      });
       document.getElementById('user-export').addEventListener('click', function() {
         exportAll();
       });
@@ -1697,23 +1704,74 @@ function bindUI() {
       }, 0);
     }
 
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+    function normalizeItemsArrayToList(rawArray, listName) {
+      const items = rawArray.map((it, idx) => {
+        const qty = Math.max(1, Number(it?.qty ?? it?.quantity ?? 1));
+        let progress = Number(it?.progress ?? it?.current ?? 0);
+        const done = Boolean(it?.done ?? it?.checked ?? false);
+
+        if (!Number.isFinite(progress)) progress = 0;
+        progress = clamp(progress, 0, qty);
+        if (done) progress = qty;
+
+        return {
+          id: makeId('item'),
+          name: String(it?.name ?? it?.title ?? 'Item'),
+          qty,
+          progress,
+          checked: done,     // dein Code nutzt oft "checked"
+          order: idx
+        };
+      });
+
+      return {
+        id: makeId('list'),
+        name: String(listName || 'Import'),
+        items
+      };
+    }
+
+    function detectImportKind(imported) {
+      // 1) Voll-Export deiner App
+      if (imported && typeof imported === 'object' && Array.isArray(imported.users)) return 'FULL_APP';
+
+      // 2) Einzel-Liste als Objekt { name, items:[...] }
+      if (imported && typeof imported === 'object' && Array.isArray(imported.items)) return 'LIST_OBJECT';
+
+      // 3) Fremdformat: Array von Items [{name, quantity, current, checked}, ...]
+      if (Array.isArray(imported) && imported.length && typeof imported[0] === 'object') return 'ITEMS_ARRAY';
+
+      return 'UNKNOWN';
+    }
+
     function importAll(onDone) {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'application/json';
+
       input.addEventListener('change', function() {
         const file = input.files[0];
         if (!file) return;
+
         const reader = new FileReader();
         reader.onload = function() {
+          let imported;
           try {
-            const imported = JSON.parse(reader.result);
-            if (!imported || !Array.isArray(imported.users)) {
-              showConfirm('Ungültige JSON-Datei.', function() {});
-              return;
-            }
+            imported = JSON.parse(reader.result);
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+            return;
+          }
+
+          const kind = detectImportKind(imported);
+
+          // ✅ A) Voll-Export deiner App: ersetzt alles (wie vorher)
+          if (kind === 'FULL_APP') {
             data = imported;
-            // Sicherheits-Normalisierung
+
+            // Sicherheits-Normalisierung (wie vorher)
             data.users = data.users.map(u => ({
               id: u.id || makeId('user'),
               name: u.name || 'Benutzer',
@@ -1723,18 +1781,55 @@ function bindUI() {
                 items: Array.isArray(l.items) ? l.items : []
               })) : []
             }));
+
             saveData();
             currentUserId = data.users[0]?.id || null;
             currentListId = null;
             listsEditMode = false;
             selectedItemIds.clear();
             if (onDone) onDone();
-          } catch (e) {
-            showConfirm('Ungültige JSON-Datei.', function() {});
+            return;
           }
+
+          // ✅ B) Fremdformat / Einzelliste: als NEUE Liste in den aktuellen Benutzer importieren
+          const user = data.users.find(u => u.id === currentUserId) || data.users[0];
+          if (!user) {
+            showConfirm('Kein Benutzer vorhanden. Erstelle zuerst einen Benutzer.', function() {});
+            return;
+          }
+          if (!Array.isArray(user.lists)) user.lists = [];
+
+          const baseName = (file.name || 'Import').replace(/\.json$/i, '') || 'Import';
+          let newList = null;
+
+          if (kind === 'LIST_OBJECT') {
+            const listName = String(imported.name || baseName || 'Import');
+            const rawItems = imported.items;
+            newList = normalizeItemsArrayToList(rawItems, listName);
+          } else if (kind === 'ITEMS_ARRAY') {
+            newList = normalizeItemsArrayToList(imported, baseName);
+          } else {
+            showConfirm('Unbekanntes Import-Format.', function() {});
+            return;
+          }
+
+          // neue Liste oben rein
+          user.lists.unshift(newList);
+
+          saveData();
+          currentListId = newList.id;
+          listsEditMode = false;
+          selectedItemIds.clear();
+
+          // Wenn du Routing hast: URL aktualisieren
+          try { setRoute(currentUserId, currentListId); } catch (_) {}
+
+          if (onDone) onDone();
         };
+
         reader.readAsText(file);
       });
+
       input.click();
     }
 
