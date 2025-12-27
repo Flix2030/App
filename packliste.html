@@ -550,7 +550,10 @@
     
     function saveData() {
       localStorage.setItem('packlisteData', JSON.stringify(data));
-      apiSaveData(data).catch(()=>{});
+      apiSaveData(data).catch((e) => {
+      console.error("Cloud save failed", e);
+      alert("Cloud-Speichern fehlgeschlagen (siehe Konsole).");
+    });
     }
 
     async function apiGetData() {
