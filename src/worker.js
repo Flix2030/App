@@ -3,6 +3,14 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+function makeId(prefix="id") {
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  const s = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
+  return `${prefix}_${s.slice(0,16)}`;
+}
+
+
 function b64urlEncode(buf) {
   const bytes = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf;
   let str = "";
@@ -234,153 +242,7 @@ async function handleApi(req, env) {
       return json({ loggedIn: true, userId: uid });
     }
 
-    
-    // 5) Profile-API (pro Profil getrennte Daten)
-    // Speicherung in D1-Tabelle user_data, aber mit "Key" statt nur uid:
-    //   index:   `${uid}::profiles`  -> JSON: [{id,name},...]
-    //   profile: `${uid}::profile::${id}` -> JSON: Profil-Objekt {id,name,lists:[...]}
-    if (path === "/api/profiles") {
-      if (!env.DB) return json({ error: "DB not bound" }, 500);
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauthorized" }, 401);
-
-      const indexKey = `${uid}::profiles`;
-
-      if (req.method === "GET") {
-        const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
-          .bind(indexKey)
-          .first();
-        const profiles = row?.json ? JSON.parse(row.json) : [];
-        return json({ ok: true, profiles: Array.isArray(profiles) ? profiles : [] });
-      }
-
-      if (req.method === "POST") {
-        const body = await readJson(req).catch(() => ({}));
-        const name = String(body?.name || "").trim();
-        if (!name) return json({ error: "name_required" }, 400);
-
-        // Load index
-        const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
-          .bind(indexKey)
-          .first();
-        const profiles = row?.json ? JSON.parse(row.json) : [];
-        const list = Array.isArray(profiles) ? profiles : [];
-
-        const id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
-
-        // Ensure unique (very unlikely collision)
-        if (list.some(p => p?.id === id)) {
-          return json({ error: "id_collision" }, 500);
-        }
-
-        list.push({ id, name });
-
-        const profileKey = `${uid}::profile::${id}`;
-        const profileData = { id, name, lists: [] };
-
-        const now = Date.now();
-        await env.DB.prepare(
-          "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(indexKey, JSON.stringify(list), now).run();
-
-        await env.DB.prepare(
-          "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(profileKey, JSON.stringify(profileData), now).run();
-
-        return json({ ok: true, id });
-      }
-
-      return json({ error: "method" }, 405);
-    }
-
-    // /api/profiles/:id
-    if (path.startsWith("/api/profiles/")) {
-      if (!env.DB) return json({ error: "DB not bound" }, 500);
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauthorized" }, 401);
-
-      const id = decodeURIComponent(path.split("/").slice(3).join("/"));
-      if (!id) return json({ error: "id_required" }, 400);
-
-      const indexKey = `${uid}::profiles`;
-      const profileKey = `${uid}::profile::${id}`;
-
-      if (req.method === "GET") {
-        const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
-          .bind(profileKey)
-          .first();
-        const data = row?.json ? JSON.parse(row.json) : null;
-        return json({ ok: true, data });
-      }
-
-      if (req.method === "PUT") {
-        const body = await readJson(req);
-        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
-
-        // Force id + basic shape
-        body.id = String(body.id || id);
-        if (body.id !== id) body.id = id;
-        body.name = String(body.name || "Benutzer");
-        if (!Array.isArray(body.lists)) body.lists = [];
-
-        const now = Date.now();
-        await env.DB.prepare(
-          "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(profileKey, JSON.stringify(body), now).run();
-
-        // Ensure it's in index (in case of older data)
-        const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
-          .bind(indexKey)
-          .first();
-        const profiles = row?.json ? JSON.parse(row.json) : [];
-        const list = Array.isArray(profiles) ? profiles : [];
-        const exists = list.some(p => p?.id === id);
-        if (!exists) {
-          list.push({ id, name: body.name });
-          await env.DB.prepare(
-            "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-            "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-          ).bind(indexKey, JSON.stringify(list), now).run();
-        } else {
-          // keep name in sync
-          const updated = list.map(p => (p?.id === id ? { id, name: body.name } : p));
-          await env.DB.prepare(
-            "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-            "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-          ).bind(indexKey, JSON.stringify(updated), now).run();
-        }
-
-        return json({ ok: true });
-      }
-
-      if (req.method === "DELETE") {
-        // Remove from index
-        const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
-          .bind(indexKey)
-          .first();
-        const profiles = row?.json ? JSON.parse(row.json) : [];
-        const list = Array.isArray(profiles) ? profiles : [];
-        const filtered = list.filter(p => p?.id !== id);
-
-        const now = Date.now();
-        await env.DB.prepare(
-          "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(indexKey, JSON.stringify(filtered), now).run();
-
-        // Delete profile row
-        await env.DB.prepare("DELETE FROM user_data WHERE user_id = ?").bind(profileKey).run();
-
-        return json({ ok: true });
-      }
-
-      return json({ error: "method" }, 405);
-    }
-
-// 5) Daten GET/PUT (gesamter App-State als JSON)
+    // 5) Daten GET/PUT (gesamter App-State als JSON)
     if (path === "/api/data") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
@@ -412,7 +274,96 @@ async function handleApi(req, env) {
       return json({ error: "method" }, 405);
     }
 
-    return json({ error: "not_found", path }, 404);
+    
+    // ===== Profiles API (pro Benutzerprofil getrennte Packlisten) =====
+    // Auth: jede Profile-Route benötigt Login
+    if (path === "/api/profiles") {
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauth" }, 401);
+
+      if (req.method === "GET") {
+        const rows = await env.DB.prepare(
+          "SELECT profile_id AS id, name, updated_at FROM profiles WHERE owner_id = ? ORDER BY updated_at DESC"
+        ).bind(uid).all();
+        return json({ ok: true, profiles: rows?.results || [] });
+      }
+
+      if (req.method === "POST") {
+        const body = await req.json().catch(() => null);
+        const name = String(body?.name || "").trim();
+        if (!name) return json({ error: "name_required" }, 400);
+
+        // kurze, URL-sichere ID
+        const id = makeId("p");
+        const now = new Date().toISOString();
+
+        // profiles: Metadaten
+        await env.DB.prepare(
+          "INSERT INTO profiles (owner_id, profile_id, name, updated_at) VALUES (?, ?, ?, ?) " +
+          "ON CONFLICT(owner_id, profile_id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at"
+        ).bind(uid, id, name, now).run();
+
+        // profile_data: initiale leere Struktur
+        const initial = { id, name, lists: [] };
+        await env.DB.prepare(
+          "INSERT INTO profile_data (owner_id, profile_id, json, updated_at) VALUES (?, ?, ?, ?) " +
+          "ON CONFLICT(owner_id, profile_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+        ).bind(uid, id, JSON.stringify(initial), now).run();
+
+        return json({ ok: true, id });
+      }
+
+      return json({ error: "method" }, 405);
+    }
+
+    // /api/profiles/:id
+    if (path.startsWith("/api/profiles/")) {
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauth" }, 401);
+
+      const profileId = decodeURIComponent(path.split("/").slice(3).join("/") || "");
+      if (!profileId) return json({ error: "bad_profile_id" }, 400);
+
+      if (req.method === "GET") {
+        const row = await env.DB.prepare(
+          "SELECT json FROM profile_data WHERE owner_id = ? AND profile_id = ?"
+        ).bind(uid, profileId).first();
+
+        return json({ ok: true, data: row?.json ? JSON.parse(row.json) : null });
+      }
+
+      if (req.method === "PUT") {
+        const body = await req.json().catch(() => null);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        const name = String(body?.name || "").trim() || "Benutzer";
+        const now = new Date().toISOString();
+
+        // ensure meta exists + update name
+        await env.DB.prepare(
+          "INSERT INTO profiles (owner_id, profile_id, name, updated_at) VALUES (?, ?, ?, ?) " +
+          "ON CONFLICT(owner_id, profile_id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at"
+        ).bind(uid, profileId, name, now).run();
+
+        await env.DB.prepare(
+          "INSERT INTO profile_data (owner_id, profile_id, json, updated_at) VALUES (?, ?, ?, ?) " +
+          "ON CONFLICT(owner_id, profile_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+        ).bind(uid, profileId, JSON.stringify(body), now).run();
+
+        return json({ ok: true });
+      }
+
+      if (req.method === "DELETE") {
+        await env.DB.prepare("DELETE FROM profile_data WHERE owner_id = ? AND profile_id = ?").bind(uid, profileId).run();
+        await env.DB.prepare("DELETE FROM profiles WHERE owner_id = ? AND profile_id = ?").bind(uid, profileId).run();
+        return json({ ok: true });
+      }
+
+      return json({ error: "method" }, 405);
+    }
+    // ===== /Profiles API =====
+
+return json({ error: "not_found", path }, 404);
   } catch (e) {
     // Hier kommt bei CRASH immer JSON raus:
     return json(
