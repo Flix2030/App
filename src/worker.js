@@ -138,6 +138,106 @@ async function readToken(env, req) {
   return payload.u;
 }
 
+
+function isPublicPath(path) {
+  // Public endpoints required to reach the login
+  if (path === "/login") return true;
+  if (path === "/api/login") return true;
+  // Optional: allow one-time initial register (your existing logic already blocks after first user)
+  if (path === "/api/register") return true;
+  // Health check can stay public
+  if (path === "/api/health") return true;
+  return false;
+}
+
+function loginPageHtml(returnTo = "/") {
+  const safeReturn = (returnTo && returnTo.startsWith("/")) ? returnTo : "/";
+  return `<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login</title>
+  <style>
+    :root{--bg:#05080f;--panel:rgba(17,24,39,.85);--border:rgba(255,255,255,.12);--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.65);--accent:#3ee38c;--danger:#ff4d6d;--radius:18px;}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 700px at 30% 10%,rgba(62,227,140,.14),transparent 55%),radial-gradient(900px 600px at 80% 30%,rgba(66,135,245,.10),transparent 60%),var(--bg);color:var(--text);}
+    .card{width:min(520px,92vw);background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 22px 18px;box-shadow:0 18px 60px rgba(0,0,0,.55);}
+    h1{margin:0 0 6px;font-size:22px;}
+    p{margin:0 0 16px;color:var(--muted);font-size:14px;line-height:1.4}
+    label{display:block;margin:10px 0 6px;color:var(--muted);font-size:13px}
+    input{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);outline:none}
+    input:focus{border-color:rgba(62,227,140,.45);box-shadow:0 0 0 3px rgba(62,227,140,.15)}
+    .row{display:flex;gap:10px;align-items:center;margin-top:14px}
+    button{flex:1;padding:12px;border-radius:12px;border:1px solid rgba(62,227,140,.35);background:rgba(62,227,140,.16);color:var(--text);cursor:pointer;font-weight:600}
+    button:hover{background:rgba(62,227,140,.22)}
+    .msg{margin-top:12px;min-height:20px;font-size:13px;color:var(--muted)}
+    .err{color:var(--danger)}
+    .small{font-size:12px;color:var(--muted);margin-top:10px}
+    code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Login</h1>
+    <p>Bitte melde dich an, um die Website zu benutzen.</p>
+
+    <form id="f">
+      <label for="u">Benutzername</label>
+      <input id="u" autocomplete="username" required />
+
+      <label for="p">Passwort</label>
+      <input id="p" type="password" autocomplete="current-password" required />
+
+      <div class="row">
+        <button type="submit">Anmelden</button>
+      </div>
+      <div id="m" class="msg"></div>
+      <div class="small">Nach dem Login wirst du weitergeleitet zu <code>${safeReturn}</code>.</div>
+    </form>
+  </div>
+
+  <script>
+    const _rt = ${json.dumps(safeReturn)};
+    const form = document.getElementById("f");
+    const msg = document.getElementById("m");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.textContent = "…";
+      msg.classList.remove("err");
+
+      const username = document.getElementById("u").value.trim();
+      const password = document.getElementById("p").value;
+
+      try {
+        const r = await fetch("/api/login", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!r.ok) {
+          const t = await r.text().catch(() => "");
+          msg.textContent = "Login fehlgeschlagen.";
+          msg.classList.add("err");
+          return;
+        }
+
+        // success -> go where the user wanted to go
+        location.href = _rt || "/packliste";
+      } catch (err) {
+        msg.textContent = "Netzwerkfehler.";
+        msg.classList.add("err");
+      }
+    });
+  </script>
+</body>
+</html>`;
+}
+
+
 async function handleApi(req, env) {
   // WICHTIG: Alles im Try/Catch, damit du NIE wieder HTML-Fehler bekommst, sondern JSON
   try {
@@ -272,18 +372,45 @@ async function handleApi(req, env) {
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    const path = url.pathname;
 
-    // API
-    if (url.pathname.startsWith("/api/")) {
+    // 0) Serve login page (public)
+    if (path === "/login" && req.method === "GET") {
+      const returnTo = url.searchParams.get("returnTo") || "/packliste";
+      return new Response(loginPageHtml(returnTo), {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
+    // 1) Global gate: everything requires a valid session cookie (except a few public endpoints)
+    if (!isPublicPath(path)) {
+      const uid = await readToken(env, req);
+
+      // If the request is for an API endpoint, return JSON 401 (no redirects for APIs)
+      if (!uid && path.startsWith("/api/")) {
+        return json({ error: "unauthorized" }, 401);
+      }
+
+      // For pages/assets, redirect to /login with returnTo
+      if (!uid) {
+        const loginUrl = new URL("/login", url.origin);
+        loginUrl.searchParams.set("returnTo", path + url.search);
+        return Response.redirect(loginUrl.toString(), 302);
+      }
+    }
+
+    // 2) API
+    if (path.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // Static Assets
+    // 3) Static assets / pages
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
 
-    // Fallback
+    // 4) Fallback
     return fetch(req);
   },
 };
