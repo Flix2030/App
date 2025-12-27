@@ -384,6 +384,19 @@
 
     /* UL als Bezug für Breite/Spur */
     #items-list { position: relative; }
+  
+    /* Fertige Items: grün sichtbar */
+    .list-item.done {
+      background: rgba(62,227,140,0.18) !important;
+      border-color: rgba(62,227,140,0.55) !important;
+      box-shadow: 0 10px 26px rgba(62,227,140,0.10);
+    }
+    .list-item.done .item-name { color: rgba(255,255,255,0.95); }
+    .list-item.done .qty-text { color: rgba(235,244,255,0.90); }
+
+    /* iPad/Safari: Drag-Griff soll Scrollen blocken */
+    .drag-handle { touch-action: none; }
+
   </style>
 </head>
 <body>
@@ -417,7 +430,10 @@
       <div class="list-header">
         <h2 id="current-list-title" style="margin:0;"></h2>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-          <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
+          <div style="display:flex; gap:8px;">
+            <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
+            <button id="list-settings-btn" class="btn btn-small btn-secondary" style="margin:0;">⚙️ Einstellungen</button>
+          </div>
           <div class="progress-pill">
             <span class="progress-dot"></span>
             <span id="completion-percentage">0% geschafft</span>
@@ -489,6 +505,32 @@
       </div>
     </div>
   </div>
+
+
+  <!-- Listen-Einstellungen -->
+  <div id="list-settings-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 style="margin:0 0 8px;">Listen-Einstellungen</h3>
+      <p style="margin:0 0 14px; color: var(--muted);">Was soll passieren, wenn ein Eintrag fertig abgehakt ist?</p>
+
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+        <label style="display:flex; gap:10px; align-items:center;">
+          <input type="radio" name="doneBehavior" value="stay" />
+          <span>Nichts (bleibt an der Stelle)</span>
+        </label>
+        <label style="display:flex; gap:10px; align-items:center;">
+          <input type="radio" name="doneBehavior" value="bottom" />
+          <span>Fertige Einträge nach unten</span>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button id="list-settings-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
+        <button id="list-settings-save" class="btn btn-small">Speichern</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Popup für Bestätigungen und Eingaben -->
   <div id="popup-overlay" class="popup-overlay">
@@ -702,6 +744,35 @@ function bindUI() {
         currentListId = null;
         showListsSection();
       });
+
+      // Listen-Einstellungen (⚙️)
+      const listSettingsModal = document.getElementById('list-settings-modal');
+      const openListSettings = () => {
+        const list = getCurrentList();
+        if (!list) return;
+        const s = getCurrentListSettings();
+        const radios = listSettingsModal.querySelectorAll('input[name="doneBehavior"]');
+        radios.forEach(r => r.checked = (r.value === s.doneBehavior));
+        listSettingsModal.classList.add('active');
+      };
+      const settingsBtn = document.getElementById('list-settings-btn');
+      if (settingsBtn) settingsBtn.addEventListener('click', openListSettings);
+
+      document.getElementById('list-settings-cancel').addEventListener('click', () => {
+        listSettingsModal.classList.remove('active');
+      });
+      document.getElementById('list-settings-save').addEventListener('click', () => {
+        const list = getCurrentList();
+        if (!list) { listSettingsModal.classList.remove('active'); return; }
+        const chosen = listSettingsModal.querySelector('input[name="doneBehavior"]:checked')?.value || "stay";
+        if (!list.settings || typeof list.settings !== "object") list.settings = {};
+        list.settings.doneBehavior = chosen;
+        applyCompletionBehavior(list);
+        saveData();
+        renderItems();
+        listSettingsModal.classList.remove('active');
+      });
+
       // Event-Handler für Artikel hinzufügen
       document.getElementById('new-item-qty').addEventListener('input', function() {
         document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
@@ -828,6 +899,37 @@ function bindUI() {
       const user = getCurrentUser();
       if (!user) return null;
       return user.lists.find(l => l.id === currentListId) || null;
+    }
+
+    // --- Listen-Settings ---
+    function getCurrentListSettings() {
+      const list = getCurrentList();
+      if (!list) return { doneBehavior: "stay" };
+      if (!list.settings || typeof list.settings !== "object") list.settings = {};
+      if (!list.settings.doneBehavior) list.settings.doneBehavior = "stay"; // "stay" | "bottom"
+      return list.settings;
+    }
+
+    // Reorder (stabil): un-fertig oben, fertig unten (nur wenn doneBehavior="bottom")
+    function applyCompletionBehavior(list) {
+      if (!list) return;
+      const settings = getCurrentListSettings();
+      if (settings.doneBehavior !== "bottom") return;
+
+      // stabile Reihenfolge: behalte Reihenfolge innerhalb der Gruppen bei
+      const withIndex = list.items.map((it, idx) => ({ it, idx }));
+      withIndex.sort((a, b) => {
+        const adone = (a.it.progress || 0) >= (a.it.qty || 1);
+        const bdone = (b.it.progress || 0) >= (b.it.qty || 1);
+        if (adone === bdone) return a.idx - b.idx;
+        return adone ? 1 : -1;
+      });
+      list.items = withIndex.map(x => x.it);
+    }
+
+    // block scroll while dragging on touch devices (iPad)
+    function preventTouchScroll(e) {
+      if (draggingEl) e.preventDefault();
     }
 
     // Kleine ID-Hilfe (für Items, damit Auswahl stabil bleibt)
@@ -998,7 +1100,10 @@ function bindUI() {
           return it;
         }
         return { id: makeId('item'), name: '', qty: 1, progress: 0 };
-      });
+      
+      // Optional: fertige Items nach unten sortieren
+      applyCompletionBehavior(list);
+});
       const ul = document.getElementById('items-list');
       ul.innerHTML = '';
       // Fortschrittsanzeige aktualisieren
@@ -1008,6 +1113,10 @@ function bindUI() {
         li.className = 'list-item';
         li.setAttribute('data-index', idx);
         li.setAttribute('data-item-id', item.id);
+        // Fertig? -> grün markieren
+        if ((item.progress || 0) >= (item.qty || 1)) {
+          li.classList.add('done');
+        }
         if (editMode && selectedItemIds.has(item.id)) {
           li.classList.add('selected');
         }
@@ -1102,6 +1211,7 @@ function bindUI() {
             } else {
               item.progress = 0;
             }
+            applyCompletionBehavior(list);
             saveData();
             if (sliderRef) {
               sliderRef.value = item.progress;
@@ -1132,6 +1242,7 @@ function bindUI() {
               item.progress = parseInt(slider.value);
               checkbox.checked = (item.progress >= item.qty);
               if (qtyTextRef) qtyTextRef.textContent = item.progress + '/' + item.qty;
+              applyCompletionBehavior(list);
               saveData();
               updateCompletion();
             });
@@ -1219,6 +1330,7 @@ function bindUI() {
       // Capture pointer to keep receiving moves
       try { li.setPointerCapture(e.pointerId); } catch (_) {}
 
+      window.addEventListener('touchmove', preventTouchScroll, { passive: false });
       window.addEventListener('pointermove', onDragMove);
       window.addEventListener('pointerup', endDrag, { once: true });
     }
@@ -1269,6 +1381,8 @@ function bindUI() {
 
     function endDrag() {
       if (!draggingEl || !placeholderEl) return;
+
+      window.removeEventListener('touchmove', preventTouchScroll);
 
       window.removeEventListener('pointermove', onDragMove);
 
