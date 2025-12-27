@@ -272,18 +272,32 @@ async function handleApi(req, env) {
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    const path = url.pathname;
 
-    // API
-    if (url.pathname.startsWith("/api/")) {
+    // 1) API immer direkt (ohne Gate)
+    if (path.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // Static Assets
+    // 2) LOGIN-SEITE EXPLIZIT AUSLIEFERN
+    if (path === "/login") {
+      return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
+    }
+
+    // 3) AUTH-GATE für ALLE anderen Seiten
+    const uid = await readToken(env, req);
+    if (!uid) {
+      const loginUrl = new URL("/login", url.origin);
+      loginUrl.searchParams.set("returnTo", path + url.search);
+      return Response.redirect(loginUrl.toString(), 302);
+    }
+
+    // 4) Assets (HTML, CSS, JS, etc.)
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
 
-    // Fallback
+    // 5) Fallback (sollte praktisch nie passieren)
     return fetch(req);
   },
 };
