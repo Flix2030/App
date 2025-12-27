@@ -610,13 +610,15 @@ async function init() {
   localStorage.setItem("packlisteData", JSON.stringify(data));
 
   // 4) UI rendern
+  // UI-Events binden (nur einmal)
+  bindUI();
+  loadUsers();
+
   render();
 }
 
-// Start
-init();
-
-// Benutzer verwalten (Popup)
+function bindUI() {
+      // Benutzer verwalten (Popup)
       const userModal = document.getElementById('user-modal');
       document.getElementById('user-manage-btn').addEventListener('click', function() {
         userModal.classList.add('active');
@@ -754,8 +756,7 @@ init();
           renderItems();
         });
       }
-      loadUsers();
-    };
+    }
 
     // Popups
     function showPrompt(message, defaultValue, onConfirm) {
