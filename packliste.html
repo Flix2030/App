@@ -1019,6 +1019,94 @@ function bindUI() {
       }
     }
 
+    function makeId(prefix = "i") {
+      return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+    }
+
+    /**
+     * Nimmt JEDE importierte JSON-Struktur und macht daraus:
+     *   { lists: [ { id, name, items:[{id,name,qty,progress,done,order}] } ] }
+     */
+    function normalizeImportedJson(raw, fallbackListName = "Import") {
+      // 1) Fall: schon dein App-Export (mit users)
+      if (raw && typeof raw === "object" && Array.isArray(raw.users)) {
+        // Sammle alle Listen aus allen Users
+        const lists = [];
+        raw.users.forEach(u => {
+          (u?.lists || []).forEach(l => {
+            lists.push({
+              id: makeId("l"),
+              name: String(l?.name || fallbackListName),
+              items: Array.isArray(l?.items) ? l.items.map((it, idx) => ({
+                id: makeId("i"),
+                name: String(it?.name || "Item"),
+                qty: Math.max(1, Number(it?.qty ?? it?.quantity ?? 1)),
+                progress: Math.max(0, Number(it?.progress ?? it?.current ?? 0)),
+                done: Boolean(it?.done ?? it?.checked ?? false),
+                order: idx
+              })) : []
+            });
+          });
+        });
+
+        // Clamp + done => progress=qty
+        lists.forEach(l => l.items.forEach(it => {
+          if (it.done) it.progress = it.qty;
+          if (it.progress > it.qty) it.progress = it.qty;
+        }));
+
+        return { lists };
+      }
+
+      // 2) Fall: eine Liste als Objekt {name, items:[...]} oder {items:[...]}
+      if (raw && typeof raw === "object" && Array.isArray(raw.items)) {
+        const listName = String(raw.name || fallbackListName);
+        const items = raw.items.map((it, idx) => {
+          const qty = Math.max(1, Number(it?.qty ?? it?.quantity ?? 1));
+          let progress = Math.max(0, Number(it?.progress ?? it?.current ?? 0));
+          const done = Boolean(it?.done ?? it?.checked ?? false);
+          if (done) progress = qty;
+          if (progress > qty) progress = qty;
+
+          return {
+            id: makeId("i"),
+            name: String(it?.name || "Item"),
+            qty,
+            progress,
+            done,
+            order: idx
+          };
+        });
+
+        return { lists: [{ id: makeId("l"), name: listName, items }] };
+      }
+
+      // 3) Fall: DEINE Datei: Array von Items [{name, quantity, current, checked}, ...]
+      if (Array.isArray(raw) && raw.length && typeof raw[0] === "object") {
+        const items = raw.map((it, idx) => {
+          const qty = Math.max(1, Number(it?.qty ?? it?.quantity ?? 1));
+          let progress = Math.max(0, Number(it?.progress ?? it?.current ?? 0));
+          const done = Boolean(it?.done ?? it?.checked ?? false);
+          if (done) progress = qty;
+          if (progress > qty) progress = qty;
+
+          return {
+            id: makeId("i"),
+            name: String(it?.name || "Item"),
+            qty,
+            progress,
+            done,
+            order: idx
+          };
+        });
+
+        return { lists: [{ id: makeId("l"), name: fallbackListName, items }] };
+      }
+
+      // sonst: unbekannt
+      return { lists: [] };
+    }
+
     // Listen laden oder Editor anzeigen
     function loadLists() {
       const user = getCurrentUser();
@@ -1780,6 +1868,60 @@ function bindUI() {
       renderItems();
       updateBulkbar();
     }
+
+    document.getElementById("import-json").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const text = await file.text();
+      let raw;
+      try {
+        raw = JSON.parse(text);
+      } catch {
+        alert("Import fehlgeschlagen: Keine gültige JSON-Datei.");
+        return;
+      }
+
+      // Dateiname als Listenname (ohne .json)
+      const baseName = (file.name || "Import").replace(/\.json$/i, "") || "Import";
+      const normalized = normalizeImportedJson(raw, baseName);
+
+      if (!normalized.lists.length) {
+        alert("Import fehlgeschlagen: Unbekanntes Format.");
+        return;
+      }
+
+      // ✅ Import-Regel: als neue Liste(n) zum AKTUELLEN Benutzer hinzufügen
+      const user = data.users.find(u => u.id === currentUserId);
+      if (!user) {
+        alert("Kein Benutzer ausgewählt.");
+        return;
+      }
+      if (!Array.isArray(user.lists)) user.lists = [];
+
+      normalized.lists.forEach(l => {
+        // neue IDs, damit nix kollidiert
+        const newList = {
+          id: makeId("l"),
+          name: l.name,
+          items: (l.items || []).map((it, idx) => ({
+            id: makeId("i"),
+            name: it.name,
+            qty: it.qty,
+            progress: it.progress,
+            done: it.done,
+            order: idx
+          }))
+        };
+        user.lists.unshift(newList); // ganz oben
+      });
+
+      saveData();     // deine vorhandene Save-Funktion (Cloud + local)
+      loadUsers();    // UI neu aufbauen
+      alert(`Import ok: ${normalized.lists.length} Liste(n) hinzugefügt.`);
+
+      e.target.value = ""; // reset
+    });
 
     // Kickstart
     document.addEventListener('DOMContentLoaded', init);
