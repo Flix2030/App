@@ -1,16 +1,16 @@
 {
   "name": "app",
-  "compatibility_date": "2025-12-27",
   "main": "src/worker.js",
+  "compatibility_date": "2025-12-27",
   "assets": {
     "directory": ".",
-    "exclude": ["**/.git/**", "**/.wrangler/**"]
+    "binding": "ASSETS"
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "app",
-      "database_id": "621593a3-7a7b-40dc-8693-edd71bbff14f"
+      "database_name": "DEIN_D1_NAME",
+      "database_id": "DEINE_DATABASE_ID"
     }
   ]
 }

@@ -374,27 +374,70 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // ✅ 1) API immer direkt abarbeiten (Auth macht handleApi selbst!)
+    // 1) API immer direkt abarbeiten (Auth macht handleApi selbst)
     if (path.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // ✅ 2) Assets (für Login-Seite) öffentlich
+    // 2) Assets öffentlich (wichtig für Login & JS/CSS)
     if (path.startsWith("/assets/") && env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
 
-    // ✅ 3) Jetzt Gate nur für Seiten (HTML)
-    if (path !== "/login") {
-      const uid = await readToken(env, req);
-      if (!uid) {
-        const loginUrl = new URL("/login", url.origin);
-        loginUrl.searchParams.set("returnTo", path + url.search);
-        return Response.redirect(loginUrl.toString(), 302);
-      }
+    // 3) Login-Seite IM WORKER ausliefern (damit es nie crasht)
+    if (path === "/login" && req.method === "GET") {
+      const returnTo = url.searchParams.get("returnTo") || "/packliste";
+      const safeReturn = returnTo.startsWith("/") ? returnTo : "/packliste";
+
+      const html = `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Login</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="font-family:system-ui;max-width:420px;margin:40px auto">
+<h2>Login</h2>
+<input id="u" placeholder="Benutzername" style="width:100%;padding:10px;margin:6px 0">
+<input id="p" type="password" placeholder="Passwort" style="width:100%;padding:10px;margin:6px 0">
+<button id="b" style="width:100%;padding:10px;margin-top:10px">Anmelden</button>
+<p id="m" style="color:#c00"></p>
+<script>
+const returnTo = ${JSON.stringify(safeReturn)};
+document.getElementById('b').onclick = async () => {
+  const username = document.getElementById('u').value.trim();
+  const password = document.getElementById('p').value;
+  const r = await fetch('/api/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username, password}),
+    credentials:'include'
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok) {
+    document.getElementById('m').textContent = (j && j.error) ? j.error : 'Login fehlgeschlagen';
+    return;
+  }
+  location.href = returnTo;
+};
+</script>
+</body>
+</html>`;
+
+      return new Response(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
     }
 
-    // ✅ 4) Seiten ausliefern
+    // 4) Gate für ALLE anderen Seiten
+    const uid = await readToken(env, req);
+    if (!uid) {
+      const loginUrl = new URL("/login", url.origin);
+      loginUrl.searchParams.set("returnTo", path + url.search);
+      return Response.redirect(loginUrl.toString(), 302);
+    }
+
+    // 5) Seiten ausliefern
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
