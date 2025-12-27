@@ -87,16 +87,23 @@ function timingSafeEq(a, b) {
 
 async function makePassRecord(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await pbkdf2Hash(password, salt, 100000);
-  return `pbkdf2$100000$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
+  const iterations = 100000;
+  const hash = await pbkdf2Hash(password, salt, iterations);
+  // Format: pbkdf2$ITER$SALT$HASH
+  return `pbkdf2$${iterations}$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
 }
 
 async function verifyPass(password, record) {
   const parts = record.split("$");
-  if (parts.length !== 5 || parts[0] !== "pbkdf2") return false;
+  // erwartet: ["pbkdf2", "100000", "<salt>", "<hash>"]
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
+
   const iter = parseInt(parts[1], 10);
-  const salt = b64urlDecodeToBytes(parts[3]);
-  const expected = b64urlDecodeToBytes(parts[4]);
+  if (!Number.isFinite(iter) || iter < 1 || iter > 100000) return false;
+
+  const salt = b64urlDecodeToBytes(parts[2]);
+  const expected = b64urlDecodeToBytes(parts[3]);
+
   const got = await pbkdf2Hash(password, salt, iter);
   return timingSafeEq(got, expected);
 }
