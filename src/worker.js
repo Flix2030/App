@@ -274,17 +274,17 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // 1) API immer direkt (ohne Gate)
+    // 1) API immer direkt (API antwortet mit 401 JSON, kein Redirect!)
     if (path.startsWith("/api/")) {
       return handleApi(req, env);
     }
 
-    // 2) LOGIN-SEITE EXPLIZIT AUSLIEFERN
+    // 2) Login-Seite ist die EINZIGE öffentliche Seite
     if (path === "/login") {
       return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
     }
 
-    // 3) AUTH-GATE für ALLE anderen Seiten
+    // 3) Alles andere ist geschützt → erst Login prüfen
     const uid = await readToken(env, req);
     if (!uid) {
       const loginUrl = new URL("/login", url.origin);
@@ -292,12 +292,11 @@ export default {
       return Response.redirect(loginUrl.toString(), 302);
     }
 
-    // 4) Assets (HTML, CSS, JS, etc.)
+    // 4) Eingeloggt → Assets ausliefern (home.html, packliste.html, vokabeln.html, etc.)
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
 
-    // 5) Fallback (sollte praktisch nie passieren)
     return fetch(req);
   },
 };
