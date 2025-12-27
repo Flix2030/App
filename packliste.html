@@ -1884,13 +1884,6 @@ function bindUI() {
       renderItems();
       updateBulkbar();
     }
-      saveData();     // deine vorhandene Save-Funktion (Cloud + local)
-      loadUsers();    // UI neu aufbauen
-      alert(`Import ok: ${normalized.lists.length} Liste(n) hinzugefügt.`);
-
-      e.target.value = ""; // reset
-    });
-
     // Kickstart
     document.addEventListener('DOMContentLoaded', init);
   })();
