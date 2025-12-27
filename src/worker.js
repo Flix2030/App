@@ -285,6 +285,11 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
+    // Pretty-URLs → echte Dateien
+    if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
+    if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
+    if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
+
     // 1) API immer direkt (API antwortet mit 401 JSON, kein Redirect!)
     if (path.startsWith("/api/")) {
       return handleApi(req, env);
