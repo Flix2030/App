@@ -552,57 +552,69 @@
     }
 
     async function apiGetData() {
-      try {
-        const r = await fetch("/api/data", { credentials: "include" });
-        if (r.status === 401) return { __unauth: true };
-        if (!r.ok) return { __error: true };
-        const j = await r.json().catch(() => ({}));
-        return { data: (j && Object.prototype.hasOwnProperty.call(j, 'data')) ? j.data : null };
-      } catch (e) {
-        return { __error: true };
-      }
+      const r = await fetch("/api/data", { credentials: "include" });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j.data || null;
     }
 
-    async function apiSaveData(state) {
-      const r = await fetch("/api/data", {
+    async function apiSaveData(data) {
+      await fetch("/api/data", {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state)
+        body: JSON.stringify(data)
       });
-      if (!r.ok) throw new Error("apiSaveData failed: " + r.status);
     }
 
+// Initialisierung der Seite
+async function init() {
+  // 1) Seite schützen: nur eingeloggt
+  try {
+    const me = await fetch("/api/me", { credentials: "include" })
+      .then(r => r.json());
 
-    // Initialisierung der Seite
-    async function init() {
-      // Seite schützen: nur eingeloggt
-      try {
-        const me = await fetch("/api/me", { credentials: "include" }).then(r => r.json());
-        if (!me || !me.loggedIn) {
-          location.href = "../home.html";
-          return;
-        }
-      } catch (e) {
-        location.href = "../home.html";
-        return;
-      }
+    if (!me || !me.loggedIn) {
+      location.href = "../home.html";
+      return;
+    }
+  } catch (e) {
+    location.href = "../home.html";
+    return;
+  }
 
-      // Cloud → localStorage (Cloud ist Master)
-      const cloudRes = await apiGetData();
-      if (cloudRes && cloudRes.__unauth) {
-        location.href = "../home.html";
-        return;
-      }
-      if (cloudRes && cloudRes.data) {
-        data = cloudRes.data;
-      } else {
-        // Fallback: bisherige lokale Daten (oder Default) und einmalig in die Cloud schreiben
-        data = loadData();
-        if (!data || !Array.isArray(data.users)) data = { users: [] };
-        try { await apiSaveData(data); } catch (_) {}
-      }
-      localStorage.setItem('packlisteData', JSON.stringify(data));
+  // 2) Cloud laden (Cloud ist Master)
+  let cloudData = null;
+  try {
+    cloudData = await apiGetData(); // gibt DIREKT das gespeicherte JSON zurück oder null
+  } catch (_) {
+    cloudData = null;
+  }
+
+  if (cloudData) {
+    // → Daten aus der Cloud übernehmen
+    data = cloudData;
+  } else {
+    // → Fallback: lokale Daten oder Default
+    data = loadData();
+    if (!data || !Array.isArray(data.users)) {
+      data = { users: [] };
+    }
+    // → einmalig in die Cloud schreiben
+    try {
+      await apiSaveData(data);
+    } catch (_) {}
+  }
+
+  // 3) localStorage synchron halten
+  localStorage.setItem("packlisteData", JSON.stringify(data));
+
+  // 4) UI rendern
+  render();
+}
+
+// Start
+init();
 
 // Benutzer verwalten (Popup)
       const userModal = document.getElementById('user-modal');
