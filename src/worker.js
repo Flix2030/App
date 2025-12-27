@@ -87,8 +87,8 @@ function timingSafeEq(a, b) {
 
 async function makePassRecord(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const hash = await pbkdf2Hash(password, salt);
-  return `pbkdf2$150000$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
+  const hash = await pbkdf2Hash(password, salt, 100000);
+  return `pbkdf2$100000$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
 }
 
 async function verifyPass(password, record) {
