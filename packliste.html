@@ -622,7 +622,6 @@ async function init() {
   // UI-Events binden (nur einmal)
   bindUI();
   loadUsers();
-  render();
 }
 
 
@@ -1618,7 +1617,7 @@ function bindUI() {
         return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
       });
       targetList.items = targetList.items || [];
-      targetList.items = targetList.items.concat(copies);
+      targetList.items.push(...copies);
       saveData();
       modal.classList.remove('active');
       // Auswahl bleibt (User wollte: beim aktuellen Benutzer behalten)
