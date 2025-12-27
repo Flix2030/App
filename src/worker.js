@@ -374,25 +374,19 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // 0) Serve login page (public)
-    if (path === "/login" && req.method === "GET") {
-      const returnTo = url.searchParams.get("returnTo") || "/packliste";
-      return new Response(loginPageHtml(returnTo), {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
+    // ✅ 1) API immer direkt abarbeiten (Auth macht handleApi selbst!)
+    if (path.startsWith("/api/")) {
+      return handleApi(req, env);
     }
 
-    // 1) Global gate: everything requires a valid session cookie (except a few public endpoints)
-    if (!isPublicPath(path)) {
+    // ✅ 2) Assets (für Login-Seite) öffentlich
+    if (path.startsWith("/assets/") && env.ASSETS?.fetch) {
+      return env.ASSETS.fetch(req);
+    }
+
+    // ✅ 3) Jetzt Gate nur für Seiten (HTML)
+    if (path !== "/login") {
       const uid = await readToken(env, req);
-
-      // If the request is for an API endpoint, return JSON 401 (no redirects for APIs)
-      if (!uid && path.startsWith("/api/")) {
-        return json({ error: "unauthorized" }, 401);
-      }
-
-      // For pages/assets, redirect to /login with returnTo
       if (!uid) {
         const loginUrl = new URL("/login", url.origin);
         loginUrl.searchParams.set("returnTo", path + url.search);
@@ -400,17 +394,11 @@ export default {
       }
     }
 
-    // 2) API
-    if (path.startsWith("/api/")) {
-      return handleApi(req, env);
-    }
-
-    // 3) Static assets / pages
+    // ✅ 4) Seiten ausliefern
     if (env.ASSETS?.fetch) {
       return env.ASSETS.fetch(req);
     }
 
-    // 4) Fallback
     return fetch(req);
   },
 };
