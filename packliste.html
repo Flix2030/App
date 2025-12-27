@@ -618,6 +618,15 @@ async function init() {
     if (!data || !Array.isArray(data.users)) data = { users: [] };
   }
 
+  // ✅ HARD NORMALIZE (fix für: data.users ist undefined)
+  if (!data || typeof data !== "object") data = { users: [] };
+  if (!Array.isArray(data.users)) data.users = [];
+  data.users = data.users.map(u => ({
+    id: (u && u.id) ? String(u.id) : ("user_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8)),
+    name: (u && u.name) ? String(u.name) : "Benutzer",
+    lists: Array.isArray(u && u.lists) ? u.lists : []
+  }));
+
   // 3) localStorage synchron halten
   localStorage.setItem("packlisteData", JSON.stringify(data));
 
@@ -625,8 +634,8 @@ async function init() {
   // UI-Events binden (nur einmal)
   bindUI();
   loadUsers();
+  // KEIN render(); (falls du das irgendwo noch drin hattest)
 }
-
 
 function bindUI() {
       // Benutzer verwalten (Popup)
