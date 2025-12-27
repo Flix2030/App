@@ -656,11 +656,9 @@
         credentials: "include"
       });
       if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
-    }
-,
-        body: JSON.stringify(data)
-      });
-    }
+}
+
+// Initialisierung der Seite
 
 // Initialisierung der Seite
 async function init() {
