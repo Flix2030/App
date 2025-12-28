@@ -574,7 +574,55 @@
     let currentUserId = null;
     let currentListId = null;
     let popupCallback = null;
-    // Bearbeitungsmodus steuert, ob wir Artikel bearbeiten (hinzufügen/reordern) oder abhaken
+    
+
+    // --- Routing: /packliste/<userId>/<listId> (SPA, Worker liefert immer packliste.html aus) ---
+    function getRouteParts() {
+      const parts = location.pathname.split("/").filter(Boolean);
+      if (parts[0] !== "packliste") return { userId: null, listId: null };
+      return {
+        userId: parts[1] ? decodeURIComponent(parts[1]) : null,
+        listId: parts[2] ? decodeURIComponent(parts[2]) : null
+      };
+    }
+
+    function setRoute(userId, listId, replace = false) {
+      const base = "/packliste";
+      const u = userId ? "/" + encodeURIComponent(userId) : "";
+      const l = (userId && listId) ? "/" + encodeURIComponent(listId) : "";
+      const url = base + u + l;
+      if (replace) history.replaceState({}, "", url);
+      else history.pushState({}, "", url);
+    }
+
+    function applyRouteToState() {
+      const r = getRouteParts();
+      // user
+      if (r.userId && data?.users?.some(u => u.id === r.userId)) {
+        currentUserId = r.userId;
+      } else if (!currentUserId && data?.users?.length) {
+        currentUserId = data.users[0].id;
+        // Route korrigieren (damit URL stimmt)
+        setRoute(currentUserId, null, true);
+      }
+
+      // list
+      currentListId = null;
+      if (currentUserId && r.listId) {
+        const user = data.users.find(u => u.id === currentUserId);
+        const exists = user?.lists?.some(l => l.id === r.listId);
+        if (exists) currentListId = r.listId;
+      }
+    }
+
+    window.addEventListener("popstate", () => {
+      // Zurück/Vorwärts im Browser
+      applyRouteToState();
+      // UI passend anzeigen
+      loadUsers();
+    });
+    // --- /Routing ---
+// Bearbeitungsmodus steuert, ob wir Artikel bearbeiten (hinzufügen/reordern) oder abhaken
     let editMode = false;
     // Bearbeiten-Modus in der Listenübersicht (zeigt Rename/Delete/Export pro Liste)
     let listsEditMode = false;
@@ -967,6 +1015,8 @@ function bindUI() {
     function loadUsers() {
       const select = document.getElementById('user-select');
       select.innerHTML = '';
+      // Route -> State (falls direkt /packliste/<user>/<list> geöffnet wurde)
+      applyRouteToState();
       if (data.users.length === 0) {
         const opt = document.createElement('option');
         opt.value = '';
