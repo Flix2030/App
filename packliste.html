@@ -400,11 +400,22 @@
     /* iPad/Safari: Drag-Griff soll Scrollen blocken */
     .drag-handle { touch-action: none; }
 
+    /* Fertige Items: grün gefüllt */
     .list-item.item-done{
       background: rgba(62,227,140,0.16) !important;
       border-color: rgba(62,227,140,0.65) !important;
       box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
     }
+
+    /* iPad / Touch Fix */
+    .drag-handle{
+      touch-action: none;
+    }
+    .list-item.dragging{
+      will-change: top, left, transform;
+      transform: translate3d(0,0,0) scale(1.02);
+    }
+
   </style>
 </head>
 <body>
