@@ -358,6 +358,7 @@
     /* Stil für Drag-Handle in Bearbeitungsmodus */
     .drag-handle {
       cursor: grab;
+      touch-action: none;
       user-select: none;
       margin-right: 8px;
       font-size: 1.2rem;
@@ -366,6 +367,8 @@
 
     /* Drag & Drop Animation wie in Apps: Item hebt ab, Platzhalter */
     .list-item.dragging {
+      will-change: top, left, transform;
+      transform: translate3d(0,0,0) scale(1.02);
       position: relative;
       z-index: 10;
       box-shadow: 0 12px 28px rgba(0,0,0,0.18);
@@ -1082,185 +1085,242 @@ function bindUI() {
     }
 
     // Artikel rendern
-    function renderItems() {
-      const list = getCurrentList();
-      if (!list) {
+function renderItems() {
+  const list = getCurrentList();
+  if (!list) return;
+
+  // --- Settings: fertige nach unten? ---
+  // (wenn du es woanders speicherst, ändere nur diese Zeile)
+  const completedBehavior = localStorage.getItem("packliste_completedBehavior") || "none"; 
+  // "none" | "bottom"
+
+  // Sicherstellen: items sind Objekte mit id/qty/progress
+  list.items = (list.items || []).map((it) => {
+    if (typeof it === "string") {
+      return { id: makeId("item"), name: it, qty: 1, progress: 0 };
+    }
+    if (it && typeof it === "object") {
+      if (!it.id) it.id = makeId("item");
+      if (typeof it.qty !== "number" || it.qty < 1) it.qty = 1;
+      if (typeof it.progress !== "number" || it.progress < 0) it.progress = 0;
+      if (it.progress > it.qty) it.progress = it.qty;
+      if (!it.name) it.name = "";
+      return it;
+    }
+    return { id: makeId("item"), name: "", qty: 1, progress: 0 };
+  });
+
+  // Helper: fertig?
+  const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
+
+  // Optional: fertige nach unten sortieren (stabil)
+  // Wir sortieren NUR fürs Anzeigen — und übernehmen die Reihenfolge auch in list.items,
+  // damit es nach Reload gleich bleibt.
+  if (!editMode && completedBehavior === "bottom") {
+    const before = list.items.slice();
+    const sorted = before.slice().sort((a, b) => {
+      const ad = isDone(a) ? 1 : 0;
+      const bd = isDone(b) ? 1 : 0;
+      return ad - bd; // nicht-fertig zuerst
+    });
+
+    // Wenn sich was geändert hat, übernehmen + speichern
+    const changed = sorted.some((it, idx) => it.id !== before[idx].id);
+    if (changed) {
+      list.items = sorted;
+      saveData();
+    }
+  }
+
+  const ul = document.getElementById("items-list");
+  ul.innerHTML = "";
+
+  // Fortschritt aktualisieren
+  updateCompletion();
+  updateBulkbar();
+
+  list.items.forEach((item, idx) => {
+    const li = document.createElement("li");
+    li.className = "list-item";
+    li.setAttribute("data-index", String(idx));
+    li.setAttribute("data-item-id", item.id);
+
+    // ✅ fertig optisch markieren (grün gefüllt)
+    if (isDone(item)) li.classList.add("item-done");
+
+    // ====== EDIT MODE ======
+    if (editMode) {
+      if (selectedItemIds.has(item.id)) li.classList.add("selected");
+
+      // Drag handle
+      const handle = document.createElement("span");
+      handle.className = "drag-handle";
+      handle.textContent = "☰";
+      li.appendChild(handle);
+
+      // Name
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "item-name";
+      nameSpan.style.flex = "1";
+      nameSpan.textContent = item.name;
+      li.appendChild(nameSpan);
+
+      // progress/qty text
+      const qtyText = document.createElement("span");
+      qtyText.className = "qty-text";
+      qtyText.textContent = (item.progress || 0) + "/" + (item.qty || 1);
+      li.appendChild(qtyText);
+
+      // Auswahl per Klick (nicht beim Ziehen)
+      li.addEventListener("click", (e) => {
+        // wenn auf handle klickt -> nicht auswählen
+        const t = e.target;
+        if (t && (t.classList?.contains("drag-handle") || t.tagName === "BUTTON")) return;
+
+        if (selectedItemIds.has(item.id)) {
+          selectedItemIds.delete(item.id);
+          li.classList.remove("selected");
+        } else {
+          selectedItemIds.add(item.id);
+          li.classList.add("selected");
+        }
+        updateBulkbar();
+      });
+
+      // Aktionen
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      // Bearbeiten
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Bearbeiten";
+      editBtn.className = "btn btn-small btn-secondary";
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showItemEditor(item, (newName, newQty) => {
+          item.name = newName;
+          item.qty = newQty;
+          if (item.progress > item.qty) item.progress = item.qty;
+          saveData();
+          renderItems();
+        });
+      });
+      actions.appendChild(editBtn);
+
+      // Entfernen
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "Entfernen";
+      removeBtn.className = "btn btn-small btn-secondary";
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showConfirm(`Eintrag "${item.name}" entfernen?`, () => {
+          list.items.splice(idx, 1);
+          selectedItemIds.delete(item.id);
+          saveData();
+          renderItems();
+        });
+      });
+      actions.appendChild(removeBtn);
+
+      li.appendChild(actions);
+
+      // ✅ Drag startet NUR über den Griff (wichtig fürs iPad)
+      handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startDragFromHandle(e, li);
+      });
+
+      ul.appendChild(li);
+      return;
+    }
+
+    // ====== PROGRESS MODE ======
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.style.marginRight = "10px";
+    checkbox.checked = isDone(item);
+
+    let sliderRef = null;
+    let qtyTextRef = null;
+
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) item.progress = item.qty;
+      else item.progress = 0;
+
+      saveData();
+
+      // UI sync
+      if (sliderRef) sliderRef.value = item.progress;
+      if (qtyTextRef) qtyTextRef.textContent = item.progress + "/" + item.qty;
+
+      // done-class aktualisieren
+      if (isDone(item)) li.classList.add("item-done");
+      else li.classList.remove("item-done");
+
+      // optional: fertige nach unten
+      if (completedBehavior === "bottom") {
+        // nach Änderung neu rendern (Sort macht renderItems am Anfang)
+        renderItems();
         return;
       }
-      // Sicherstellen, dass alle Elemente qty und progress besitzen
-      list.items = list.items.map(function(it) {
-        if (typeof it === 'string') {
-          return { id: makeId('item'), name: it, qty: 1, progress: 0 };
-        }
-        if (it && typeof it === 'object') {
-          if (!it.id) it.id = makeId('item');
-          if (typeof it.qty !== 'number' || it.qty < 1) it.qty = 1;
-          if (typeof it.progress !== 'number') it.progress = 0;
-          if (it.progress > it.qty) it.progress = it.qty;
-          return it;
-        }
-        return { id: makeId('item'), name: '', qty: 1, progress: 0 };
-      
-      // Optional: fertige Items nach unten sortieren
-      applyCompletionBehavior(list);
-});
-      const ul = document.getElementById('items-list');
-      ul.innerHTML = '';
-      // Fortschrittsanzeige aktualisieren
+
       updateCompletion();
-      list.items.forEach(function(item, idx) {
-        const li = document.createElement('li');
-        li.className = 'list-item';
-        li.setAttribute('data-index', idx);
-        li.setAttribute('data-item-id', item.id);
-        // Fertig? -> grün markieren
-        if ((item.progress || 0) >= (item.qty || 1)) {
-          li.classList.add('done');
+    });
+
+    li.appendChild(checkbox);
+
+    const nameSpan = document.createElement("span");
+    nameSpan.style.flex = "1";
+    nameSpan.textContent = item.name;
+    li.appendChild(nameSpan);
+
+    if ((item.qty || 1) > 1) {
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+      right.style.gap = "10px";
+
+      const slider = document.createElement("input");
+      slider.type = "range";
+      slider.min = 0;
+      slider.max = item.qty;
+      slider.value = item.progress;
+      slider.style.minWidth = "220px";
+
+      slider.addEventListener("input", () => {
+        item.progress = parseInt(slider.value, 10) || 0;
+        checkbox.checked = isDone(item);
+        if (qtyTextRef) qtyTextRef.textContent = item.progress + "/" + item.qty;
+
+        // done-class
+        if (isDone(item)) li.classList.add("item-done");
+        else li.classList.remove("item-done");
+
+        saveData();
+
+        if (completedBehavior === "bottom") {
+          renderItems();
+          return;
         }
-        if (editMode && selectedItemIds.has(item.id)) {
-          li.classList.add('selected');
-        }
-        if (editMode) {
-          // Drag-Handle
-          const handle = document.createElement('span');
-          handle.className = 'drag-handle';
-          handle.textContent = '☰';
-          li.appendChild(handle);
-
-          // Name
-          const nameSpan = document.createElement('span');
-          nameSpan.className = 'item-name';
-          nameSpan.style.flex = '1';
-          nameSpan.textContent = item.name;
-          li.appendChild(nameSpan);
-
-          // Anzahl im Bearbeitungsmodus anzeigen (kein Slider, nur "10/13")
-          const qtyText = document.createElement('span');
-          qtyText.className = 'qty-text';
-          qtyText.textContent = (item.progress || 0) + '/' + (item.qty || 1);
-          li.appendChild(qtyText);
-
-          // Auswahl per Klick (mehrfach möglich) – NICHT beim Ziehen
-          li.addEventListener('click', function(e) {
-            if (draggingEl) return;
-            // Nicht auswählen, wenn man auf Buttons oder den Griff klickt
-            const t = e.target;
-            if (t && (t.tagName === 'BUTTON' || t.classList.contains('drag-handle'))) return;
-            if (selectedItemIds.has(item.id)) {
-              selectedItemIds.delete(item.id);
-              li.classList.remove('selected');
-            } else {
-              selectedItemIds.add(item.id);
-              li.classList.add('selected');
-            }
-            updateBulkbar();
-          });
-
-          // Aktionsbereich
-          const actions = document.createElement('div');
-          actions.className = 'actions';
-          // Bearbeiten
-          const editBtn = document.createElement('button');
-          editBtn.textContent = 'Bearbeiten';
-          editBtn.className = 'btn btn-small btn-secondary';
-          editBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showItemEditor(item, function(newName, newQty) {
-              item.name = newName;
-              item.qty = newQty;
-              if (item.progress > item.qty) {
-                item.progress = item.qty;
-              }
-              saveData();
-              renderItems();
-            });
-          });
-          actions.appendChild(editBtn);
-          // Entfernen
-          const removeBtn = document.createElement('button');
-          removeBtn.textContent = 'Entfernen';
-          removeBtn.className = 'btn btn-small btn-secondary';
-          removeBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showConfirm(`Eintrag "${item.name}" entfernen?`, function() {
-              list.items.splice(idx, 1);
-              saveData();
-              renderItems();
-            });
-          });
-          actions.appendChild(removeBtn);
-          li.appendChild(actions);
-
-          // Drag & Drop startet NUR über den Griff (wie in Apps)
-          handle.addEventListener('pointerdown', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            startDragFromHandle(e, li);
-          });
-        } else {
-          // Fortschrittsmodus
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.style.marginRight = '10px';
-          checkbox.checked = (item.progress >= item.qty);
-          let sliderRef = null;
-          let qtyTextRef = null;
-          checkbox.addEventListener('change', function() {
-            if (checkbox.checked) {
-              item.progress = item.qty;
-            } else {
-              item.progress = 0;
-            }
-            applyCompletionBehavior(list);
-            saveData();
-            if (sliderRef) {
-              sliderRef.value = item.progress;
-            }
-            if (qtyTextRef) qtyTextRef.textContent = item.progress + '/' + item.qty;
-            updateCompletion();
-          });
-          li.appendChild(checkbox);
-
-          const nameSpan = document.createElement('span');
-          nameSpan.style.flex = '1';
-          nameSpan.textContent = item.name;
-          li.appendChild(nameSpan);
-
-          if (item.qty > 1) {
-            const right = document.createElement('div');
-            right.style.display = 'flex';
-            right.style.alignItems = 'center';
-            right.style.gap = '10px';
-
-            const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.min = 0;
-            slider.max = item.qty;
-            slider.value = item.progress;
-            slider.style.minWidth = '220px';
-            slider.addEventListener('input', function() {
-              item.progress = parseInt(slider.value);
-              checkbox.checked = (item.progress >= item.qty);
-              if (qtyTextRef) qtyTextRef.textContent = item.progress + '/' + item.qty;
-              applyCompletionBehavior(list);
-              saveData();
-              updateCompletion();
-            });
-            sliderRef = slider;
-
-            const qtyText = document.createElement('span');
-            qtyText.className = 'qty-text';
-            qtyText.textContent = item.progress + '/' + item.qty;
-            qtyTextRef = qtyText;
-
-            right.appendChild(slider);
-            right.appendChild(qtyText);
-            li.appendChild(right);
-          }
-        }
-        ul.appendChild(li);
+        updateCompletion();
       });
+
+      sliderRef = slider;
+
+      const qtyText = document.createElement("span");
+      qtyText.className = "qty-text";
+      qtyText.textContent = item.progress + "/" + item.qty;
+      qtyTextRef = qtyText;
+
+      right.appendChild(slider);
+      right.appendChild(qtyText);
+      li.appendChild(right);
     }
+
+    ul.appendChild(li);
+  });
+}
 
     function toggleSelectItem(itemId, liEl) {
       if (!editMode) return;
@@ -1292,136 +1352,101 @@ function bindUI() {
     }
 
     // Drag & Drop (mit Animation) – startet nur über den Griff
-    function startDragFromHandle(e, li) {
-      if (!editMode) return;
-      const list = getCurrentList();
-      if (!list) return;
+function startDragFromHandle(e, li) {
+  if (!editMode) return;
 
-      draggingEl = li;
-      dragStartY = e.clientY;
+  e.preventDefault(); // wichtig für iPad
+  draggingEl = li;
 
-      // Verhindert, dass der Browser Text markiert
-      document.body.classList.add('noselect');
+  document.body.classList.add("noselect");
 
-      // Platzhalter (Drop-Linie)
-      placeholderEl = document.createElement('div');
-      placeholderEl.className = 'drop-placeholder';
+  const rect = li.getBoundingClientRect();
+  dragOffsetY = e.clientY - rect.top;
 
-      // Insert placeholder where item was
-      const parent = li.parentElement;
-      parent.insertBefore(placeholderEl, li.nextSibling);
+  // Platzhalter
+  placeholderEl = document.createElement("div");
+  placeholderEl.className = "drop-placeholder";
+  placeholderEl.style.height = rect.height + "px";
 
-      // Fix width/height feel & lift effect
-      const rect = li.getBoundingClientRect();
-      const ulRect = parent.getBoundingClientRect();
-      dragOffsetY = dragStartY - rect.top;
+  li.parentElement.insertBefore(placeholderEl, li.nextSibling);
 
-      // Platzhalter bekommt die Höhe des Items, damit nichts "zusammenklappt"
-      placeholderEl.style.height = rect.height + 'px';
+  // Floating-Item exakt an Originalposition fixieren
+  li.classList.add("dragging");
+  li.style.pointerEvents = "none";
+  li.style.position = "fixed";
+  li.style.left = rect.left + "px";
+  li.style.top = rect.top + "px";
+  li.style.width = rect.width + "px";
 
-      li.classList.add('dragging');
-      // In der "Spur" bleiben: wir pinnen das gezogene Element auf die UL-Breite/Position
-      li.style.width = ulRect.width + 'px';
-      li.style.pointerEvents = 'none';
-      li.style.position = 'fixed';
-      li.style.left = ulRect.left + 'px';
-      li.style.top = (e.clientY - dragOffsetY) + 'px';
+  window.addEventListener("pointermove", onDragMove, { passive: false });
+  window.addEventListener("pointerup", endDrag, { once: true });
+}
 
-      // Capture pointer to keep receiving moves
-      try { li.setPointerCapture(e.pointerId); } catch (_) {}
+function onDragMove(e) {
+  if (!draggingEl || !placeholderEl) return;
 
-      window.addEventListener('touchmove', preventTouchScroll, { passive: false });
-      window.addEventListener('pointermove', onDragMove);
-      window.addEventListener('pointerup', endDrag, { once: true });
+  e.preventDefault(); // verhindert Scrollen auf iPad
+
+  draggingEl.style.top = (e.clientY - dragOffsetY) + "px";
+
+  const ul = document.getElementById("items-list");
+  const items = Array.from(ul.querySelectorAll(".list-item"))
+    .filter(el => el !== draggingEl);
+
+  let inserted = false;
+  for (const it of items) {
+    const r = it.getBoundingClientRect();
+    const midY = r.top + r.height / 2;
+    if (e.clientY < midY) {
+      ul.insertBefore(placeholderEl, it);
+      inserted = true;
+      break;
     }
+  }
+  if (!inserted) {
+    ul.appendChild(placeholderEl);
+  }
+}
 
-    function onDragMove(e) {
-      if (!draggingEl || !placeholderEl) return;
-      // Move floating item
-      draggingEl.style.top = (e.clientY - dragOffsetY) + 'px';
+function endDrag() {
+  if (!draggingEl || !placeholderEl) return;
 
-      const ul = document.getElementById('items-list');
-      const items = Array.from(ul.querySelectorAll('.list-item'))
-        .filter(el => el !== draggingEl);
+  window.removeEventListener("pointermove", onDragMove);
+  document.body.classList.remove("noselect");
 
-      // Vorher-Positionen für FLIP-Animation merken
-      const before = new Map();
-      items.forEach(el => before.set(el, el.getBoundingClientRect()));
+  const ul = document.getElementById("items-list");
 
-      // Find nearest insertion point
-      let inserted = false;
-      for (const it of items) {
-        const r = it.getBoundingClientRect();
-        const midY = r.top + r.height / 2;
-        if (e.clientY < midY) {
-          ul.insertBefore(placeholderEl, it);
-          inserted = true;
-          break;
-        }
-      }
-      if (!inserted) {
-        ul.appendChild(placeholderEl);
-      }
+  // Element an Platzhalterposition einsetzen
+  ul.insertBefore(draggingEl, placeholderEl);
+  placeholderEl.remove();
 
-      // FLIP: andere Items weich "nachrutschen" lassen
-      items.forEach(el => {
-        const after = el.getBoundingClientRect();
-        const b = before.get(el);
-        if (!b) return;
-        const dy = b.top - after.top;
-        if (Math.abs(dy) < 0.5) return;
-        el.style.transition = 'none';
-        el.style.transform = `translateY(${dy}px)`;
-        requestAnimationFrame(() => {
-          el.style.transition = 'transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-          el.style.transform = '';
-        });
-      });
+  // Styles zurücksetzen
+  draggingEl.classList.remove("dragging");
+  draggingEl.style.pointerEvents = "";
+  draggingEl.style.position = "";
+  draggingEl.style.left = "";
+  draggingEl.style.top = "";
+  draggingEl.style.width = "";
+
+  // Datenreihenfolge anhand DOM neu aufbauen
+  const list = getCurrentList();
+  if (list) {
+    const byId = new Map(list.items.map(it => [it.id, it]));
+    const ordered = [];
+    ul.querySelectorAll(".list-item").forEach(el => {
+      const id = el.getAttribute("data-item-id");
+      if (byId.has(id)) ordered.push(byId.get(id));
+    });
+    if (ordered.length === list.items.length) {
+      list.items = ordered;
+      saveData();
     }
+  }
 
-    function endDrag() {
-      if (!draggingEl || !placeholderEl) return;
-
-      window.removeEventListener('touchmove', preventTouchScroll);
-
-      window.removeEventListener('pointermove', onDragMove);
-
-      const ul = document.getElementById('items-list');
-      // Put item back into list at placeholder position
-      ul.insertBefore(draggingEl, placeholderEl);
-      placeholderEl.remove();
-
-      // Reset floating styles
-      draggingEl.classList.remove('dragging');
-      draggingEl.style.pointerEvents = '';
-      draggingEl.style.position = '';
-      draggingEl.style.left = '';
-      draggingEl.style.top = '';
-      draggingEl.style.width = '';
-
-      // Textauswahl wieder erlauben
-      document.body.classList.remove('noselect');
-
-      // Rebuild list.items in new DOM order using stable item ids (data-item-id)
-      const list2 = getCurrentList();
-      if (list2) {
-        const byId = new Map(list2.items.map(it => [it.id, it]));
-        const ordered = [];
-        Array.from(ul.querySelectorAll('.list-item')).forEach(el => {
-          const id = el.getAttribute('data-item-id');
-          if (id && byId.has(id)) ordered.push(byId.get(id));
-        });
-        if (ordered.length === list2.items.length) {
-          list2.items = ordered;
-        }
-        saveData();
-      }
-
-      // Final refresh for correct indexes + clean UI
-      draggingEl = null;
-      placeholderEl = null;
-      renderItems();
-    }
+  draggingEl = null;
+  placeholderEl = null;
+  renderItems();
+}
 
     // Artikel verschieben (nach oben oder unten)
     function moveItem(index, direction) {
