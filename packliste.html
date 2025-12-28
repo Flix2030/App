@@ -1166,14 +1166,13 @@ function renderItems() {
   const list = getCurrentList();
   if (!list) return;
 
-  // Einstellung: "none" oder "bottom"
+  // ✅ WICHTIG: exakt dieser Key muss auch von deinen Einstellungen gesetzt werden
+  // Werte: "none" oder "bottom"
   const completedBehavior = localStorage.getItem("packliste_completedBehavior") || "none";
 
-  // Items normalisieren (id/qty/progress)
+  // Items normalisieren
   list.items = (list.items || []).map((it) => {
-    if (typeof it === "string") {
-      return { id: makeId("item"), name: it, qty: 1, progress: 0 };
-    }
+    if (typeof it === "string") return { id: makeId("item"), name: it, qty: 1, progress: 0 };
     if (it && typeof it === "object") {
       if (!it.id) it.id = makeId("item");
       if (!it.name) it.name = "";
@@ -1187,16 +1186,22 @@ function renderItems() {
 
   const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
 
-  // Wenn NICHT editMode und "fertige nach unten": sortieren, bevor DOM gebaut wird
-  if (!editMode && completedBehavior === "bottom") {
+  // ✅ Sofort-Sortierung (wenn Einstellung aktiv) – passiert bei renderItems()
+  function applyDoneSortingIfNeeded() {
+    if (editMode) return; // nie im Bearbeiten-Modus sortieren
+    if (completedBehavior !== "bottom") return;
+
+    // stabile Sortierung: nicht-fertig zuerst, Reihenfolge innerhalb bleibt
     const before = list.items.slice();
     const sorted = before.slice().sort((a, b) => (isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0));
     const changed = sorted.some((it, i) => it.id !== before[i]?.id);
     if (changed) {
       list.items = sorted;
-      saveData();
+      saveData(); // damit es nach Reload gleich bleibt
     }
   }
+
+  applyDoneSortingIfNeeded();
 
   const ul = document.getElementById("items-list");
   ul.innerHTML = "";
@@ -1210,7 +1215,6 @@ function renderItems() {
     li.setAttribute("data-index", String(idx));
     li.setAttribute("data-item-id", item.id);
 
-    // ✅ grün, wenn fertig
     if (isDone(item)) li.classList.add("item-done");
 
     // =========================
@@ -1285,7 +1289,6 @@ function renderItems() {
 
       li.appendChild(actions);
 
-      // Drag startet NUR über Griff
       handle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1304,10 +1307,11 @@ function renderItems() {
     checkbox.style.marginRight = "10px";
     checkbox.checked = isDone(item);
 
+    // ✅ Checkbox: sofort speichern + sofort sortieren (weil renderItems() erneut läuft)
     checkbox.addEventListener("change", () => {
       item.progress = checkbox.checked ? (item.qty || 1) : 0;
       saveData();
-      renderItems(); // ✅ sofort grün + ggf. nach unten
+      renderItems(); // <-- sorgt dafür, dass "bottom" sofort greift
     });
 
     li.appendChild(checkbox);
@@ -1317,7 +1321,6 @@ function renderItems() {
     nameSpan.textContent = item.name;
     li.appendChild(nameSpan);
 
-    // qty > 1 => Slider
     if ((item.qty || 1) > 1) {
       const right = document.createElement("div");
       right.style.display = "flex";
@@ -1335,7 +1338,7 @@ function renderItems() {
       qtyText.className = "qty-text";
       qtyText.textContent = item.progress + "/" + item.qty;
 
-      // Smooth: live UI, KEIN render pro pixel
+      // Smooth live
       slider.addEventListener("input", () => {
         item.progress = parseInt(slider.value, 10) || 0;
         if (item.progress > (item.qty || 1)) item.progress = (item.qty || 1);
@@ -1349,7 +1352,7 @@ function renderItems() {
         updateCompletion();
       });
 
-      // Commit: speichern + ggf. sortieren
+      // ✅ Commit beim Loslassen: speichern + wenn bottom aktiv -> neu rendern (und sortieren)
       const commit = () => {
         saveData();
         if (completedBehavior === "bottom") renderItems();
