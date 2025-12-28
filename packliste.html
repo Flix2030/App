@@ -723,6 +723,10 @@ function bindUI() {
       document.getElementById('user-select').addEventListener('change', function() {
         currentUserId = this.value || null;
         currentListId = null;
+
+        // URL: /packliste/<user>
+        setRoute(currentUserId, null);
+
         loadLists();
       });
       // Event-Handler für Listen
@@ -750,9 +754,12 @@ function bindUI() {
       });
       document.getElementById('back-to-lists-btn').addEventListener('click', function() {
         currentListId = null;
+
+        // URL zurück: /packliste/<user>
+        setRoute(currentUserId, null);
+
         showListsSection();
       });
-
       // Listen-Einstellungen (⚙️)
       const listSettingsModal = document.getElementById('list-settings-modal');
       const openListSettings = () => {
@@ -1003,6 +1010,10 @@ function bindUI() {
         // Klick auf den Namen öffnet die Listenbearbeitung
         nameSpan.addEventListener('click', function() {
           currentListId = list.id;
+
+          // URL: /packliste/<user>/<list>
+          setRoute(currentUserId, currentListId);
+
           showListEditSection();
         });
         if (listsEditMode) {
@@ -1094,43 +1105,32 @@ function renderItems() {
   const list = getCurrentList();
   if (!list) return;
 
-  // --- Settings: fertige nach unten? ---
-  // (wenn du es woanders speicherst, ändere nur diese Zeile)
-  const completedBehavior = localStorage.getItem("packliste_completedBehavior") || "none"; 
-  // "none" | "bottom"
+  // Einstellung: "none" oder "bottom"
+  const completedBehavior = localStorage.getItem("packliste_completedBehavior") || "none";
 
-  // Sicherstellen: items sind Objekte mit id/qty/progress
+  // Items normalisieren (id/qty/progress)
   list.items = (list.items || []).map((it) => {
     if (typeof it === "string") {
       return { id: makeId("item"), name: it, qty: 1, progress: 0 };
     }
     if (it && typeof it === "object") {
       if (!it.id) it.id = makeId("item");
+      if (!it.name) it.name = "";
       if (typeof it.qty !== "number" || it.qty < 1) it.qty = 1;
       if (typeof it.progress !== "number" || it.progress < 0) it.progress = 0;
       if (it.progress > it.qty) it.progress = it.qty;
-      if (!it.name) it.name = "";
       return it;
     }
     return { id: makeId("item"), name: "", qty: 1, progress: 0 };
   });
 
-  // Helper: fertig?
   const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
 
-  // Optional: fertige nach unten sortieren (stabil)
-  // Wir sortieren NUR fürs Anzeigen — und übernehmen die Reihenfolge auch in list.items,
-  // damit es nach Reload gleich bleibt.
+  // Wenn NICHT editMode und "fertige nach unten": sortieren, bevor DOM gebaut wird
   if (!editMode && completedBehavior === "bottom") {
     const before = list.items.slice();
-    const sorted = before.slice().sort((a, b) => {
-      const ad = isDone(a) ? 1 : 0;
-      const bd = isDone(b) ? 1 : 0;
-      return ad - bd; // nicht-fertig zuerst
-    });
-
-    // Wenn sich was geändert hat, übernehmen + speichern
-    const changed = sorted.some((it, idx) => it.id !== before[idx].id);
+    const sorted = before.slice().sort((a, b) => (isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0));
+    const changed = sorted.some((it, i) => it.id !== before[i]?.id);
     if (changed) {
       list.items = sorted;
       saveData();
@@ -1140,7 +1140,6 @@ function renderItems() {
   const ul = document.getElementById("items-list");
   ul.innerHTML = "";
 
-  // Fortschritt aktualisieren
   updateCompletion();
   updateBulkbar();
 
@@ -1150,35 +1149,32 @@ function renderItems() {
     li.setAttribute("data-index", String(idx));
     li.setAttribute("data-item-id", item.id);
 
-    // ✅ fertig optisch markieren (grün gefüllt)
+    // ✅ grün, wenn fertig
     if (isDone(item)) li.classList.add("item-done");
 
-    // ====== EDIT MODE ======
+    // =========================
+    // EDIT MODE
+    // =========================
     if (editMode) {
       if (selectedItemIds.has(item.id)) li.classList.add("selected");
 
-      // Drag handle
       const handle = document.createElement("span");
       handle.className = "drag-handle";
       handle.textContent = "☰";
       li.appendChild(handle);
 
-      // Name
       const nameSpan = document.createElement("span");
       nameSpan.className = "item-name";
       nameSpan.style.flex = "1";
       nameSpan.textContent = item.name;
       li.appendChild(nameSpan);
 
-      // progress/qty text
       const qtyText = document.createElement("span");
       qtyText.className = "qty-text";
       qtyText.textContent = (item.progress || 0) + "/" + (item.qty || 1);
       li.appendChild(qtyText);
 
-      // Auswahl per Klick (nicht beim Ziehen)
       li.addEventListener("click", (e) => {
-        // wenn auf handle klickt -> nicht auswählen
         const t = e.target;
         if (t && (t.classList?.contains("drag-handle") || t.tagName === "BUTTON")) return;
 
@@ -1192,11 +1188,9 @@ function renderItems() {
         updateBulkbar();
       });
 
-      // Aktionen
       const actions = document.createElement("div");
       actions.className = "actions";
 
-      // Bearbeiten
       const editBtn = document.createElement("button");
       editBtn.textContent = "Bearbeiten";
       editBtn.className = "btn btn-small btn-secondary";
@@ -1212,14 +1206,15 @@ function renderItems() {
       });
       actions.appendChild(editBtn);
 
-      // Entfernen
       const removeBtn = document.createElement("button");
       removeBtn.textContent = "Entfernen";
       removeBtn.className = "btn btn-small btn-secondary";
       removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         showConfirm(`Eintrag "${item.name}" entfernen?`, () => {
-          list.items.splice(idx, 1);
+          const list2 = getCurrentList();
+          if (!list2) return;
+          list2.items.splice(idx, 1);
           selectedItemIds.delete(item.id);
           saveData();
           renderItems();
@@ -1229,7 +1224,7 @@ function renderItems() {
 
       li.appendChild(actions);
 
-      // ✅ Drag startet NUR über den Griff (wichtig fürs iPad)
+      // Drag startet NUR über Griff
       handle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1240,19 +1235,18 @@ function renderItems() {
       return;
     }
 
-    // ====== PROGRESS MODE ======
+    // =========================
+    // PROGRESS MODE
+    // =========================
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.style.marginRight = "10px";
     checkbox.checked = isDone(item);
 
-    let sliderRef = null;
-    let qtyTextRef = null;
-
     checkbox.addEventListener("change", () => {
-      item.progress = checkbox.checked ? item.qty : 0;
+      item.progress = checkbox.checked ? (item.qty || 1) : 0;
       saveData();
-      renderItems(); // ✅ sofort grün + ggf. nach unten sortieren
+      renderItems(); // ✅ sofort grün + ggf. nach unten
     });
 
     li.appendChild(checkbox);
@@ -1262,6 +1256,7 @@ function renderItems() {
     nameSpan.textContent = item.name;
     li.appendChild(nameSpan);
 
+    // qty > 1 => Slider
     if ((item.qty || 1) > 1) {
       const right = document.createElement("div");
       right.style.display = "flex";
@@ -1275,18 +1270,31 @@ function renderItems() {
       slider.value = item.progress;
       slider.style.minWidth = "220px";
 
-      slider.addEventListener("input", () => {
-        item.progress = parseInt(slider.value, 10) || 0;
-        saveData();
-        renderItems(); // ✅ sofort grün + ggf. nach unten sortieren
-      });
-
-      sliderRef = slider;
-
       const qtyText = document.createElement("span");
       qtyText.className = "qty-text";
       qtyText.textContent = item.progress + "/" + item.qty;
-      qtyTextRef = qtyText;
+
+      // Smooth: live UI, KEIN render pro pixel
+      slider.addEventListener("input", () => {
+        item.progress = parseInt(slider.value, 10) || 0;
+        if (item.progress > (item.qty || 1)) item.progress = (item.qty || 1);
+
+        checkbox.checked = isDone(item);
+        qtyText.textContent = item.progress + "/" + item.qty;
+
+        if (isDone(item)) li.classList.add("item-done");
+        else li.classList.remove("item-done");
+
+        updateCompletion();
+      });
+
+      // Commit: speichern + ggf. sortieren
+      const commit = () => {
+        saveData();
+        if (completedBehavior === "bottom") renderItems();
+      };
+      slider.addEventListener("change", commit);
+      slider.addEventListener("pointerup", commit);
 
       right.appendChild(slider);
       right.appendChild(qtyText);
@@ -1335,9 +1343,8 @@ function startDragFromHandle(e, li) {
   e.preventDefault();
   draggingEl = li;
 
-  // Scroll blocken solange Drag aktiv
   document.body.classList.add("noselect");
-  document.body.style.overflow = "hidden"; // wichtig
+  document.body.style.overflow = "hidden"; // verhindert Scrollen beim Drag
 
   dragStartScrollY = window.scrollY;
 
@@ -1347,6 +1354,7 @@ function startDragFromHandle(e, li) {
   placeholderEl = document.createElement("div");
   placeholderEl.className = "drop-placeholder";
   placeholderEl.style.height = rect.height + "px";
+
   li.parentElement.insertBefore(placeholderEl, li.nextSibling);
 
   li.classList.add("dragging");
@@ -1364,9 +1372,7 @@ function onDragMove(e) {
   if (!draggingEl || !placeholderEl) return;
   e.preventDefault();
 
-  // Scroll-Korrektur: wenn iOS doch minimal scrollt / springt
   const scrollDelta = window.scrollY - dragStartScrollY;
-
   draggingEl.style.top = (e.clientY - dragOffsetY - scrollDelta) + "px";
 
   const ul = document.getElementById("items-list");
@@ -1391,7 +1397,6 @@ function endDrag() {
 
   window.removeEventListener("pointermove", onDragMove);
 
-  // Scroll wieder erlauben
   document.body.classList.remove("noselect");
   document.body.style.overflow = "";
 
@@ -1406,6 +1411,7 @@ function endDrag() {
   draggingEl.style.top = "";
   draggingEl.style.width = "";
 
+  // Reihenfolge in Daten übernehmen
   const list = getCurrentList();
   if (list) {
     const byId = new Map(list.items.map(it => [it.id, it]));
