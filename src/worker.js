@@ -385,9 +385,14 @@ export default {
 
       // 0) Pretty-URLs auf echte Dateien mappen
       if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
-      if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
+      if (path === "/packliste") return env.ASSETS.fetch(new Request(url.origin + "/packliste.html", req));
       if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
       if (path === "/settings") return Response.redirect(new URL("/settings.html", url.origin).toString(), 302);
+
+      // SPA-Routen: /packliste/<user>/<liste> soll trotzdem packliste.html liefern (URL bleibt stehen)
+      if (path.startsWith("/packliste/")) {
+        return env.ASSETS.fetch(new Request(url.origin + "/packliste.html", req));
+      }
 
       // 1) API darf NIE umgeleitet werden (sonst kaputt)
       if (path.startsWith("/api/")) {
@@ -407,8 +412,14 @@ export default {
         return Response.redirect(loginUrl.toString(), 302);
       }
 
-      // 4) Eingeloggt → normale Dateien ausliefern
-      return env.ASSETS.fetch(req);
+      // 4) Eingeloggt → normale Dateien ausliefern (404 -> zurück zu Home mit Meldung)
+      const res = await env.ASSETS.fetch(req);
+      if (res.status === 404) {
+        const target = new URL("/home", url.origin);
+        target.searchParams.set("msg", "loadfail");
+        return Response.redirect(target.toString(), 302);
+      }
+      return res;
 
     } catch (err) {
       // ✅ NIE 1101-Screen: immer kontrollierte Antwort
