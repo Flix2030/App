@@ -400,6 +400,11 @@
     /* iPad/Safari: Drag-Griff soll Scrollen blocken */
     .drag-handle { touch-action: none; }
 
+    .list-item.item-done{
+      background: rgba(62,227,140,0.16) !important;
+      border-color: rgba(62,227,140,0.65) !important;
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    }
   </style>
 </head>
 <body>
@@ -1245,27 +1250,9 @@ function renderItems() {
     let qtyTextRef = null;
 
     checkbox.addEventListener("change", () => {
-      if (checkbox.checked) item.progress = item.qty;
-      else item.progress = 0;
-
+      item.progress = checkbox.checked ? item.qty : 0;
       saveData();
-
-      // UI sync
-      if (sliderRef) sliderRef.value = item.progress;
-      if (qtyTextRef) qtyTextRef.textContent = item.progress + "/" + item.qty;
-
-      // done-class aktualisieren
-      if (isDone(item)) li.classList.add("item-done");
-      else li.classList.remove("item-done");
-
-      // optional: fertige nach unten
-      if (completedBehavior === "bottom") {
-        // nach Änderung neu rendern (Sort macht renderItems am Anfang)
-        renderItems();
-        return;
-      }
-
-      updateCompletion();
+      renderItems(); // ✅ sofort grün + ggf. nach unten sortieren
     });
 
     li.appendChild(checkbox);
@@ -1290,20 +1277,8 @@ function renderItems() {
 
       slider.addEventListener("input", () => {
         item.progress = parseInt(slider.value, 10) || 0;
-        checkbox.checked = isDone(item);
-        if (qtyTextRef) qtyTextRef.textContent = item.progress + "/" + item.qty;
-
-        // done-class
-        if (isDone(item)) li.classList.add("item-done");
-        else li.classList.remove("item-done");
-
         saveData();
-
-        if (completedBehavior === "bottom") {
-          renderItems();
-          return;
-        }
-        updateCompletion();
+        renderItems(); // ✅ sofort grün + ggf. nach unten sortieren
       });
 
       sliderRef = slider;
@@ -1352,25 +1327,28 @@ function renderItems() {
     }
 
     // Drag & Drop (mit Animation) – startet nur über den Griff
+let dragStartScrollY = 0;
+
 function startDragFromHandle(e, li) {
   if (!editMode) return;
 
-  e.preventDefault(); // wichtig für iPad
+  e.preventDefault();
   draggingEl = li;
 
+  // Scroll blocken solange Drag aktiv
   document.body.classList.add("noselect");
+  document.body.style.overflow = "hidden"; // wichtig
+
+  dragStartScrollY = window.scrollY;
 
   const rect = li.getBoundingClientRect();
   dragOffsetY = e.clientY - rect.top;
 
-  // Platzhalter
   placeholderEl = document.createElement("div");
   placeholderEl.className = "drop-placeholder";
   placeholderEl.style.height = rect.height + "px";
-
   li.parentElement.insertBefore(placeholderEl, li.nextSibling);
 
-  // Floating-Item exakt an Originalposition fixieren
   li.classList.add("dragging");
   li.style.pointerEvents = "none";
   li.style.position = "fixed";
@@ -1384,10 +1362,12 @@ function startDragFromHandle(e, li) {
 
 function onDragMove(e) {
   if (!draggingEl || !placeholderEl) return;
+  e.preventDefault();
 
-  e.preventDefault(); // verhindert Scrollen auf iPad
+  // Scroll-Korrektur: wenn iOS doch minimal scrollt / springt
+  const scrollDelta = window.scrollY - dragStartScrollY;
 
-  draggingEl.style.top = (e.clientY - dragOffsetY) + "px";
+  draggingEl.style.top = (e.clientY - dragOffsetY - scrollDelta) + "px";
 
   const ul = document.getElementById("items-list");
   const items = Array.from(ul.querySelectorAll(".list-item"))
@@ -1403,24 +1383,22 @@ function onDragMove(e) {
       break;
     }
   }
-  if (!inserted) {
-    ul.appendChild(placeholderEl);
-  }
+  if (!inserted) ul.appendChild(placeholderEl);
 }
 
 function endDrag() {
   if (!draggingEl || !placeholderEl) return;
 
   window.removeEventListener("pointermove", onDragMove);
+
+  // Scroll wieder erlauben
   document.body.classList.remove("noselect");
+  document.body.style.overflow = "";
 
   const ul = document.getElementById("items-list");
-
-  // Element an Platzhalterposition einsetzen
   ul.insertBefore(draggingEl, placeholderEl);
   placeholderEl.remove();
 
-  // Styles zurücksetzen
   draggingEl.classList.remove("dragging");
   draggingEl.style.pointerEvents = "";
   draggingEl.style.position = "";
@@ -1428,7 +1406,6 @@ function endDrag() {
   draggingEl.style.top = "";
   draggingEl.style.width = "";
 
-  // Datenreihenfolge anhand DOM neu aufbauen
   const list = getCurrentList();
   if (list) {
     const byId = new Map(list.items.map(it => [it.id, it]));
