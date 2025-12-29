@@ -416,6 +416,29 @@
       transform: translate3d(0,0,0) scale(1.02);
     }
 
+    /* Item klickbar wie eine Zeile (ohne Checkbox) */
+    .list-item {
+      cursor: pointer;
+    }
+
+    .list-item .item-name,
+    .list-item .qty-text {
+      pointer-events: none; /* Klick geht auf die ganze Zeile */
+    }
+
+    /* Slider bleibt bedienbar */
+    .list-item input[type="range"] {
+      pointer-events: auto;
+    }
+
+    /* Fertig = grün gefüllt */
+    .list-item.item-done {
+      background: rgba(62,227,140,0.16) !important;
+      border-color: rgba(62,227,140,0.65) !important;
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    }
+
+
   </style>
 </head>
 <body>
@@ -449,15 +472,16 @@
       <div class="list-header">
         <h2 id="current-list-title" style="margin:0;"></h2>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-          <div style="display:flex; gap:8px;">
-            <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
-            <button id="list-settings-btn" class="btn btn-small btn-secondary" style="margin:0;">⚙️ Einstellungen</button>
-          </div>
-          <div class="progress-pill">
-            <span class="progress-dot"></span>
-            <span id="completion-percentage">0% geschafft</span>
-          </div>
-        </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
+    <button id="open-settings-btn" class="btn btn-small btn-secondary" style="margin:0;">⚙️ Einstellungen</button>
+  </div>
+
+  <div class="progress-pill">
+    <span class="progress-dot"></span>
+    <span id="completion-percentage">0% geschafft</span>
+  </div>
+</div>
       </div>
       <div class="progress-bar"><div id="completion-bar"></div></div>
       <!-- Umschalter für Bearbeitungsmodus -->
@@ -734,6 +758,16 @@ async function init() {
 }
 
 
+function getCompletedBehavior() {
+  // Werte: "none" | "bottom"
+  return localStorage.getItem("packliste_completedBehavior") || "none";
+}
+
+function setCompletedBehavior(v) {
+  localStorage.setItem("packliste_completedBehavior", v === "bottom" ? "bottom" : "none");
+}
+
+
 function bindUI() {
       // Benutzer verwalten (Popup)
       const userModal = document.getElementById('user-modal');
@@ -909,6 +943,39 @@ function bindUI() {
           renderItems();
         });
       };
+
+      // ⚙️ Einstellungen
+      const settingsModal = document.getElementById("settings-modal");
+      const openSettingsBtn = document.getElementById("open-settings-btn");
+      const settingsCloseBtn = document.getElementById("settings-close");
+
+      function syncSettingsUI() {
+        const v = getCompletedBehavior();
+        const radios = document.querySelectorAll('input[name="done-behavior"]');
+        radios.forEach(r => r.checked = (r.value === v));
+      }
+
+      if (openSettingsBtn) {
+        openSettingsBtn.addEventListener("click", () => {
+          syncSettingsUI();
+          settingsModal.classList.add("active");
+        });
+      }
+      if (settingsCloseBtn) {
+        settingsCloseBtn.addEventListener("click", () => {
+          settingsModal.classList.remove("active");
+        });
+      }
+
+      // Radio ändern -> speichern + sofort neu rendern
+      document.querySelectorAll('input[name="done-behavior"]').forEach(r => {
+        r.addEventListener("change", () => {
+          setCompletedBehavior(r.value);
+          settingsModal.classList.remove("active");
+          renderItems(); // ✅ sofort umsortieren, wenn "bottom"
+        });
+      });
+
     }
 
     // Popups
@@ -1166,9 +1233,8 @@ function renderItems() {
   const list = getCurrentList();
   if (!list) return;
 
-  // ✅ WICHTIG: exakt dieser Key muss auch von deinen Einstellungen gesetzt werden
-  // Werte: "none" oder "bottom"
-  const completedBehavior = localStorage.getItem("packliste_completedBehavior") || "none";
+  const completedBehavior = getCompletedBehavior();
+  const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
 
   // Items normalisieren
   list.items = (list.items || []).map((it) => {
@@ -1184,24 +1250,16 @@ function renderItems() {
     return { id: makeId("item"), name: "", qty: 1, progress: 0 };
   });
 
-  const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
-
-  // ✅ Sofort-Sortierung (wenn Einstellung aktiv) – passiert bei renderItems()
-  function applyDoneSortingIfNeeded() {
-    if (editMode) return; // nie im Bearbeiten-Modus sortieren
-    if (completedBehavior !== "bottom") return;
-
-    // stabile Sortierung: nicht-fertig zuerst, Reihenfolge innerhalb bleibt
+  // ✅ Sortieren (nur im Fortschrittsmodus + nur wenn bottom)
+  if (!editMode && completedBehavior === "bottom") {
     const before = list.items.slice();
     const sorted = before.slice().sort((a, b) => (isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0));
     const changed = sorted.some((it, i) => it.id !== before[i]?.id);
     if (changed) {
       list.items = sorted;
-      saveData(); // damit es nach Reload gleich bleibt
+      saveData(); // damit nach Reload gleich bleibt
     }
   }
-
-  applyDoneSortingIfNeeded();
 
   const ul = document.getElementById("items-list");
   ul.innerHTML = "";
@@ -1218,7 +1276,7 @@ function renderItems() {
     if (isDone(item)) li.classList.add("item-done");
 
     // =========================
-    // EDIT MODE
+    // EDIT MODE (unverändert)
     // =========================
     if (editMode) {
       if (selectedItemIds.has(item.id)) li.classList.add("selected");
@@ -1300,27 +1358,15 @@ function renderItems() {
     }
 
     // =========================
-    // PROGRESS MODE
+    // PROGRESS MODE (NEU: Klick überall toggelt)
     // =========================
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.style.marginRight = "10px";
-    checkbox.checked = isDone(item);
-
-    // ✅ Checkbox: sofort speichern + sofort sortieren (weil renderItems() erneut läuft)
-    checkbox.addEventListener("change", () => {
-      item.progress = checkbox.checked ? (item.qty || 1) : 0;
-      saveData();
-      renderItems(); // <-- sorgt dafür, dass "bottom" sofort greift
-    });
-
-    li.appendChild(checkbox);
-
     const nameSpan = document.createElement("span");
+    nameSpan.className = "item-name";
     nameSpan.style.flex = "1";
     nameSpan.textContent = item.name;
     li.appendChild(nameSpan);
 
+    // qty > 1 => Slider rechts
     if ((item.qty || 1) > 1) {
       const right = document.createElement("div");
       right.style.display = "flex";
@@ -1343,7 +1389,6 @@ function renderItems() {
         item.progress = parseInt(slider.value, 10) || 0;
         if (item.progress > (item.qty || 1)) item.progress = (item.qty || 1);
 
-        checkbox.checked = isDone(item);
         qtyText.textContent = item.progress + "/" + item.qty;
 
         if (isDone(item)) li.classList.add("item-done");
@@ -1352,7 +1397,7 @@ function renderItems() {
         updateCompletion();
       });
 
-      // ✅ Commit beim Loslassen: speichern + wenn bottom aktiv -> neu rendern (und sortieren)
+      // Commit beim Loslassen
       const commit = () => {
         saveData();
         if (completedBehavior === "bottom") renderItems();
@@ -1363,7 +1408,29 @@ function renderItems() {
       right.appendChild(slider);
       right.appendChild(qtyText);
       li.appendChild(right);
+
+      // Klick auf den Slider darf NICHT togglen
+      slider.addEventListener("click", (e) => e.stopPropagation());
+      slider.addEventListener("pointerdown", (e) => e.stopPropagation());
     }
+
+    // ✅ Klick auf die ganze Zeile toggelt "fertig"
+    li.addEventListener("click", () => {
+      const done = isDone(item);
+      item.progress = done ? 0 : (item.qty || 1);
+
+      saveData();
+
+      // sofort grün + sofort nach unten wenn aktiv
+      if (completedBehavior === "bottom") {
+        renderItems();
+      } else {
+        // ohne komplette Neurender: Klasse direkt
+        if (isDone(item)) li.classList.add("item-done");
+        else li.classList.remove("item-done");
+        updateCompletion();
+      }
+    });
 
     ul.appendChild(li);
   });
@@ -1830,5 +1897,32 @@ function endDrag() {
     });
 
   </script>
+
+  <!-- Einstellungen Popup -->
+  <div id="settings-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 style="margin:0 0 8px;">Einstellungen</h3>
+      <p style="margin:0 0 14px; color: var(--muted);">
+        Was soll passieren, wenn ein Eintrag fertig ist?
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <label style="display:flex; align-items:center; gap:10px;">
+          <input type="radio" name="done-behavior" value="none">
+          <span>Nichts (Reihenfolge bleibt)</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:10px;">
+          <input type="radio" name="done-behavior" value="bottom">
+          <span>Fertige nach unten</span>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+        <button id="settings-close" class="btn btn-small btn-secondary">Schließen</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
