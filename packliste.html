@@ -1019,6 +1019,7 @@ function bindUI() {
           settingsModal.classList.add("active");
         });
       }
+
       if (settingsCloseBtn) {
         settingsCloseBtn.addEventListener("click", () => {
           settingsModal.classList.remove("active");
@@ -1030,11 +1031,10 @@ function bindUI() {
         doneBottomToggle.addEventListener("change", () => {
           setCompletedBehavior(doneBottomToggle.checked ? "bottom" : "none");
           renderItems(); // ✅ sofort umsortieren, wenn "bottom"
-          // ❌ NICHT schließen:
-          // settingsModal.classList.remove("active");
+          // settingsModal bleibt offen
         });
       }
-    }
+} // <- NUR DIESE EINE KLAMMER schließt bindUI()
 
     // Popups
     function showPrompt(message, defaultValue, onConfirm) {
