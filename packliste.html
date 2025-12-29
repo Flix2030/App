@@ -664,15 +664,19 @@
       };
     }
 
-    function setRoute(userId, listId, replace = false) {
-      const base = "/packliste";
-      const u = userId ? "/" + encodeURIComponent(userId) : "";
-      const l = (userId && listId) ? "/" + encodeURIComponent(listId) : "";
-      const url = base + u + l;
-      if (replace) history.replaceState({}, "", url);
-      else history.pushState({}, "", url);
-    }
+    function setRoute(userId, listId) {
+      const base = location.pathname.replace(/\/$/, "");
+      let url = base;
 
+      if (userId) url += "/" + encodeURIComponent(userId);
+      if (listId) url += "/" + encodeURIComponent(listId);
+
+      history.pushState({}, "", url);
+
+      // ✅ WICHTIG: sofort die Anzeige/Route neu anwenden
+      handleRoute();
+    }
+    
     function applyRouteToState() {
       const r = getRouteParts();
       // user
