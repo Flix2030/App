@@ -438,6 +438,59 @@
       border-color: rgba(62,227,140,0.65) !important;
       box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
     }
+    /* Einstellungen Toggle */
+    .settings-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .switch{
+      position:relative;
+      display:inline-block;
+      width:52px;
+      height:30px;
+      flex:0 0 auto;
+    }
+    .switch input{
+      opacity:0;
+      width:0;
+      height:0;
+    }
+    .slider-round{
+      position:absolute;
+      cursor:pointer;
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(255,255,255,0.14);
+      border:1px solid rgba(255,255,255,0.18);
+      transition: .2s;
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18);
+    }
+    .slider-round:before{
+      position:absolute;
+      content:"";
+      height:22px;
+      width:22px;
+      left:4px;
+      top:50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.92);
+      transition: .2s;
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    .switch input:checked + .slider-round{
+      background: rgba(62,227,140,0.22);
+      border-color: rgba(62,227,140,0.55);
+    }
+    .switch input:checked + .slider-round:before{
+      transform: translate(22px, -50%);
+    }
 
 
   </style>
@@ -949,11 +1002,11 @@ function bindUI() {
       const settingsModal = document.getElementById("settings-modal");
       const openSettingsBtn = document.getElementById("open-settings-btn");
       const settingsCloseBtn = document.getElementById("settings-close");
+      const doneBottomToggle = document.getElementById("done-bottom-toggle");
 
       function syncSettingsUI() {
         const v = getCompletedBehavior();
-        const radios = document.querySelectorAll('input[name="done-behavior"]');
-        radios.forEach(r => r.checked = (r.value === v));
+        if (doneBottomToggle) doneBottomToggle.checked = (v === "bottom");
       }
 
       if (openSettingsBtn) {
@@ -968,14 +1021,14 @@ function bindUI() {
         });
       }
 
-      // Radio ändern -> speichern + sofort neu rendern
-      document.querySelectorAll('input[name="done-behavior"]').forEach(r => {
-        r.addEventListener("change", () => {
-          setCompletedBehavior(r.value);
+      // Toggle ändern -> speichern + sofort neu rendern
+      if (doneBottomToggle) {
+        doneBottomToggle.addEventListener("change", () => {
+          setCompletedBehavior(doneBottomToggle.checked ? "bottom" : "none");
           settingsModal.classList.remove("active");
           renderItems(); // ✅ sofort umsortieren, wenn "bottom"
         });
-      });
+      }
 
     }
 
@@ -1111,31 +1164,33 @@ function bindUI() {
     }
 
     // Listen laden oder Editor anzeigen
-function loadLists() {
+    function loadLists() {
       const user = getCurrentUser();
-      const ul = document.getElementById('lists-ul');
-      ul.innerHTML = '';
-
       if (!user) {
         document.getElementById('lists-section').classList.add('hidden');
         document.getElementById('list-edit-section').classList.add('hidden');
         return;
       }
-
+      if (currentListId) {
+        showListEditSection();
+        return;
+      }
+      // Listenübersicht anzeigen
+      document.getElementById('user-section').classList.remove('hidden');
+      document.getElementById('back-home-link').classList.remove('hidden');
       document.getElementById('lists-section').classList.remove('hidden');
       document.getElementById('list-edit-section').classList.add('hidden');
-
-      (user.lists || []).forEach((list) => {
+      const ul = document.getElementById('lists-list');
+      ul.innerHTML = '';
+      user.lists.forEach(list => {
         const li = document.createElement('li');
         li.className = 'list-item';
-
         const nameSpan = document.createElement('span');
         nameSpan.className = 'item-name';
         nameSpan.textContent = list.name;
         li.appendChild(nameSpan);
-
-        // Klick auf die GANZE Zeile öffnet die Listenbearbeitung
-        li.addEventListener('click', function() {
+        // Klick auf den Namen öffnet die Listenbearbeitung
+        nameSpan.addEventListener('click', function() {
           currentListId = list.id;
 
           // URL: /packliste/<user>/<list>
@@ -1143,54 +1198,52 @@ function loadLists() {
 
           showListEditSection();
         });
-
         if (listsEditMode) {
           const actions = document.createElement('div');
           actions.className = 'actions';
 
-          // Namen ändern (bleibt)
+          // Namen ändern (bleibt in der Übersicht)
           const editBtn = document.createElement('button');
-          editBtn.textContent = 'Bearbeiten';
+          editBtn.textContent = 'Namen ändern';
           editBtn.className = 'btn btn-small btn-secondary';
           editBtn.addEventListener('click', function(e) {
             e.stopPropagation();
-            showListNameEditor(list.id);
+            showPrompt('Neuer Name der Liste:', list.name, function(newName) {
+              if (!newName) return;
+              list.name = newName;
+              saveData();
+              loadLists();
+            });
           });
           actions.appendChild(editBtn);
 
-          // Liste löschen
+          // Löschen
           const delBtn = document.createElement('button');
           delBtn.textContent = 'Löschen';
           delBtn.className = 'btn btn-small btn-secondary';
           delBtn.addEventListener('click', function(e) {
             e.stopPropagation();
-            showConfirm(`Liste "${list.name}" löschen?`, () => {
-              const u = getCurrentUser();
-              if (!u) return;
-              u.lists = (u.lists || []).filter(l => l.id !== list.id);
-              if (currentListId === list.id) {
-                currentListId = null;
-                setRoute(currentUserId, null);
-              }
+            showConfirm(`Liste "${list.name}" wirklich löschen?`, function() {
+              const user = getCurrentUser();
+              user.lists = user.lists.filter(l => l.id !== list.id);
               saveData();
               loadLists();
             });
           });
           actions.appendChild(delBtn);
 
-          // Export
-          const exportBtn = document.createElement('button');
-          exportBtn.textContent = 'Export';
-          exportBtn.className = 'btn btn-small btn-secondary';
-          exportBtn.addEventListener('click', function(e) {
+          // Exportieren
+          const expBtn = document.createElement('button');
+          expBtn.textContent = 'Exportieren';
+          expBtn.className = 'btn btn-small btn-secondary';
+          expBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             exportList(list.id);
           });
-          actions.appendChild(exportBtn);
+          actions.appendChild(expBtn);
 
           li.appendChild(actions);
         }
-
         ul.appendChild(li);
       });
     }
@@ -1899,7 +1952,7 @@ function endDrag() {
 
   </script>
 
-  <!-- Einstellungen Popup -->
+    <!-- Einstellungen Popup -->
   <div id="settings-modal" class="popup-overlay">
     <div class="popup">
       <h3 style="margin:0 0 8px;">Einstellungen</h3>
@@ -1907,15 +1960,12 @@ function endDrag() {
         Was soll passieren, wenn ein Eintrag fertig ist?
       </p>
 
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <label style="display:flex; align-items:center; gap:10px;">
-          <input type="radio" name="done-behavior" value="none">
-          <span>Nichts (Reihenfolge bleibt)</span>
-        </label>
+      <div class="settings-row">
+        <span>Abgehakte nach unten</span>
 
-        <label style="display:flex; align-items:center; gap:10px;">
-          <input type="radio" name="done-behavior" value="bottom">
-          <span>Fertige nach unten</span>
+        <label class="switch" aria-label="Abgehakte nach unten">
+          <input id="done-bottom-toggle" type="checkbox">
+          <span class="slider-round"></span>
         </label>
       </div>
 
