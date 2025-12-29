@@ -676,7 +676,7 @@
       // ✅ WICHTIG: sofort die Anzeige/Route neu anwenden
       handleRoute();
     }
-    
+
     function applyRouteToState() {
       const r = getRouteParts();
       // user
@@ -1025,15 +1025,15 @@ function bindUI() {
         });
       }
 
-      // Toggle ändern -> speichern + sofort neu rendern
+      // Toggle ändern -> speichern + sofort neu rendern (Popup bleibt offen)
       if (doneBottomToggle) {
         doneBottomToggle.addEventListener("change", () => {
           setCompletedBehavior(doneBottomToggle.checked ? "bottom" : "none");
-          settingsModal.classList.remove("active");
           renderItems(); // ✅ sofort umsortieren, wenn "bottom"
+          // ❌ NICHT schließen:
+          // settingsModal.classList.remove("active");
         });
       }
-
     }
 
     // Popups
