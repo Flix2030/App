@@ -761,6 +761,28 @@
       });
     }
 
+    function handleRoute() {
+  // URL -> State
+  applyRouteToState();
+
+  // UI neu aufbauen
+  loadUsers();
+
+  // Wenn ein User gewählt ist, Listen laden
+  if (typeof currentUserId !== "undefined" && currentUserId) {
+    loadLists();
+
+    // Wenn eine Liste gewählt ist, Editor anzeigen + Items rendern
+    if (typeof currentListId !== "undefined" && currentListId) {
+      if (typeof showListEditSection === "function") showListEditSection();
+      if (typeof renderItems === "function") renderItems();
+    }
+  }
+}
+
+// Back/Forward im Browser
+window.addEventListener("popstate", handleRoute);
+
 // Initialisierung der Seite
 async function init() {
   // Helper: immer auf /login (mit returnTo) statt /home
