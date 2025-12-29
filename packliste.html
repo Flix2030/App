@@ -664,17 +664,18 @@
       };
     }
 
-    function setRoute(userId, listId) {
-      const base = location.pathname.replace(/\/$/, "");
-      let url = base;
-
+    function setRoute(userId, listId, replace = false) {
+      // Basis immer "/packliste" (nicht vom aktuellen Pfad ableiten!)
+      let url = "/packliste";
       if (userId) url += "/" + encodeURIComponent(userId);
       if (listId) url += "/" + encodeURIComponent(listId);
 
-      history.pushState({}, "", url);
+      if (replace) history.replaceState({}, "", url);
+      else history.pushState({}, "", url);
 
-      // ✅ WICHTIG: sofort die Anzeige/Route neu anwenden
-      handleRoute();
+      // ✅ UI neu anwenden (ohne extra handleRoute-Abhängigkeit)
+      applyRouteToState();
+      loadUsers();
     }
 
     function applyRouteToState() {
