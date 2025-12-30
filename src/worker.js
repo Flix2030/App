@@ -363,6 +363,38 @@ async function handleApi(req, env) {
     }
     // ===== /Profiles API =====
 
+    // 6) AI (Gemini) – Key bleibt im Worker (Secret: GEMINI_API_KEY)
+if (path === "/api/ai" && req.method === "POST") {
+  const uid = await readToken(env, req);
+  if (!uid) return json({ error: "unauthorized" }, 401);
+
+  if (!env.GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY_missing" }, 500);
+
+  const body = await req.json().catch(() => null);
+  const prompt = String(body?.prompt || "").trim();
+  if (!prompt) return json({ error: "prompt_required" }, 400);
+
+  const url =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+    encodeURIComponent(env.GEMINI_API_KEY);
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    }),
+  });
+
+  const j = await r.json().catch(() => null);
+  if (!r.ok) return json({ error: "gemini_error", status: r.status, details: j }, 502);
+
+  const text =
+    j?.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("\n") || "";
+
+  return json({ ok: true, text });
+}
+
 return json({ error: "not_found", path }, 404);
   } catch (e) {
     // Hier kommt bei CRASH immer JSON raus:
