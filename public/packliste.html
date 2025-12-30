@@ -534,11 +534,23 @@
     }
     .taik-btn .taik-t{ font-weight:900; letter-spacing:0.5px; }
     .taik-btn .taik-ai{ font-weight:900; letter-spacing:0.5px; }
+    
+    .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
+    .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
+    .taik-btn .taik-ai{ color: var(--accent); }
+    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
+
     .taik-btn .taik-k{ font-weight:900; letter-spacing:0.5px; }
     .taik-btn .taik-sub{ opacity:.85; font-weight:700; }
     /* Farbakzente (nutzt vorhandene CSS-Variablen) */
     .taik-btn .taik-t{ color: var(--text); }
     .taik-btn .taik-ai{ color: var(--accent); }
+    
+    .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
+    .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
+    .taik-btn .taik-ai{ color: var(--accent); }
+    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
+
     .taik-btn .taik-k{ color: var(--danger); }
 
     /* AI Vorschläge: Name + Pinsel */
@@ -678,9 +690,8 @@
       
         <!-- KI: Text → Vorschläge (TAIK) -->
         <div class="ai-mini">
-          <button id="taik-open" class="btn btn-small btn-secondary taik-btn" type="button" title="TAIK: Ask/Take mit KI">
-            <span class="taik-t">T</span><span class="taik-ai">AI</span><span class="taik-k">K</span>
-            <span class="taik-sub">Ask / Take</span>
+          <button id="taik-open" class="btn btn-small btn-secondary taik-btn" type="button" title="KI fragen">
+            <span class="taik-label">Ask <span class="taik-t">t</span><span class="taik-ai">AI</span><span class="taik-k">k</span></span>
           </button>
         </div>
 </div>
@@ -713,8 +724,7 @@
   <div id="assign-modal" class="popup-overlay">
     <div class="popup">
       <h3 id="assign-title" style="margin:0 0 8px;">Ausgewählte Artikel kopieren</h3>
-      <p id="assign-desc" style="margin:0 0 14px; color: var(--muted);">Die Artikel werden beim aktuellen Benutzer behalten und zusätzlich kopiert.</p>
-      <div style="display:flex; flex-direction:column; gap:10px;">
+<div style="display:flex; flex-direction:column; gap:10px;">
         <label style="color:var(--muted); font-size:0.9rem;">Ziel-Benutzer</label>
         <select id="assign-user"></select>
         <label style="color:var(--muted); font-size:0.9rem;">Ziel-Liste</label>
@@ -1516,11 +1526,13 @@ function renderItems() {
         rename.textContent = "🖌️";
         rename.addEventListener("click", (e) => {
           e.stopPropagation();
-          const v = prompt("Name ändern:", item.name);
-          if (v === null) return;
-          const n2 = normalizeItemName(v);
-          if (!n2) return;
-          item.name = n2;
+          openRenameModal(item.name, (v) => {
+            const n2 = normalizeItemName(v);
+            if (!n2) return;
+            item.name = n2;
+            saveData();
+            renderItems();
+          });
           saveData();
           renderItems();
         });
@@ -1947,11 +1959,14 @@ function endDrag() {
         renameBtn.textContent = "🖌️";
         renameBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const v = prompt("Name ändern:", curName);
-          if (v === null) return;
-          const n2 = normalizeItemName(v);
-          if (!n2) return;
-          curName = n2;
+          openRenameModal(curName, (v) => {
+            const n2 = normalizeItemName(v);
+            if (!n2) return;
+            curName = n2;
+            input.value = curName;
+            saveData();
+            renderItems();
+          });
           title.textContent = curName;
           row.dataset.name = curName;
         });
@@ -2305,10 +2320,6 @@ ${raw}`;
       copyAction = action || 'share';
       const modal = document.getElementById('assign-modal');
       const titleEl = document.getElementById('assign-title');
-      const descEl = document.getElementById('assign-desc');
-      const confirmBtn = document.getElementById('assign-confirm');
-      if (titleEl) titleEl.textContent = (copyAction === 'duplicate') ? 'Ausgewählte Artikel duplizieren' : 'Ausgewählte Artikel teilen';
-      if (descEl) descEl.textContent = 'Die Artikel bleiben beim aktuellen Benutzer erhalten und werden zusätzlich in die gewählte Liste kopiert.';
       if (confirmBtn) confirmBtn.textContent = (copyAction === 'duplicate') ? 'Duplizieren' : 'Teilen';
       const userSel = document.getElementById('assign-user');
       const listSel = document.getElementById('assign-list');
@@ -2387,15 +2398,13 @@ ${raw}`;
   <div id="ai-modal" class="popup-overlay">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
       <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
-      <p id="ai-modal-sub" style="margin:0 0 12px; color: var(--muted);">
-        Vorschläge prüfen: ✅ hinzufügen, ❌ entfernen, Menge per Slider anpassen.
-      </p>
-      <div class="ai-add" style="margin: 10px 0 6px;">
+<div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
         <div class="ai-actions">
           <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
-          <span class="muted">Du bekommst eine Vorschau. Du kannst Namen (🖌️) und Mengen anpassen.</span>
-        </div>
+          <button id="ai-mic-btn" class="btn btn-small btn-secondary" type="button" title="Sprechen">🎙️</button>
+          <span id="ai-mic-status" class="muted" style="display:none;">Höre zu…</span>
+</div>
       </div>
 
 
@@ -2430,6 +2439,19 @@ ${raw}`;
 
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
         <button id="settings-close" class="btn btn-small btn-secondary">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Rename Modal (kein alert/prompt) -->
+  <div id="rename-modal" class="popup-overlay" style="display:none;">
+    <div class="popup" style="max-width:520px; width:min(520px,92vw);">
+      <h3 style="margin:0 0 8px;">Name ändern</h3>
+      <input id="rename-input" type="text" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.20); color:rgba(255,255,255,0.92); outline:none;" />
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+        <button id="rename-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="rename-save" class="btn btn-small" type="button">Speichern</button>
       </div>
     </div>
   </div>
