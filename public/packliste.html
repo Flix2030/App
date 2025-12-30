@@ -493,6 +493,92 @@
     }
 
 
+  
+    /* KI-Vorschläge UI */
+    .ai-add { margin-top: 12px; }
+    .ai-add textarea{
+      width: 100%;
+      resize: vertical;
+      min-height: 78px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.20);
+      color: rgba(255,255,255,0.92);
+      outline: none;
+    }
+    .ai-actions{
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
+
+    .ai-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top: 10px;
+      max-height: 52vh;
+      overflow:auto;
+      padding-right: 4px;
+    }
+    .ai-row{
+      display:flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+    }
+    .ai-main{ flex: 1; min-width: 0; }
+    .ai-name{ font-weight: 700; }
+    .ai-reason{ margin-top: 2px; }
+    .ai-ctrl{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap: nowrap;
+    }
+    .ai-qty{
+      width: 120px;
+    }
+    .ai-qty-label{
+      min-width: 22px;
+      text-align: right;
+      color: rgba(255,255,255,0.82);
+      font-variant-numeric: tabular-nums;
+    }
+    .icon-btn{
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.92);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition: transform .08s ease, filter .12s ease;
+      user-select:none;
+    }
+    .icon-btn:hover{ filter: brightness(1.08); transform: translateY(-1px); }
+    .icon-btn.ok{ border-color: rgba(62,227,140,0.35); }
+    .icon-btn.no{ border-color: rgba(255,77,109,0.35); }
+
+    .ai-empty{
+      padding: 14px 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.70);
+      text-align:center;
+    }
+
   </style>
 </head>
 <body>
@@ -560,7 +646,16 @@
           <span id="new-item-qty-label" class="qty-label">Menge: 1</span>
           <button id="add-item-btn" class="btn btn-small">Hinzufügen</button>
         </div>
-      </div>
+      
+        <!-- KI: Vorschläge aus Text + Kontext -->
+        <div class="ai-add">
+          <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Bitte Zahnpasta, Zahnbürste und 3 Badehosen hinzufügen."></textarea>
+          <div class="ai-actions">
+            <button id="ai-plan-btn" class="btn btn-small btn-secondary">KI-Vorschläge erstellen</button>
+            <span id="ai-add-hint" class="muted">Du bekommst eine Vorschau mit ✅ Plus / ❌ X und Mengen-Slider.</span>
+          </div>
+        </div>
+</div>
       <!-- Liste der Artikel -->
       <ul id="items-list"></ul>
       <!-- Zurück-Button -->
@@ -967,7 +1062,10 @@ function bindUI() {
         document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
       });
       document.getElementById('add-item-btn').addEventListener('click', addItem);
-      // Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
+      
+    const aiPlanBtn = document.getElementById('ai-plan-btn');
+    if (aiPlanBtn) aiPlanBtn.addEventListener('click', aiPlanSuggestions);
+// Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
       document.getElementById('bulk-delete').addEventListener('click', bulkDeleteSelected);
       document.getElementById('bulk-duplicate').addEventListener('click', function() { openAssignModal('duplicate'); });
       document.getElementById('bulk-share').addEventListener('click', function() { openAssignModal('share'); });
@@ -1708,6 +1806,229 @@ function endDrag() {
       renderItems();
     }
 
+    
+    // ---------- KI: Text -> Vorschläge (mit Vorschau) ----------
+    function normalizeItemName(name) {
+      return String(name || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/^[\-–—•·]+\s*/, "");
+    }
+
+    function addOrMergeItem(list, name, qty) {
+      const n = normalizeItemName(name);
+      if (!n) return;
+      const q = Math.max(1, parseInt(qty || 1, 10) || 1);
+
+      // Merge: wenn Name schon existiert -> qty erhöhen
+      const existing = (list.items || []).find(it => (it.name || "").trim().toLowerCase() === n.toLowerCase());
+      if (existing) {
+        existing.qty = Math.max(1, (parseInt(existing.qty || 1, 10) || 1) + q);
+        return;
+      }
+      list.items.push({ id: makeId('item'), name: n, qty: q, progress: 0 });
+    }
+
+    function extractJsonArray(text) {
+      if (!text) return null;
+      let s = String(text).trim();
+      s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      const a = s.indexOf("[");
+      const b = s.lastIndexOf("]");
+      if (a === -1 || b === -1 || b <= a) return null;
+      const jsonStr = s.slice(a, b + 1);
+      try { return JSON.parse(jsonStr); } catch { return null; }
+    }
+
+    function openAiModal() {
+      const m = document.getElementById("ai-modal");
+      if (m) m.classList.add("active");
+    }
+    function closeAiModal() {
+      const m = document.getElementById("ai-modal");
+      if (m) m.classList.remove("active");
+    }
+
+    function renderAiSuggestions(suggestions) {
+      const box = document.getElementById("ai-suggestions");
+      if (!box) return;
+      box.innerHTML = "";
+
+      if (!Array.isArray(suggestions) || suggestions.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "ai-empty";
+        empty.textContent = "Keine Vorschläge erkannt.";
+        box.appendChild(empty);
+        return;
+      }
+
+      for (let i = 0; i < suggestions.length; i++) {
+        const s = suggestions[i] || {};
+        const name = normalizeItemName(s.name);
+        if (!name) continue;
+
+        const row = document.createElement("div");
+        row.className = "ai-row";
+        row.dataset.name = name;
+
+        const main = document.createElement("div");
+        main.className = "ai-main";
+        const title = document.createElement("div");
+        title.className = "ai-name";
+        title.textContent = name;
+
+        const reason = document.createElement("div");
+        reason.className = "ai-reason muted";
+        reason.textContent = normalizeItemName(s.reason || "Vorschlag");
+
+        main.appendChild(title);
+        main.appendChild(reason);
+
+        const ctrl = document.createElement("div");
+        ctrl.className = "ai-ctrl";
+
+        const qty = document.createElement("input");
+        qty.type = "range";
+        qty.min = "1";
+        qty.max = "30";
+        qty.value = String(Math.max(1, parseInt(s.qty || 1, 10) || 1));
+        qty.className = "ai-qty";
+
+        const qtyLabel = document.createElement("span");
+        qtyLabel.className = "ai-qty-label";
+        qtyLabel.textContent = qty.value;
+
+        qty.addEventListener("input", () => {
+          qtyLabel.textContent = qty.value;
+        });
+
+        const ok = document.createElement("button");
+        ok.className = "icon-btn ok";
+        ok.type = "button";
+        ok.title = "Hinzufügen";
+        ok.textContent = "+";
+
+        const no = document.createElement("button");
+        no.className = "icon-btn no";
+        no.type = "button";
+        no.title = "Nicht hinzufügen";
+        no.textContent = "×";
+
+        ok.addEventListener("click", () => {
+          const list = getCurrentList();
+          if (!list) return;
+          addOrMergeItem(list, name, qty.value);
+          saveData();
+          renderItems();
+          row.remove();
+        });
+
+        no.addEventListener("click", () => {
+          row.remove();
+        });
+
+        ctrl.appendChild(qty);
+        ctrl.appendChild(qtyLabel);
+        ctrl.appendChild(ok);
+        ctrl.appendChild(no);
+
+        row.appendChild(main);
+        row.appendChild(ctrl);
+        box.appendChild(row);
+      }
+    }
+
+    async function aiPlanSuggestions() {
+      const list = getCurrentList();
+      if (!list) return;
+
+      const ta = document.getElementById("ai-item-text");
+      const btn = document.getElementById("ai-plan-btn");
+      const raw = (ta?.value || "").trim();
+      if (!raw) return;
+
+      const old = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "KI läuft...";
+
+      try {
+        const prompt =
+`Du bist eine Packlisten-Assistentin.
+Aufgabe: Erstelle Vorschläge für Packlisten-Artikel (inkl. plausibler Ergänzungen je nach Kontext).
+- Nutze den Text: Ziele (z.B. Strand), Personen (z.B. Kinder), Aktivitäten (z.B. Sand spielen).
+- Übernimm explizit genannte Dinge IMMER.
+- Ergänze sinnvolle Extras (aber nicht übertreiben; lieber 8-18 Vorschläge).
+- Mengen: wenn genannt (z.B. "3 Badehosen") -> qty=3; wenn Kinder erwähnt -> kindgerechte Mengen (z.B. 2 Kinder -> 2 Badehosen/Handtücher etc.).
+Antworte NUR als JSON-Array (ohne Markdown, ohne Erklärtext).
+Format: [{"name":"...","qty":1,"reason":"kurzer Grund"}]
+
+TEXT:
+${raw}`;
+
+        const r = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ prompt })
+        });
+
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data || data.ok !== true) {
+          alert("KI-Fehler: " + (data?.error || data?.message || r.status));
+          return;
+        }
+
+        const arr = extractJsonArray(data.text);
+        if (!Array.isArray(arr)) {
+          alert("KI-Antwort nicht verstanden.");
+          return;
+        }
+
+        const suggestions = arr
+          .map(x => ({
+            name: normalizeItemName(x?.name ?? x),
+            qty: Math.max(1, parseInt(x?.qty ?? 1, 10) || 1),
+            reason: normalizeItemName(x?.reason || "")
+          }))
+          .filter(x => x.name);
+
+        renderAiSuggestions(suggestions);
+        openAiModal();
+      } catch (e) {
+        alert("KI-Fehler: " + (e?.message || e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+      }
+    }
+
+    // AI modal buttons
+    const aiCloseBtn = document.getElementById("ai-close");
+    if (aiCloseBtn) aiCloseBtn.addEventListener("click", closeAiModal);
+
+    const aiAddAllBtn = document.getElementById("ai-add-all");
+    if (aiAddAllBtn) aiAddAllBtn.addEventListener("click", () => {
+      const list = getCurrentList();
+      if (!list) return;
+      const rows = Array.from(document.querySelectorAll("#ai-suggestions .ai-row"));
+      for (const row of rows) {
+        const name = row.dataset.name;
+        const qty = row.querySelector("input.ai-qty")?.value || "1";
+        addOrMergeItem(list, name, qty);
+        row.remove();
+      }
+      saveData();
+      renderItems();
+    });
+
+    // Klick außerhalb schließt
+    const aiModal = document.getElementById("ai-modal");
+    if (aiModal) {
+      aiModal.addEventListener("click", (e) => {
+        if (e.target === aiModal) closeAiModal();
+      });
+    }
+
     // Listen exportieren und importieren
     function exportList(listId) {
       const user = getCurrentUser();
@@ -1978,6 +2299,27 @@ function endDrag() {
     });
 
   </script>
+
+
+  <!-- KI Vorschau Popup -->
+  <div id="ai-modal" class="popup-overlay">
+    <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
+      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
+      <p id="ai-modal-sub" style="margin:0 0 12px; color: var(--muted);">
+        Vorschläge prüfen: ✅ hinzufügen, ❌ entfernen, Menge per Slider anpassen.
+      </p>
+
+      <div id="ai-suggestions" class="ai-list"></div>
+
+      <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        <button id="ai-add-all" class="btn btn-small">Alle hinzufügen</button>
+        <div style="display:flex; gap:8px;">
+          <button id="ai-close" class="btn btn-small btn-secondary">Schließen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
     <!-- Einstellungen Popup -->
   <div id="settings-modal" class="popup-overlay">
