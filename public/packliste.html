@@ -281,7 +281,9 @@
     }
 
     .back-link {
-      display: inline-block;
+      display: block;
+      width: fit-content;
+      margin-right: auto;
       margin-top: 40px;
       padding: 12px 24px;
       background: rgba(255,255,255,0.06);
@@ -551,7 +553,7 @@
     .taik-btn .taik-ai{ color: var(--accent); }
     .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
 
-    .taik-btn .taik-k{ color: var(--danger); }
+    .taik-btn .taik-k{ color: var(--text); }
 
     /* AI Vorschläge: Name + Pinsel */
     .ai-name-wrap{ display:flex; align-items:center; gap:8px; }
@@ -694,8 +696,6 @@
             <span class="taik-label">Ask <span class="taik-t">t</span><span class="taik-ai">AI</span><span class="taik-k">k</span></span>
           </button>
         </div>
-</div>
-</div>
       <!-- Liste der Artikel -->
       <ul id="items-list"></ul>
       <!-- Zurück-Button -->
@@ -1974,12 +1974,7 @@ function endDrag() {
         titleWrap.appendChild(title);
         titleWrap.appendChild(renameBtn);
 
-        const reason = document.createElement("div");
-        reason.className = "ai-reason muted";
-        reason.textContent = normalizeItemName(s.reason || "Vorschlag");
-
         main.appendChild(titleWrap);
-        main.appendChild(reason);
 
         const ctrl = document.createElement("div");
         ctrl.className = "ai-ctrl";
@@ -2103,20 +2098,17 @@ ${raw}`;
     const aiCloseBtn = document.getElementById("ai-close");
     if (aiCloseBtn) aiCloseBtn.addEventListener("click", closeAiModal);
 
-    const aiAddAllBtn = document.getElementById("ai-add-all");
-    if (aiAddAllBtn) aiAddAllBtn.addEventListener("click", () => {
-      const list = getCurrentList();
-      if (!list) return;
-      const rows = Array.from(document.querySelectorAll("#ai-suggestions .ai-row"));
-      for (const row of rows) {
-        const name = row.dataset.name;
-        const qty = row.querySelector("input.ai-qty")?.value || "1";
-        addOrMergeItem(list, name, qty);
-        row.remove();
+    const aiCloseXBtn = document.getElementById("ai-close-x");
+    if (aiCloseXBtn) aiCloseXBtn.addEventListener("click", closeAiModal);
+
+    // ESC schließt
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const m = document.getElementById("ai-modal");
+        if (m && m.classList.contains("active")) closeAiModal();
       }
-      saveData();
-      renderItems();
     });
+
 
     // Klick außerhalb schließt
     const aiModal = document.getElementById("ai-modal");
@@ -2397,7 +2389,10 @@ ${raw}`;
   <!-- KI Vorschau Popup -->
   <div id="ai-modal" class="popup-overlay">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
+      <button id="ai-close-x" class="icon-btn" type="button" title="Schließen" aria-label="Schließen">✕</button>
+      </div>
 <div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
         <div class="ai-actions">
@@ -2411,8 +2406,7 @@ ${raw}`;
       <div id="ai-suggestions" class="ai-list"></div>
 
       <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
-        <button id="ai-add-all" class="btn btn-small">Alle hinzufügen</button>
-        <div style="display:flex; gap:8px;">
+<div style="display:flex; gap:8px;">
           <button id="ai-close" class="btn btn-small btn-secondary">Schließen</button>
         </div>
       </div>
