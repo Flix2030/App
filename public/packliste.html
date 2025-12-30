@@ -96,6 +96,27 @@
       padding-left: 0;
       margin: 0;
     }
+    
+    .check-btn{
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.92);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 900;
+      margin-right: 10px;
+      flex: 0 0 auto;
+    }
+    .list-item.item-done .check-btn{
+      border-color: rgba(62,227,140,0.65);
+      background: rgba(62,227,140,0.12);
+      color: rgba(62,227,140,1);
+    }
+
     .list-item {
       display: flex;
       justify-content: space-between;
@@ -730,6 +751,15 @@
         <label style="color:var(--muted); font-size:0.9rem;">Ziel-Liste</label>
         <select id="assign-list"></select>
       </div>
+      
+      <div class="settings-row" style="margin-top:10px;">
+        <span>Abhaken per Klick aufs Feld</span>
+        <label class="switch" aria-label="Abhaken per Klick aufs Feld">
+          <input id="tap-toggle" type="checkbox">
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
         <button id="assign-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
         <button id="assign-confirm" class="btn btn-small">Kopieren</button>
@@ -975,11 +1005,46 @@ async function init() {
 
 function getCompletedBehavior() {
   // Werte: "none" | "bottom"
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    if (list.settings.completedBehavior) return list.settings.completedBehavior;
+  }
+  // Fallback (alte Version)
   return localStorage.getItem("packliste_completedBehavior") || "none";
 }
 
+function getCheckMode() {
+  // Werte: "checkbox" | "row"
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    return list.settings.checkMode || "checkbox";
+  }
+  return localStorage.getItem("packliste_checkMode") || "checkbox";
+}
+function setCheckMode(v) {
+  const val = (v === "row") ? "row" : "checkbox";
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    list.settings.checkMode = val;
+    saveData();
+    return;
+  }
+  localStorage.setItem("packliste_checkMode", val);
+}
+
 function setCompletedBehavior(v) {
-  localStorage.setItem("packliste_completedBehavior", v === "bottom" ? "bottom" : "none");
+  const val = (v === "bottom") ? "bottom" : "none";
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    list.settings.completedBehavior = val;
+    saveData();
+    return;
+  }
+  localStorage.setItem("packliste_completedBehavior", val);
 }
 
 
@@ -1175,10 +1240,13 @@ function bindUI() {
       const openSettingsBtn = document.getElementById("open-settings-btn");
       const settingsCloseBtn = document.getElementById("settings-close");
       const doneBottomToggle = document.getElementById("done-bottom-toggle");
+      const tapToggle = document.getElementById("tap-toggle");
 
       function syncSettingsUI() {
         const v = getCompletedBehavior();
         if (doneBottomToggle) doneBottomToggle.checked = (v === "bottom");
+        const cm = getCheckMode();
+        if (tapToggle) tapToggle.checked = (cm === "row");
       }
 
       if (openSettingsBtn) {
@@ -1195,6 +1263,13 @@ function bindUI() {
       }
 
       // Toggle ändern -> speichern + sofort neu rendern (Popup bleibt offen)
+      if (tapToggle) {
+        tapToggle.addEventListener("change", () => {
+          setCheckMode(tapToggle.checked ? "row" : "checkbox");
+          renderItems();
+        });
+      }
+
       if (doneBottomToggle) {
         doneBottomToggle.addEventListener("change", () => {
           setCompletedBehavior(doneBottomToggle.checked ? "bottom" : "none");
@@ -1491,6 +1566,9 @@ function renderItems() {
   ul.innerHTML = "";
 
   updateCompletion();
+      // Check-Button aktualisieren
+      try { refreshCheck(); } catch {}
+
   updateBulkbar();
 
   list.items.forEach((item, idx) => {
@@ -1511,6 +1589,27 @@ function renderItems() {
       handle.className = "drag-handle";
       handle.textContent = "☰";
       li.appendChild(handle);
+
+
+      const checkBtn = document.createElement("button");
+      checkBtn.className = "check-btn";
+      checkBtn.type = "button";
+      checkBtn.setAttribute("aria-label", "Abhaken");
+      const refreshCheck = () => { checkBtn.textContent = isDone(item) ? "✓" : ""; };
+      refreshCheck();
+      checkBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const done = isDone(item);
+        item.progress = done ? 0 : (item.qty || 1);
+        saveData();
+        if (completedBehavior === "bottom") renderItems();
+        else {
+          if (isDone(item)) li.classList.add("item-done"); else li.classList.remove("item-done");
+          refreshCheck();
+          updateCompletion();
+        }
+      });
+      li.appendChild(checkBtn);
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "item-name";
@@ -1661,8 +1760,10 @@ const qtyText = document.createElement("span");
       slider.addEventListener("pointerdown", (e) => e.stopPropagation());
     }
 
-    // ✅ Klick auf die ganze Zeile toggelt "fertig"
+    // ✅ Klick auf die ganze Zeile toggelt "fertig" (je nach Einstellung)
     li.addEventListener("click", () => {
+      const mode = getCheckMode();
+      if (mode !== "row") return; // nur Kästchen
       const done = isDone(item);
       item.progress = done ? 0 : (item.qty || 1);
 
@@ -1915,7 +2016,11 @@ function endDrag() {
     }
     function closeAiModal() {
       const m = document.getElementById("ai-modal");
-      if (m) m.classList.remove("active");
+      if (m) {
+        m.classList.remove("active");
+        // safety: hard-hide after animation
+        setTimeout(() => { try { m.style.display = "none"; } catch {} }, 140);
+      }
       document.body.classList.remove("modal-open");
     }
 
@@ -1973,13 +2078,6 @@ function endDrag() {
 
         titleWrap.appendChild(title);
         titleWrap.appendChild(renameBtn);
-
-        const reason = document.createElement("div");
-        reason.className = "ai-reason muted";
-        reason.textContent = normalizeItemName(s.reason || "Vorschlag");
-
-        main.appendChild(titleWrap);
-        main.appendChild(reason);
 
         const ctrl = document.createElement("div");
         ctrl.className = "ai-ctrl";
@@ -2413,7 +2511,7 @@ ${raw}`;
       <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
         <button id="ai-add-all" class="btn btn-small">Alle hinzufügen</button>
         <div style="display:flex; gap:8px;">
-          <button id="ai-close" class="btn btn-small btn-secondary">Schließen</button>
+          <button id="ai-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
         </div>
       </div>
     </div>
@@ -2437,8 +2535,17 @@ ${raw}`;
         </label>
       </div>
 
+      
+      <div class="settings-row" style="margin-top:10px;">
+        <span>Abhaken per Klick aufs Feld</span>
+        <label class="switch" aria-label="Abhaken per Klick aufs Feld">
+          <input id="tap-toggle" type="checkbox">
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
-        <button id="settings-close" class="btn btn-small btn-secondary">Schließen</button>
+        <button id="settings-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
       </div>
     </div>
   </div>
