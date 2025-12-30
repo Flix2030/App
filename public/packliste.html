@@ -2010,18 +2010,18 @@ function endDrag() {
     }
 
     function openAiModal() {
-  const m = document.getElementById("ai-modal");
+  const modal1 = document.getElementById("ai-modal");
   if (m) { m.style.display="flex"; }
 
-      const m = document.getElementById("ai-modal");
+      const modal2 = document.getElementById("ai-modal");
       if (m) m.classList.add("active");
       document.body.classList.add("modal-open");
     }
     function closeAiModal() {
-  const m = document.getElementById("ai-modal");
+  const modal3 = document.getElementById("ai-modal");
   if (m) { m.classList.remove("active"); m.style.display="none"; }
 
-      const m = document.getElementById("ai-modal");
+      const modal4 = document.getElementById("ai-modal");
       if (m) {
         m.classList.remove("active");
         // safety: hard-hide after animation
