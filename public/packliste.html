@@ -1928,6 +1928,10 @@ function endDrag() {
     function closeAiModal() {
       const m = document.getElementById("ai-modal");
       if (m) m.classList.remove("active");
+      const box = document.getElementById("ai-suggestions");
+      if (box) box.innerHTML = "";
+      const ta = document.getElementById("ai-item-text");
+      if (ta) ta.value = "";
       document.body.classList.remove("modal-open");
     }
 
@@ -1971,40 +1975,14 @@ function endDrag() {
         renameBtn.textContent = "🖌️";
         renameBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          const v = window.prompt("Name bearbeiten:", curName);
-          const n2 = normalizeItemName(v || "");
-          if (!n2) return;
-          curName = n2;
-          input.value = curName;
-          title.textContent = curName;
-          row.dataset.name = curName;
-        });
-
-        title.textContent = curName;
-          row.dataset.name = curName;
-        });
-
-        titleWrap.appendChild(title);
-        titleWrap.appendChild(renameBtn);
-
-        main.appendChild(titleWrap);
-
-        const ctrl = document.createElement("div");
-        ctrl.className = "ai-ctrl";
-
-        const qty = document.createElement("input");
-        qty.type = "range";
-        qty.min = "1";
-        qty.max = "30";
-        qty.value = String(Math.max(1, parseInt(s.qty || 1, 10) || 1));
-        qty.className = "ai-qty";
-
-        const qtyLabel = document.createElement("span");
-        qtyLabel.className = "ai-qty-label";
-        qtyLabel.textContent = qty.value;
-
-        qty.addEventListener("input", () => {
-          qtyLabel.textContent = qty.value;
+          openRenameModal(curName, (v) => {
+            const n2 = normalizeItemName(v);
+            if (!n2) return;
+            curName = n2;
+            input.value = curName;
+            title.textContent = curName;
+            row.dataset.name = curName;
+          });
         });
 
         const ok = document.createElement("button");
@@ -2404,7 +2382,7 @@ ${raw}`;
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
       <div style="position:relative; display:flex; align-items:center; justify-content:center; gap:10px; padding-right:42px;">
       <div class="take-title" aria-label="Take" style="font-weight:900; letter-spacing:0.2px; font-size:20px; text-align:center;">
-        <span class="take-t">T</span><span class="take-ai">a</span><span class="take-ai">i</span><span class="take-k">k</span>
+        <span class="take-t">T</span><span class="take-ai">A</span><span class="take-ai">I</span><span class="take-k">K</span>
       </div>
       <button id="ai-close-x" class="icon-btn" type="button" title="Schließen" aria-label="Schließen" style="position:absolute; right:0; top:0;">✕</button>
       </div>
