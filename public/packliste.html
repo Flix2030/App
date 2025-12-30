@@ -96,6 +96,27 @@
       padding-left: 0;
       margin: 0;
     }
+    
+    .check-btn{
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.92);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 900;
+      margin-right: 10px;
+      flex: 0 0 auto;
+    }
+    .list-item.item-done .check-btn{
+      border-color: rgba(62,227,140,0.65);
+      background: rgba(62,227,140,0.12);
+      color: rgba(62,227,140,1);
+    }
+
     .list-item {
       display: flex;
       justify-content: space-between;
@@ -281,9 +302,7 @@
     }
 
     .back-link {
-      display: block;
-      width: fit-content;
-      margin-right: auto;
+      display: inline-block;
       margin-top: 40px;
       padding: 12px 24px;
       background: rgba(255,255,255,0.06);
@@ -540,7 +559,7 @@
     .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
     .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
     .taik-btn .taik-ai{ color: var(--accent); }
-    .taik-btn .taik-k{ color: var(--text); }
+    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
 
     .taik-btn .taik-k{ font-weight:900; letter-spacing:0.5px; }
     .taik-btn .taik-sub{ opacity:.85; font-weight:700; }
@@ -551,9 +570,9 @@
     .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
     .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
     .taik-btn .taik-ai{ color: var(--accent); }
-    .taik-btn .taik-k{ color: var(--text); }
+    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
 
-    .taik-btn .taik-k{ color: var(--text); }
+    .taik-btn .taik-k{ color: var(--danger); }
 
     /* AI Vorschläge: Name + Pinsel */
     .ai-name-wrap{ display:flex; align-items:center; gap:8px; }
@@ -622,15 +641,7 @@
       text-align:center;
     }
 
-  
-    /* --- TAKE header (AI Modal) --- */
-    .take-title .take-t, .take-title .take-k { color: var(--text); }
-    .take-title .take-ai { color: var(--accent); }
-    /* Sicherheit: Item-Text immer sichtbar */
-    .list-item { color: var(--text); }
-    /* Home-Link im Content-Bereich halten */
-    #back-home-link { position: relative; z-index: 1; }
-</style>
+  </style>
 </head>
 <body>
   <div class="container">
@@ -704,13 +715,14 @@
             <span class="taik-label">Ask <span class="taik-t">t</span><span class="taik-ai">AI</span><span class="taik-k">k</span></span>
           </button>
         </div>
-            <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
-
-<!-- Liste der Artikel -->
+</div>
+</div>
+      <!-- Liste der Artikel -->
       <ul id="items-list"></ul>
       <!-- Zurück-Button -->
     </div>
-</div>
+    <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
+  </div>
 
   <!-- Benutzer verwalten Popup -->
   <div id="user-modal" class="popup-overlay">
@@ -739,6 +751,15 @@
         <label style="color:var(--muted); font-size:0.9rem;">Ziel-Liste</label>
         <select id="assign-list"></select>
       </div>
+      
+      <div class="settings-row" style="margin-top:10px;">
+        <span>Abhaken per Klick aufs Feld</span>
+        <label class="switch" aria-label="Abhaken per Klick aufs Feld">
+          <input id="tap-toggle" type="checkbox">
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
         <button id="assign-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
         <button id="assign-confirm" class="btn btn-small">Kopieren</button>
@@ -984,11 +1005,46 @@ async function init() {
 
 function getCompletedBehavior() {
   // Werte: "none" | "bottom"
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    if (list.settings.completedBehavior) return list.settings.completedBehavior;
+  }
+  // Fallback (alte Version)
   return localStorage.getItem("packliste_completedBehavior") || "none";
 }
 
+function getCheckMode() {
+  // Werte: "checkbox" | "row"
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    return list.settings.checkMode || "checkbox";
+  }
+  return localStorage.getItem("packliste_checkMode") || "checkbox";
+}
+function setCheckMode(v) {
+  const val = (v === "row") ? "row" : "checkbox";
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    list.settings.checkMode = val;
+    saveData();
+    return;
+  }
+  localStorage.setItem("packliste_checkMode", val);
+}
+
 function setCompletedBehavior(v) {
-  localStorage.setItem("packliste_completedBehavior", v === "bottom" ? "bottom" : "none");
+  const val = (v === "bottom") ? "bottom" : "none";
+  const list = getCurrentList();
+  if (list) {
+    list.settings = list.settings || {};
+    list.settings.completedBehavior = val;
+    saveData();
+    return;
+  }
+  localStorage.setItem("packliste_completedBehavior", val);
 }
 
 
@@ -1164,9 +1220,6 @@ function bindUI() {
         editToggle.addEventListener('click', function() {
           // Modus wechseln
           editMode = !editMode;
-          // Safety: falls vorher Drag aktiv war
-          document.body.classList.remove("noselect");
-          document.body.style.overflow = "";
           // Buttontext anpassen
           this.textContent = editMode ? 'Fertig' : 'Bearbeiten';
           // Auswahl zurücksetzen, wenn wir Bearbeiten beenden
@@ -1187,10 +1240,13 @@ function bindUI() {
       const openSettingsBtn = document.getElementById("open-settings-btn");
       const settingsCloseBtn = document.getElementById("settings-close");
       const doneBottomToggle = document.getElementById("done-bottom-toggle");
+      const tapToggle = document.getElementById("tap-toggle");
 
       function syncSettingsUI() {
         const v = getCompletedBehavior();
         if (doneBottomToggle) doneBottomToggle.checked = (v === "bottom");
+        const cm = getCheckMode();
+        if (tapToggle) tapToggle.checked = (cm === "row");
       }
 
       if (openSettingsBtn) {
@@ -1207,6 +1263,13 @@ function bindUI() {
       }
 
       // Toggle ändern -> speichern + sofort neu rendern (Popup bleibt offen)
+      if (tapToggle) {
+        tapToggle.addEventListener("change", () => {
+          setCheckMode(tapToggle.checked ? "row" : "checkbox");
+          renderItems();
+        });
+      }
+
       if (doneBottomToggle) {
         doneBottomToggle.addEventListener("change", () => {
           setCompletedBehavior(doneBottomToggle.checked ? "bottom" : "none");
@@ -1503,6 +1566,9 @@ function renderItems() {
   ul.innerHTML = "";
 
   updateCompletion();
+      // Check-Button aktualisieren
+      try { refreshCheck(); } catch {}
+
   updateBulkbar();
 
   list.items.forEach((item, idx) => {
@@ -1523,6 +1589,27 @@ function renderItems() {
       handle.className = "drag-handle";
       handle.textContent = "☰";
       li.appendChild(handle);
+
+
+      const checkBtn = document.createElement("button");
+      checkBtn.className = "check-btn";
+      checkBtn.type = "button";
+      checkBtn.setAttribute("aria-label", "Abhaken");
+      const refreshCheck = () => { checkBtn.textContent = isDone(item) ? "✓" : ""; };
+      refreshCheck();
+      checkBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const done = isDone(item);
+        item.progress = done ? 0 : (item.qty || 1);
+        saveData();
+        if (completedBehavior === "bottom") renderItems();
+        else {
+          if (isDone(item)) li.classList.add("item-done"); else li.classList.remove("item-done");
+          refreshCheck();
+          updateCompletion();
+        }
+      });
+      li.appendChild(checkBtn);
 
       const nameSpan = document.createElement("span");
       nameSpan.className = "item-name";
@@ -1673,8 +1760,10 @@ const qtyText = document.createElement("span");
       slider.addEventListener("pointerdown", (e) => e.stopPropagation());
     }
 
-    // ✅ Klick auf die ganze Zeile toggelt "fertig"
+    // ✅ Klick auf die ganze Zeile toggelt "fertig" (je nach Einstellung)
     li.addEventListener("click", () => {
+      const mode = getCheckMode();
+      if (mode !== "row") return; // nur Kästchen
       const done = isDone(item);
       item.progress = done ? 0 : (item.qty || 1);
 
@@ -1927,11 +2016,11 @@ function endDrag() {
     }
     function closeAiModal() {
       const m = document.getElementById("ai-modal");
-      if (m) m.classList.remove("active");
-      const box = document.getElementById("ai-suggestions");
-      if (box) box.innerHTML = "";
-      const ta = document.getElementById("ai-item-text");
-      if (ta) ta.value = "";
+      if (m) {
+        m.classList.remove("active");
+        // safety: hard-hide after animation
+        setTimeout(() => { try { m.style.display = "none"; } catch {} }, 140);
+      }
       document.body.classList.remove("modal-open");
     }
 
@@ -1980,9 +2069,32 @@ function endDrag() {
             if (!n2) return;
             curName = n2;
             input.value = curName;
-            title.textContent = curName;
-            row.dataset.name = curName;
+            saveData();
+            renderItems();
           });
+          title.textContent = curName;
+          row.dataset.name = curName;
+        });
+
+        titleWrap.appendChild(title);
+        titleWrap.appendChild(renameBtn);
+
+        const ctrl = document.createElement("div");
+        ctrl.className = "ai-ctrl";
+
+        const qty = document.createElement("input");
+        qty.type = "range";
+        qty.min = "1";
+        qty.max = "30";
+        qty.value = String(Math.max(1, parseInt(s.qty || 1, 10) || 1));
+        qty.className = "ai-qty";
+
+        const qtyLabel = document.createElement("span");
+        qtyLabel.className = "ai-qty-label";
+        qtyLabel.textContent = qty.value;
+
+        qty.addEventListener("input", () => {
+          qtyLabel.textContent = qty.value;
         });
 
         const ok = document.createElement("button");
@@ -2089,17 +2201,20 @@ ${raw}`;
     const aiCloseBtn = document.getElementById("ai-close");
     if (aiCloseBtn) aiCloseBtn.addEventListener("click", closeAiModal);
 
-    const aiCloseXBtn = document.getElementById("ai-close-x");
-    if (aiCloseXBtn) aiCloseXBtn.addEventListener("click", closeAiModal);
-
-    // ESC schließt
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        const m = document.getElementById("ai-modal");
-        if (m && m.classList.contains("active")) closeAiModal();
+    const aiAddAllBtn = document.getElementById("ai-add-all");
+    if (aiAddAllBtn) aiAddAllBtn.addEventListener("click", () => {
+      const list = getCurrentList();
+      if (!list) return;
+      const rows = Array.from(document.querySelectorAll("#ai-suggestions .ai-row"));
+      for (const row of rows) {
+        const name = row.dataset.name;
+        const qty = row.querySelector("input.ai-qty")?.value || "1";
+        addOrMergeItem(list, name, qty);
+        row.remove();
       }
+      saveData();
+      renderItems();
     });
-
 
     // Klick außerhalb schließt
     const aiModal = document.getElementById("ai-modal");
@@ -2380,12 +2495,7 @@ ${raw}`;
   <!-- KI Vorschau Popup -->
   <div id="ai-modal" class="popup-overlay">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
-      <div style="position:relative; display:flex; align-items:center; justify-content:center; gap:10px; padding-right:42px;">
-      <div class="take-title" aria-label="Take" style="font-weight:900; letter-spacing:0.2px; font-size:20px; text-align:center;">
-        <span class="take-t">T</span><span class="take-ai">A</span><span class="take-ai">I</span><span class="take-k">K</span>
-      </div>
-      <button id="ai-close-x" class="icon-btn" type="button" title="Schließen" aria-label="Schließen" style="position:absolute; right:0; top:0;">✕</button>
-      </div>
+      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
 <div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
         <div class="ai-actions">
@@ -2399,7 +2509,10 @@ ${raw}`;
       <div id="ai-suggestions" class="ai-list"></div>
 
       <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
-<div style="display:flex; gap:8px;"></div>
+        <button id="ai-add-all" class="btn btn-small">Alle hinzufügen</button>
+        <div style="display:flex; gap:8px;">
+          <button id="ai-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2422,8 +2535,17 @@ ${raw}`;
         </label>
       </div>
 
+      
+      <div class="settings-row" style="margin-top:10px;">
+        <span>Abhaken per Klick aufs Feld</span>
+        <label class="switch" aria-label="Abhaken per Klick aufs Feld">
+          <input id="tap-toggle" type="checkbox">
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
-        <button id="settings-close" class="btn btn-small btn-secondary">Schließen</button>
+        <button id="settings-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
       </div>
     </div>
   </div>
@@ -2443,3 +2565,4 @@ ${raw}`;
 
 </body>
 </html>
+<style>.taik-k{color:#ffffff !important;}</style>
