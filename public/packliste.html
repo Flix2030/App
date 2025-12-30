@@ -516,6 +516,35 @@
     }
     .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
 
+    body.modal-open{ overflow:hidden; }
+
+    /* Modal: Scroll nur im Popup, nicht im Hintergrund */
+    .popup-overlay{ overscroll-behavior: contain; }
+    .popup{ max-height: 86vh; overflow: hidden; }
+    .ai-list{ overscroll-behavior: contain; }
+
+    /* TAIK Button (klein statt großem Textfeld) */
+    .ai-mini{ margin-top: 12px; display:flex; justify-content:flex-start; }
+    .taik-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+    }
+    .taik-btn .taik-t{ font-weight:900; letter-spacing:0.5px; }
+    .taik-btn .taik-ai{ font-weight:900; letter-spacing:0.5px; }
+    .taik-btn .taik-k{ font-weight:900; letter-spacing:0.5px; }
+    .taik-btn .taik-sub{ opacity:.85; font-weight:700; }
+    /* Farbakzente (nutzt vorhandene CSS-Variablen) */
+    .taik-btn .taik-t{ color: var(--text); }
+    .taik-btn .taik-ai{ color: var(--accent); }
+    .taik-btn .taik-k{ color: var(--danger); }
+
+    /* AI Vorschläge: Name + Pinsel */
+    .ai-name-wrap{ display:flex; align-items:center; gap:8px; }
+    .ai-rename-btn{ width: 32px; height: 32px; border-radius: 12px; }
+
     .ai-list{
       display:flex;
       flex-direction:column;
@@ -647,14 +676,14 @@
           <button id="add-item-btn" class="btn btn-small">Hinzufügen</button>
         </div>
       
-        <!-- KI: Vorschläge aus Text + Kontext -->
-        <div class="ai-add">
-          <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Bitte Zahnpasta, Zahnbürste und 3 Badehosen hinzufügen."></textarea>
-          <div class="ai-actions">
-            <button id="ai-plan-btn" class="btn btn-small btn-secondary">KI-Vorschläge erstellen</button>
-            <span id="ai-add-hint" class="muted">Du bekommst eine Vorschau mit ✅ Plus / ❌ X und Mengen-Slider.</span>
-          </div>
+        <!-- KI: Text → Vorschläge (TAIK) -->
+        <div class="ai-mini">
+          <button id="taik-open" class="btn btn-small btn-secondary taik-btn" type="button" title="TAIK: Ask/Take mit KI">
+            <span class="taik-t">T</span><span class="taik-ai">AI</span><span class="taik-k">K</span>
+            <span class="taik-sub">Ask / Take</span>
+          </button>
         </div>
+</div>
 </div>
       <!-- Liste der Artikel -->
       <ul id="items-list"></ul>
@@ -1062,6 +1091,14 @@ function bindUI() {
         document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
       });
       document.getElementById('add-item-btn').addEventListener('click', addItem);
+
+    // TAIK Button: öffnet nur die Vorschau/KI-Box (ohne sofort zu starten)
+    const taikOpenBtn = document.getElementById('taik-open');
+    if (taikOpenBtn) taikOpenBtn.addEventListener('click', () => {
+      openAiModal();
+      setTimeout(() => document.getElementById('ai-item-text')?.focus(), 0);
+    });
+
       
     const aiPlanBtn = document.getElementById('ai-plan-btn');
     if (aiPlanBtn) aiPlanBtn.addEventListener('click', aiPlanSuggestions);
@@ -1471,7 +1508,26 @@ function renderItems() {
       nameSpan.textContent = item.name;
       li.appendChild(nameSpan);
 
-      const qtyText = document.createElement("span");
+      if (editMode) {
+        const rename = document.createElement("button");
+        rename.className = "icon-btn";
+        rename.type = "button";
+        rename.title = "Name ändern";
+        rename.textContent = "🖌️";
+        rename.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const v = prompt("Name ändern:", item.name);
+          if (v === null) return;
+          const n2 = normalizeItemName(v);
+          if (!n2) return;
+          item.name = n2;
+          saveData();
+          renderItems();
+        });
+        li.appendChild(rename);
+      }
+
+const qtyText = document.createElement("span");
       qtyText.className = "qty-text";
       qtyText.textContent = (item.progress || 0) + "/" + (item.qty || 1);
       li.appendChild(qtyText);
@@ -1843,10 +1899,12 @@ function endDrag() {
     function openAiModal() {
       const m = document.getElementById("ai-modal");
       if (m) m.classList.add("active");
+      document.body.classList.add("modal-open");
     }
     function closeAiModal() {
       const m = document.getElementById("ai-modal");
       if (m) m.classList.remove("active");
+      document.body.classList.remove("modal-open");
     }
 
     function renderAiSuggestions(suggestions) {
@@ -1873,15 +1931,39 @@ function endDrag() {
 
         const main = document.createElement("div");
         main.className = "ai-main";
+        let curName = name;
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "ai-name-wrap";
+
         const title = document.createElement("div");
         title.className = "ai-name";
-        title.textContent = name;
+        title.textContent = curName;
+
+        const renameBtn = document.createElement("button");
+        renameBtn.className = "icon-btn ai-rename-btn";
+        renameBtn.type = "button";
+        renameBtn.title = "Name ändern";
+        renameBtn.textContent = "🖌️";
+        renameBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const v = prompt("Name ändern:", curName);
+          if (v === null) return;
+          const n2 = normalizeItemName(v);
+          if (!n2) return;
+          curName = n2;
+          title.textContent = curName;
+          row.dataset.name = curName;
+        });
+
+        titleWrap.appendChild(title);
+        titleWrap.appendChild(renameBtn);
 
         const reason = document.createElement("div");
         reason.className = "ai-reason muted";
         reason.textContent = normalizeItemName(s.reason || "Vorschlag");
 
-        main.appendChild(title);
+        main.appendChild(titleWrap);
         main.appendChild(reason);
 
         const ctrl = document.createElement("div");
@@ -1917,7 +1999,7 @@ function endDrag() {
         ok.addEventListener("click", () => {
           const list = getCurrentList();
           if (!list) return;
-          addOrMergeItem(list, name, qty.value);
+          addOrMergeItem(list, curName, qty.value);
           saveData();
           renderItems();
           row.remove();
@@ -2308,6 +2390,14 @@ ${raw}`;
       <p id="ai-modal-sub" style="margin:0 0 12px; color: var(--muted);">
         Vorschläge prüfen: ✅ hinzufügen, ❌ entfernen, Menge per Slider anpassen.
       </p>
+      <div class="ai-add" style="margin: 10px 0 6px;">
+        <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
+        <div class="ai-actions">
+          <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
+          <span class="muted">Du bekommst eine Vorschau. Du kannst Namen (🖌️) und Mengen anpassen.</span>
+        </div>
+      </div>
+
 
       <div id="ai-suggestions" class="ai-list"></div>
 
