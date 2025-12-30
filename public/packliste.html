@@ -599,7 +599,7 @@
     }
     .ai-main{ flex: 1; min-width: 0; }
     .ai-name{ font-weight: 700; }
-    .ai-reason{ margin-top: 2px; }
+    .ai-reason{display:none;}
     .ai-ctrl{
       display:flex;
       align-items:center;
@@ -2010,11 +2010,17 @@ function endDrag() {
     }
 
     function openAiModal() {
+  const m = document.getElementById("ai-modal");
+  if (m) { m.style.display="flex"; }
+
       const m = document.getElementById("ai-modal");
       if (m) m.classList.add("active");
       document.body.classList.add("modal-open");
     }
     function closeAiModal() {
+  const m = document.getElementById("ai-modal");
+  if (m) { m.classList.remove("active"); m.style.display="none"; }
+
       const m = document.getElementById("ai-modal");
       if (m) {
         m.classList.remove("active");
@@ -2511,7 +2517,7 @@ ${raw}`;
       <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
         <button id="ai-add-all" class="btn btn-small">Alle hinzufügen</button>
         <div style="display:flex; gap:8px;">
-          <button id="ai-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
+          <button id="ai-close" type="button" class="btn btn-small btn-secondary" type="button">Schließen</button>
         </div>
       </div>
     </div>
@@ -2565,4 +2571,24 @@ ${raw}`;
 
 </body>
 </html>
-<style>.taik-k{color:#ffffff !important;}</style>
+<style>
+.taik-t{color:#fff !important;}
+.taik-ai{color:#3ee38c !important;}
+.taik-k{color:#fff !important;}
+</style>
+
+<script>
+(function(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = document.getElementById("ai-mic-btn");
+  const ta = document.getElementById("ai-item-text");
+  if(!mic || !ta || !SR) return;
+  const rec = new SR();
+  rec.lang="de-DE";
+  rec.interimResults=false;
+  mic.onclick = ()=>{ try{ rec.start(); }catch(e){} };
+  rec.onresult = e=>{
+    ta.value = (ta.value + " " + e.results[0][0].transcript).trim();
+  };
+})();
+</script>
