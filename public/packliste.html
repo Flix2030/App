@@ -540,7 +540,7 @@
     .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
     .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
     .taik-btn .taik-ai{ color: var(--accent); }
-    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
+    .taik-btn .taik-k{ color: var(--text); }
 
     .taik-btn .taik-k{ font-weight:900; letter-spacing:0.5px; }
     .taik-btn .taik-sub{ opacity:.85; font-weight:700; }
@@ -551,7 +551,7 @@
     .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
     .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
     .taik-btn .taik-ai{ color: var(--accent); }
-    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
+    .taik-btn .taik-k{ color: var(--text); }
 
     .taik-btn .taik-k{ color: var(--text); }
 
@@ -622,7 +622,15 @@
       text-align:center;
     }
 
-  </style>
+  
+    /* --- TAKE header (AI Modal) --- */
+    .take-title .take-t, .take-title .take-k { color: var(--text); }
+    .take-title .take-ai { color: var(--accent); }
+    /* Sicherheit: Item-Text immer sichtbar */
+    .list-item { color: var(--text); }
+    /* Home-Link im Content-Bereich halten */
+    #back-home-link { position: relative; z-index: 1; }
+</style>
 </head>
 <body>
   <div class="container">
@@ -696,12 +704,13 @@
             <span class="taik-label">Ask <span class="taik-t">t</span><span class="taik-ai">AI</span><span class="taik-k">k</span></span>
           </button>
         </div>
-      <!-- Liste der Artikel -->
+            <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
+
+<!-- Liste der Artikel -->
       <ul id="items-list"></ul>
       <!-- Zurück-Button -->
     </div>
-    <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
-  </div>
+</div>
 
   <!-- Benutzer verwalten Popup -->
   <div id="user-modal" class="popup-overlay">
@@ -1155,6 +1164,9 @@ function bindUI() {
         editToggle.addEventListener('click', function() {
           // Modus wechseln
           editMode = !editMode;
+          // Safety: falls vorher Drag aktiv war
+          document.body.classList.remove("noselect");
+          document.body.style.overflow = "";
           // Buttontext anpassen
           this.textContent = editMode ? 'Fertig' : 'Bearbeiten';
           // Auswahl zurücksetzen, wenn wir Bearbeiten beenden
@@ -1959,15 +1971,16 @@ function endDrag() {
         renameBtn.textContent = "🖌️";
         renameBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          openRenameModal(curName, (v) => {
-            const n2 = normalizeItemName(v);
-            if (!n2) return;
-            curName = n2;
-            input.value = curName;
-            saveData();
-            renderItems();
-          });
+          const v = window.prompt("Name bearbeiten:", curName);
+          const n2 = normalizeItemName(v || "");
+          if (!n2) return;
+          curName = n2;
+          input.value = curName;
           title.textContent = curName;
+          row.dataset.name = curName;
+        });
+
+        title.textContent = curName;
           row.dataset.name = curName;
         });
 
@@ -2389,9 +2402,11 @@ ${raw}`;
   <!-- KI Vorschau Popup -->
   <div id="ai-modal" class="popup-overlay">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
-      <button id="ai-close-x" class="icon-btn" type="button" title="Schließen" aria-label="Schließen">✕</button>
+      <div style="position:relative; display:flex; align-items:center; justify-content:center; gap:10px; padding-right:42px;">
+      <div class="take-title" aria-label="Take" style="font-weight:900; letter-spacing:0.2px; font-size:20px; text-align:center;">
+        <span class="take-t">T</span><span class="take-ai">a</span><span class="take-ai">i</span><span class="take-k">k</span>
+      </div>
+      <button id="ai-close-x" class="icon-btn" type="button" title="Schließen" aria-label="Schließen" style="position:absolute; right:0; top:0;">✕</button>
       </div>
 <div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
@@ -2406,9 +2421,7 @@ ${raw}`;
       <div id="ai-suggestions" class="ai-list"></div>
 
       <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
-<div style="display:flex; gap:8px;">
-          <button id="ai-close" class="btn btn-small btn-secondary">Schließen</button>
-        </div>
+<div style="display:flex; gap:8px;"></div>
       </div>
     </div>
   </div>
