@@ -624,6 +624,42 @@ h1 {
       text-align:center;
     }
 
+  
+    /* === Geräte-Modus (Laptop / iPad / Handy) === */
+    .device-picker{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin: 6px 0 10px;
+    }
+    .device-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.92);
+      cursor:pointer;
+      user-select:none;
+    }
+    .device-btn span{ font-weight: 700; }
+    .device-btn.active{
+      border-color: rgba(62,227,140,0.65);
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.15) inset;
+      background: rgba(62,227,140,0.12);
+    }
+
+    body.device-laptop .container { max-width: 1100px; }
+    body.device-ipad   .container { max-width: 900px; }
+    body.device-phone  .container { max-width: 560px; padding: 14px; }
+
+    body.device-phone  h1 { font-size: 28px; }
+    body.device-phone  .btn { padding: 12px 14px; border-radius: 16px; }
+    body.device-phone  #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
+    body.device-phone  #user-section > div { row-gap: 8px; }
+
   </style>
 </head>
 <body>
@@ -637,6 +673,7 @@ h1 {
       <div style="display:flex; align-items:center; flex-wrap: wrap; margin-bottom: 10px;">
         <select id="user-select"></select>
         <button id="user-manage-btn" class="btn btn-small btn-secondary">Benutzer verwalten</button>
+        <button id="open-settings-btn-home" class="btn btn-small btn-secondary" type="button">⚙️ Einstellungen</button>
       </div>
     </div>
     <!-- Listen-Übersicht -->
@@ -647,6 +684,7 @@ h1 {
           <button id="add-list-btn" class="btn btn-small">Neue Liste</button>
           <button id="import-new-list-btn" class="btn btn-small btn-secondary">Importieren</button>
           <button id="lists-edit-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+          <button id="open-settings-btn-lists" class="btn btn-small btn-secondary" type="button">⚙️ Einstellungen</button>
         </div>
         <div class="right">
           <span class="hint" id="lists-edit-hint" style="display:none;">Bearbeiten aktiv</span>
@@ -977,9 +1015,33 @@ async function init() {
   // 4) UI rendern
   // UI-Events binden (nur einmal)
   bindUI();
+  applyDeviceMode();
   loadUsers();
 }
 
+
+
+    // === Geräte-Modus (Laptop / iPad / Handy) ===
+    const DEVICE_KEY = "packliste_device_mode";
+
+    function getDeviceMode() {
+      const v = localStorage.getItem(DEVICE_KEY);
+      return (v === "ipad" || v === "phone" || v === "laptop") ? v : "laptop";
+    }
+    function setDeviceMode(mode) {
+      if (!["laptop","ipad","phone"].includes(mode)) return;
+      localStorage.setItem(DEVICE_KEY, mode);
+      applyDeviceMode();
+    }
+    function applyDeviceMode() {
+      const mode = getDeviceMode();
+      document.body.classList.remove("device-laptop","device-ipad","device-phone");
+      document.body.classList.add(`device-${mode}`);
+
+      // UI-Highlight in Settings
+      const btns = Array.from(document.querySelectorAll(".device-btn"));
+      btns.forEach(b => b.classList.toggle("active", b.dataset.device === mode));
+    }
 
 function getCompletedBehavior() {
   // Werte: "none" | "bottom"
@@ -1181,20 +1243,26 @@ function bindUI() {
       // ⚙️ Einstellungen
       const settingsModal = document.getElementById("settings-modal");
       const openSettingsBtn = document.getElementById("open-settings-btn");
+      const openSettingsBtnHome = document.getElementById("open-settings-btn-home");
+      const openSettingsBtnLists = document.getElementById("open-settings-btn-lists");
+      const deviceBtns = Array.from(document.querySelectorAll(".device-btn"));
       const settingsCloseBtn = document.getElementById("settings-close");
       const doneBottomToggle = document.getElementById("done-bottom-toggle");
 
       function syncSettingsUI() {
         const v = getCompletedBehavior();
         if (doneBottomToggle) doneBottomToggle.checked = (v === "bottom");
+        applyDeviceMode();
       }
 
-      if (openSettingsBtn) {
-        openSettingsBtn.addEventListener("click", () => {
-          syncSettingsUI();
-          settingsModal.classList.add("active");
-        });
+      function openSettings() {
+        syncSettingsUI();
+        settingsModal.classList.add("active");
       }
+
+      if (openSettingsBtn) openSettingsBtn.addEventListener("click", openSettings);
+      if (openSettingsBtnHome) openSettingsBtnHome.addEventListener("click", openSettings);
+      if (openSettingsBtnLists) openSettingsBtnLists.addEventListener("click", openSettings);
 
       if (settingsCloseBtn) {
         settingsCloseBtn.addEventListener("click", () => {
@@ -1211,6 +1279,15 @@ function bindUI() {
         });
       }
             
+      // Gerät auswählen
+      if (deviceBtns && deviceBtns.length) {
+        deviceBtns.forEach(btn => {
+          btn.addEventListener("click", () => {
+            setDeviceMode(btn.dataset.device);
+          });
+        });
+      }
+
       // ===== AI Modal: nur Outside-Click schließt (keine Buttons) =====
       const aiModal = document.getElementById("ai-modal");
       if (aiModal) {
@@ -2408,6 +2485,16 @@ ${raw}`;
   <div id="settings-modal" class="popup-overlay">
     <div class="popup">
       <h3 style="margin:0 0 8px;">Einstellungen</h3>
+      <div class="divider" style="margin:10px 0 12px;"></div>
+      <h4 style="margin:0 0 8px;">Gerät</h4>
+      <div class="device-picker" role="radiogroup" aria-label="Gerät auswählen">
+        <button id="device-laptop" class="device-btn" type="button" data-device="laptop" aria-label="Laptop">💻 <span>Laptop</span></button>
+        <button id="device-ipad" class="device-btn" type="button" data-device="ipad" aria-label="iPad">📱 <span>iPad</span></button>
+        <button id="device-phone" class="device-btn" type="button" data-device="phone" aria-label="Handy">📲 <span>Handy</span></button>
+      </div>
+      <p class="hint" style="margin:0 0 14px;">Passt Größen/Abstände an – wird im Browser gespeichert.</p>
+
+      <div class="divider" style="margin:10px 0 12px;"></div>
       <p style="margin:0 0 14px; color: var(--muted);">
         Was soll passieren, wenn ein Eintrag fertig ist?
       </p>
