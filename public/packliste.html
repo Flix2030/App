@@ -47,7 +47,17 @@
       width: 100%;
     }
 
-    h1 {
+    
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 14px;
+    }
+    .topbar h1{ margin:0; }
+    .topbar .back-link{ margin-top:0; }
+h1 {
       color: var(--text);
       margin: 0 0 18px;
       font-size: 2rem;
@@ -618,7 +628,10 @@
 </head>
 <body>
   <div class="container">
+    <div class="topbar">
     <h1>Packlisten verwalten</h1>
+    <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
+  </div>
     <div id="user-section">
       <h2>Benutzer</h2>
       <div style="display:flex; align-items:center; flex-wrap: wrap; margin-bottom: 10px;">
@@ -694,7 +707,7 @@
       <ul id="items-list"></ul>
       <!-- Zurück-Button -->
     </div>
-    <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
+    
   </div>
 
   <!-- Benutzer verwalten Popup -->
@@ -899,12 +912,14 @@
 
   // Wenn ein User gewählt ist, Listen laden
   if (typeof currentUserId !== "undefined" && currentUserId) {
-    loadLists();
-
-    // Wenn eine Liste gewählt ist, Editor anzeigen + Items rendern
+    // Wenn eine Liste gewählt ist -> Editor anzeigen + Items rendern
     if (typeof currentListId !== "undefined" && currentListId) {
       if (typeof showListEditSection === "function") showListEditSection();
       if (typeof renderItems === "function") renderItems();
+    } else {
+      // Keine Liste gewählt -> sicher zurück in die Listenübersicht (wichtig nach "Zurück")
+      if (typeof showListsSection === "function") showListsSection();
+      else loadLists();
     }
   }
 }
