@@ -1707,6 +1707,9 @@ const qtyText = document.createElement("span");
     nameSpan.textContent = item.name;
     li.appendChild(nameSpan);
 
+    let sliderEl = null;
+    let qtyTextEl = null;
+
     // qty > 1 => Slider rechts
     if ((item.qty || 1) > 1) {
       const right = document.createElement("div");
@@ -1714,23 +1717,23 @@ const qtyText = document.createElement("span");
       right.style.alignItems = "center";
       right.style.gap = "10px";
 
-      const slider = document.createElement("input");
-      slider.type = "range";
-      slider.min = 0;
-      slider.max = item.qty;
-      slider.value = item.progress;
-      slider.style.minWidth = "220px";
+      sliderEl = document.createElement("input");
+      sliderEl.type = "range";
+      sliderEl.min = 0;
+      sliderEl.max = item.qty;
+      sliderEl.value = item.progress;
+      sliderEl.style.minWidth = "220px";
 
-      const qtyText = document.createElement("span");
-      qtyText.className = "qty-text";
-      qtyText.textContent = item.progress + "/" + item.qty;
+      qtyTextEl = document.createElement("span");
+      qtyTextEl.className = "qty-text";
+      qtyTextEl.textContent = item.progress + "/" + item.qty;
 
       // Smooth live
-      slider.addEventListener("input", () => {
-        item.progress = parseInt(slider.value, 10) || 0;
+      sliderEl.addEventListener("input", () => {
+        item.progress = parseInt(sliderEl.value, 10) || 0;
         if (item.progress > (item.qty || 1)) item.progress = (item.qty || 1);
 
-        qtyText.textContent = item.progress + "/" + item.qty;
+        qtyTextEl.textContent = item.progress + "/" + item.qty;
 
         if (isDone(item)) li.classList.add("item-done");
         else li.classList.remove("item-done");
@@ -1743,22 +1746,26 @@ const qtyText = document.createElement("span");
         saveData();
         if (completedBehavior === "bottom") renderItems();
       };
-      slider.addEventListener("change", commit);
-      slider.addEventListener("pointerup", commit);
+      sliderEl.addEventListener("change", commit);
+      sliderEl.addEventListener("pointerup", commit);
 
-      right.appendChild(slider);
-      right.appendChild(qtyText);
+      right.appendChild(sliderEl);
+      right.appendChild(qtyTextEl);
       li.appendChild(right);
 
       // Klick auf den Slider darf NICHT togglen
-      slider.addEventListener("click", (e) => e.stopPropagation());
-      slider.addEventListener("pointerdown", (e) => e.stopPropagation());
+      sliderEl.addEventListener("click", (e) => e.stopPropagation());
+      sliderEl.addEventListener("pointerdown", (e) => e.stopPropagation());
     }
 
     // ✅ Klick auf die ganze Zeile toggelt "fertig"
     li.addEventListener("click", () => {
       const done = isDone(item);
       item.progress = done ? 0 : (item.qty || 1);
+
+      // Slider/Text direkt mitsynchronisieren
+      if (sliderEl) sliderEl.value = item.progress;
+      if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty || 1);
 
       saveData();
 
