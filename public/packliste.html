@@ -538,14 +538,14 @@
     .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
     .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
     .taik-btn .taik-ai{ color: var(--accent); }
-    .taik-btn .taik-k{ color: rgba(255,255,255,0.82); }
+    .taik-btn .taik-k{ color: #ffffff; }
 
     .taik-btn .taik-k{ font-weight:900; letter-spacing:0.5px; }
     .taik-btn .taik-sub{ opacity:.85; font-weight:700; }
     /* Farbakzente (nutzt vorhandene CSS-Variablen) */
     .taik-btn .taik-t{ color: var(--text); }
 
-    .taik-btn .taik-k{ color: var(--danger); }
+    .taik-btn .taik-k{ color: #ffffff; }
 
     /* AI Vorschläge: Name + Pinsel */
     .ai-name-wrap{ display:flex; align-items:center; gap:8px; }
@@ -613,31 +613,6 @@
       color: rgba(255,255,255,0.70);
       text-align:center;
     }
-
-    /* AI Modal Header + X */
-.modal-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-
-.modal-x{
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.92);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  user-select:none;
-  transition: transform .08s ease, filter .12s ease;
-}
-
-.modal-x:hover{ filter: brightness(1.08); transform: translateY(-1px); }
 
   </style>
 </head>
@@ -1221,34 +1196,14 @@ function bindUI() {
           // settingsModal bleibt offen
         });
       }
-            // ===== AI Modal: Close + X + Outside-Click + Add-All (erst jetzt, DOM ist da) =====
+            
+      // ===== AI Modal: nur Outside-Click schließt (keine Buttons) =====
       const aiModal = document.getElementById("ai-modal");
-      const aiCloseBtn = document.getElementById("ai-close");
-      const aiCloseX = document.getElementById("ai-close-x");
-      const aiAddAllBtn = document.getElementById("ai-add-all");
-
-      if (aiCloseBtn) aiCloseBtn.addEventListener("click", closeAiModal);
-      if (aiCloseX) aiCloseX.addEventListener("click", closeAiModal);
-
       if (aiModal) {
         aiModal.addEventListener("click", (e) => {
-          if (e.target === aiModal) closeAiModal(); // Klick aufs Overlay
+          if (e.target === aiModal) closeAiModal();
         });
       }
-
-      if (aiAddAllBtn) aiAddAllBtn.addEventListener("click", () => {
-        const list = getCurrentList();
-        if (!list) return;
-        const rows = Array.from(document.querySelectorAll("#ai-suggestions .ai-row"));
-        for (const row of rows) {
-          const name = row.dataset.name;
-          const qty = row.querySelector("input.ai-qty")?.value || "1";
-          addOrMergeItem(list, name, qty);
-          row.remove();
-        }
-        saveData();
-        renderItems();
-      });
 
 } // <- NUR DIESE EINE KLAMMER schließt bindUI()
 
@@ -2147,14 +2102,6 @@ ${raw}`;
       }
     }
 
-    // Klick außerhalb schließt
-    const aiModal = document.getElementById("ai-modal");
-    if (aiModal) {
-      aiModal.addEventListener("click", (e) => {
-        if (e.target === aiModal) closeAiModal();
-      });
-    }
-
     // Listen exportieren und importieren
     function exportList(listId) {
       const user = getCurrentUser();
@@ -2426,10 +2373,7 @@ ${raw}`;
   <!-- KI Vorschau Popup -->
   <div id="ai-modal" class="popup-overlay">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
-      <div class="modal-header" style="margin:0 0 6px;">
-        <h3 style="margin:0;">KI-Vorschläge</h3>
-        <button id="ai-close-x" class="modal-x" type="button" aria-label="Schließen">✕</button>
-      </div>
+      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
 <div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
         <div class="ai-actions">
@@ -2442,12 +2386,6 @@ ${raw}`;
 
       <div id="ai-suggestions" class="ai-list"></div>
 
-      <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px; flex-wrap:wrap;">
-        <button id="ai-add-all" class="btn btn-small">Alle hinzufügen</button>
-        <div style="display:flex; gap:8px;">
-          <button id="ai-close" class="btn btn-small btn-secondary">Schließen</button>
-        </div>
-      </div>
     </div>
   </div>
 
