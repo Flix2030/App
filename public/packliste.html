@@ -20,7 +20,19 @@
       --radius: 18px;
     }
 
-    body {
+    
+    /* Lightmode */
+    body.lightmode {
+      --bg0: #f6f7fb;
+      --bg1: #ffffff;
+      --panel: rgba(255,255,255,0.86);
+      --panel2: rgba(255,255,255,0.92);
+      --border: rgba(0,0,0,0.10);
+      --text: rgba(10,12,18,0.92);
+      --muted: rgba(10,12,18,0.62);
+      --shadow: 0 18px 60px rgba(0,0,0,0.18);
+    }
+body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, sans-serif;
       color: var(--text);
@@ -501,6 +513,18 @@ h1 {
     .switch input:checked + .slider-round:before{
       transform: translate(22px, -50%);
     }
+    /* Checkbox-Mode in der Item-Liste */
+    #items-list .item-check {
+      width: 22px;
+      height: 22px;
+      margin-right: 10px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    body.checkbox-mode #items-list .list-item { cursor: default; }
+    body.checkbox-mode #items-list .list-item .item-name,
+    body.checkbox-mode #items-list .list-item .qty-text { pointer-events: auto; }
+
 
 
   
@@ -785,23 +809,33 @@ h1 {
   <!-- Listen-Einstellungen -->
   <div id="list-settings-modal" class="popup-overlay">
     <div class="popup">
-      <h3 style="margin:0 0 8px;">Listen-Einstellungen</h3>
-      <p style="margin:0 0 14px; color: var(--muted);">Was soll passieren, wenn ein Eintrag fertig abgehakt ist?</p>
+      <h3 style="margin:0 0 12px;">Listen-Einstellungen</h3>
 
-      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
-        <label style="display:flex; gap:10px; align-items:center;">
-          <input type="radio" name="doneBehavior" value="stay" />
-          <span>Nichts (bleibt an der Stelle)</span>
-        </label>
-        <label style="display:flex; gap:10px; align-items:center;">
-          <input type="radio" name="doneBehavior" value="bottom" />
-          <span>Fertige Einträge nach unten</span>
-        </label>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div>
+            <div style="font-weight:800; margin:0;">Fertige nach unten</div>
+          </div>
+          <label class="switch" aria-label="Fertige nach unten">
+            <input id="list-done-bottom-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div>
+            <div style="font-weight:800; margin:0;">Abhaken mit Kästchen</div>
+          </div>
+          <label class="switch" aria-label="Abhaken mit Kästchen">
+            <input id="list-checkbox-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
+        </div>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:8px;">
-        <button id="list-settings-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
-        <button id="list-settings-save" class="btn btn-small">Speichern</button>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button id="list-settings-cancel" class="btn btn-small btn-secondary" type="button">Schließen</button>
+        <button id="list-settings-save" class="btn btn-small" type="button">Speichern</button>
       </div>
     </div>
   </div>
@@ -1015,6 +1049,7 @@ async function init() {
   // 4) UI rendern
   // UI-Events binden (nur einmal)
   bindUI();
+  applyTheme();
   applyDeviceMode();
   loadUsers();
 }
@@ -1052,6 +1087,28 @@ function setCompletedBehavior(v) {
   localStorage.setItem("packliste_completedBehavior", v === "bottom" ? "bottom" : "none");
 }
 
+
+
+
+
+function getTheme() {
+  return localStorage.getItem("packliste_theme") || "dark";
+}
+function setTheme(v) {
+  localStorage.setItem("packliste_theme", v === "light" ? "light" : "dark");
+  applyTheme();
+}
+function applyTheme() {
+  const v = getTheme();
+  document.body.classList.toggle("lightmode", v === "light");
+}
+
+function ensureListSettings(list) {
+  if (!list.settings || typeof list.settings !== "object") list.settings = {};
+  if (typeof list.settings.doneBottom !== "boolean") list.settings.doneBottom = false;
+  if (typeof list.settings.checkbox !== "boolean") list.settings.checkbox = false;
+  return list.settings;
+}
 
 function bindUI() {
       // Benutzer verwalten (Popup)
@@ -1140,31 +1197,41 @@ function bindUI() {
       });
       // Listen-Einstellungen (⚙️)
       const listSettingsModal = document.getElementById('list-settings-modal');
-      const openListSettings = () => {
+      const listDoneBottomToggle = document.getElementById('list-done-bottom-toggle');
+      const listCheckboxToggle = document.getElementById('list-checkbox-toggle');
+
+      function openListSettings() {
         const list = getCurrentList();
         if (!list) return;
-        const s = getCurrentListSettings();
-        const radios = listSettingsModal.querySelectorAll('input[name="doneBehavior"]');
-        radios.forEach(r => r.checked = (r.value === s.doneBehavior));
+        const s = ensureListSettings(list);
+        if (listDoneBottomToggle) listDoneBottomToggle.checked = !!s.doneBottom;
+        if (listCheckboxToggle) listCheckboxToggle.checked = !!s.checkbox;
         listSettingsModal.classList.add('active');
-      };
-      const settingsBtn = document.getElementById('list-settings-btn');
-      if (settingsBtn) settingsBtn.addEventListener('click', openListSettings);
+      }
 
-      document.getElementById('list-settings-cancel').addEventListener('click', () => {
-        listSettingsModal.classList.remove('active');
-      });
-      document.getElementById('list-settings-save').addEventListener('click', () => {
-        const list = getCurrentList();
-        if (!list) { listSettingsModal.classList.remove('active'); return; }
-        const chosen = listSettingsModal.querySelector('input[name="doneBehavior"]:checked')?.value || "stay";
-        if (!list.settings || typeof list.settings !== "object") list.settings = {};
-        list.settings.doneBehavior = chosen;
-        applyCompletionBehavior(list);
-        saveData();
-        renderItems();
-        listSettingsModal.classList.remove('active');
-      });
+      // Button in der Listenansicht
+      if (openSettingsBtn) {
+        openSettingsBtn.addEventListener('click', openListSettings);
+      }
+
+      if (document.getElementById('list-settings-cancel')) {
+        document.getElementById('list-settings-cancel').addEventListener('click', () => {
+          listSettingsModal.classList.remove('active');
+        });
+      }
+
+      if (document.getElementById('list-settings-save')) {
+        document.getElementById('list-settings-save').addEventListener('click', () => {
+          const list = getCurrentList();
+          if (!list) { listSettingsModal.classList.remove('active'); return; }
+          const s = ensureListSettings(list);
+          s.doneBottom = !!(listDoneBottomToggle && listDoneBottomToggle.checked);
+          s.checkbox = !!(listCheckboxToggle && listCheckboxToggle.checked);
+          saveData();
+          renderItems();
+          listSettingsModal.classList.remove('active');
+        });
+      }
 
       // Event-Handler für Artikel hinzufügen
       document.getElementById('new-item-qty').addEventListener('input', function() {
@@ -1247,12 +1314,12 @@ function bindUI() {
       const openSettingsBtnLists = document.getElementById("open-settings-btn-lists");
       const deviceBtns = Array.from(document.querySelectorAll(".device-btn"));
       const settingsCloseBtn = document.getElementById("settings-close");
-      const doneBottomToggle = document.getElementById("done-bottom-toggle");
 
       function syncSettingsUI() {
-        const v = getCompletedBehavior();
-        if (doneBottomToggle) doneBottomToggle.checked = (v === "bottom");
-        applyDeviceMode();
+        applyDevice(getDevice());
+        const t = getTheme();
+        const themeToggle = document.getElementById("theme-toggle");
+        if (themeToggle) themeToggle.checked = (t === "dark");
       }
 
       function openSettings() {
@@ -1270,21 +1337,19 @@ function bindUI() {
         });
       }
 
-      // Toggle ändern -> speichern + sofort neu rendern (Popup bleibt offen)
-      if (doneBottomToggle) {
-        doneBottomToggle.addEventListener("change", () => {
-          setCompletedBehavior(doneBottomToggle.checked ? "bottom" : "none");
-          renderItems(); // ✅ sofort umsortieren, wenn "bottom"
-          // settingsModal bleibt offen
-        });
-      }
-            
       // Gerät auswählen
       if (deviceBtns && deviceBtns.length) {
         deviceBtns.forEach(btn => {
           btn.addEventListener("click", () => {
             setDeviceMode(btn.dataset.device);
           });
+        });
+      }
+
+      const themeToggle = document.getElementById("theme-toggle");
+      if (themeToggle) {
+        themeToggle.addEventListener("change", () => {
+          setTheme(themeToggle.checked ? "dark" : "light");
         });
       }
 
@@ -1553,7 +1618,10 @@ function renderItems() {
   const list = getCurrentList();
   if (!list) return;
 
-  const completedBehavior = getCompletedBehavior();
+  const s = ensureListSettings(list);
+  const completedBehavior = s.doneBottom ? "bottom" : "none";
+  const checkboxMode = !!s.checkbox;
+  document.body.classList.toggle("checkbox-mode", checkboxMode);
   const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
 
   // Items normalisieren
@@ -1758,8 +1826,8 @@ const qtyText = document.createElement("span");
       sliderEl.addEventListener("pointerdown", (e) => e.stopPropagation());
     }
 
-    // ✅ Klick auf die ganze Zeile toggelt "fertig"
-    li.addEventListener("click", () => {
+    // Checkbox / Klick-Verhalten
+    const doToggleDone = () => {
       const done = isDone(item);
       item.progress = done ? 0 : (item.qty || 1);
 
@@ -1773,12 +1841,35 @@ const qtyText = document.createElement("span");
       if (completedBehavior === "bottom") {
         renderItems();
       } else {
-        // ohne komplette Neurender: Klasse direkt
         if (isDone(item)) li.classList.add("item-done");
         else li.classList.remove("item-done");
         updateCompletion();
       }
-    });
+    };
+
+    if (checkboxMode) {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "item-check";
+      cb.checked = isDone(item);
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", () => {
+        // wenn checked -> fertig, sonst 0
+        item.progress = cb.checked ? (item.qty || 1) : 0;
+        if (sliderEl) sliderEl.value = item.progress;
+        if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty || 1);
+        saveData();
+        if (completedBehavior === "bottom") renderItems();
+        else {
+          if (isDone(item)) li.classList.add("item-done");
+          else li.classList.remove("item-done");
+          updateCompletion();
+        }
+      });
+      li.insertBefore(cb, li.firstChild);
+        } else {
+      li.addEventListener("click", doToggleDone);
+    }
 
     ul.appendChild(li);
   });
@@ -2491,32 +2582,27 @@ ${raw}`;
     <!-- Einstellungen Popup -->
   <div id="settings-modal" class="popup-overlay">
     <div class="popup">
-      <h3 style="margin:0 0 8px;">Einstellungen</h3>
-      <div class="divider" style="margin:10px 0 12px;"></div>
+      <h3 style="margin:0 0 12px;">Einstellungen</h3>
+
       <h4 style="margin:0 0 8px;">Gerät</h4>
       <div class="device-picker" role="radiogroup" aria-label="Gerät auswählen">
         <button id="device-laptop" class="device-btn" type="button" data-device="laptop" aria-label="Laptop">💻 <span>Laptop</span></button>
         <button id="device-ipad" class="device-btn" type="button" data-device="ipad" aria-label="iPad">📱 <span>iPad</span></button>
         <button id="device-phone" class="device-btn" type="button" data-device="phone" aria-label="Handy">📲 <span>Handy</span></button>
       </div>
-      <p class="hint" style="margin:0 0 14px;">Passt Größen/Abstände an – wird im Browser gespeichert.</p>
 
-      <div class="divider" style="margin:10px 0 12px;"></div>
-      <p style="margin:0 0 14px; color: var(--muted);">
-        Was soll passieren, wenn ein Eintrag fertig ist?
-      </p>
+      <div class="divider" style="margin:14px 0 12px;"></div>
 
-      <div class="settings-row">
-        <span>Abgehakte nach unten</span>
-
-        <label class="switch" aria-label="Abgehakte nach unten">
-          <input id="done-bottom-toggle" type="checkbox">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="font-weight:800;">Darkmode</div>
+        <label class="switch" aria-label="Darkmode">
+          <input id="theme-toggle" type="checkbox">
           <span class="slider-round"></span>
         </label>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
-        <button id="settings-close" class="btn btn-small btn-secondary">Schließen</button>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button id="settings-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
       </div>
     </div>
   </div>
