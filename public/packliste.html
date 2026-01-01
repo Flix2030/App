@@ -1017,7 +1017,22 @@ function saveData() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
+
       if (r.status === 401) return { unauth: true };
+
+      // Safety-Guard vom Worker: erst bestätigen, dann force-save
+      if (r.status === 409) {
+        const j = await r.json().catch(() => null);
+        if (j && j.needsConfirm && j.confirmToken) {
+          const msg = buildSafetyConfirmMessage(j);
+          const ok = await confirmAsync(msg);
+          if (!ok) return { unauth: false, canceled: true };
+
+          const forced = { ...body, _force: true, _confirm: j.confirmToken };
+          return apiSaveProfile(profileId, forced);
+        }
+      }
+
       if (!r.ok) throw new Error("apiSaveProfile failed: " + r.status);
       return { unauth: false };
     }
@@ -1027,7 +1042,24 @@ function saveData() {
         method: "DELETE",
         credentials: "include"
       });
+
       if (r.status === 401) return { unauth: true };
+
+      if (r.status === 409) {
+        const j = await r.json().catch(() => null);
+        if (j && j.needsConfirm && j.confirmToken) {
+          const msg = buildSafetyConfirmMessage(j);
+          const ok = await confirmAsync(msg);
+          if (!ok) return { unauth: false, canceled: true };
+
+          const url = "/api/profiles/" + encodeURIComponent(profileId) + "?force=1&confirm=" + encodeURIComponent(j.confirmToken);
+          const r2 = await fetch(url, { method: "DELETE", credentials: "include" });
+          if (r2.status === 401) return { unauth: true };
+          if (!r2.ok) throw new Error("apiDeleteProfile failed: " + r2.status);
+          return { unauth: false };
+        }
+      }
+
       if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
       return { unauth: false };
     }
@@ -1561,6 +1593,26 @@ function bindUI() {
           onConfirm();
         }
       };
+    }
+
+    // Promise-basierte Bestätigung (für Worker-Safety-Checks)
+    function confirmAsync(message) {
+      return new Promise((resolve) => {
+        popupMessage.textContent = message;
+        overlay.classList.add("active");
+        popupCallback = function(ok) {
+          overlay.classList.remove("active");
+          resolve(!!ok);
+        };
+      });
+    }
+
+    function buildSafetyConfirmMessage(j) {
+      const parts = [];
+      if (j.reason) parts.push(j.reason);
+      if (typeof j.listsDeleted === "number" && j.listsDeleted > 0) parts.push(`Listen betroffen: ${j.listsDeleted}`);
+      if (typeof j.itemsDeleted === "number" && j.itemsDeleted > 0) parts.push(`Items betroffen: ${j.itemsDeleted}`);
+      return "⚠️ Sicherheitsabfrage\n" + parts.join(" • ");
     }
 
     function showItemEditor(item, onConfirm) {
