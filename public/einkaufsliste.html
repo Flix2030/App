@@ -20,17 +20,6 @@
       --danger: #ff4d6d;
     }
 
-    body.lightmode {
-      --bg0: #f6f7fb;
-      --bg1: #ffffff;
-      --panel: rgba(255,255,255,0.86);
-      --panel2: rgba(255,255,255,0.92);
-      --border: rgba(0,0,0,0.10);
-      --text: rgba(10,12,18,0.92);
-      --muted: rgba(10,12,18,0.62);
-      --shadow: 0 18px 60px rgba(0,0,0,0.18);
-    }
-
     html, body{
       height: auto;
       min-height: 100vh;
@@ -153,7 +142,6 @@
 
     .hidden{ display:none; }
 
-    /* Progress Header (wie Packliste) */
     .list-header{
       display:flex;
       justify-content: space-between;
@@ -196,7 +184,6 @@
       transition: width 220ms ease;
     }
 
-    /* Add Row */
     .add-row{
       display:flex;
       gap:12px;
@@ -210,14 +197,12 @@
     .qty-label{ min-width:64px; text-align:right; color: rgba(235,244,255,0.75); font-weight: 800; }
     .qty-text{ min-width:64px; text-align:right; color: rgba(235,244,255,0.78); font-weight: 800; letter-spacing: .2px; }
 
-    /* Fertig = grün */
     #items-list .list-item.item-done{
       background: rgba(62,227,140,0.16) !important;
       border-color: rgba(62,227,140,0.65) !important;
       box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
     }
 
-    /* Klick auf ganze Zeile nur wenn NICHT checkbox-mode */
     #items-list .list-item{ cursor:pointer; }
     #items-list .list-item .item-name,
     #items-list .list-item .qty-text{ pointer-events:none; }
@@ -235,7 +220,6 @@
       cursor: pointer;
     }
 
-    /* Popup */
     .popup-overlay{
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.5);
@@ -271,7 +255,6 @@
     }
     .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; }
 
-    /* Switch (wie Packliste) */
     .switch{ position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
     .switch input{ opacity:0; width:0; height:0; }
     .slider-round{
@@ -300,7 +283,6 @@
       transform: translate(22px, -50%);
     }
 
-    /* AI */
     .ai-mini{ margin-top: 12px; display:flex; justify-content:flex-start; }
     .taik-btn{
       display:inline-flex; align-items:center; gap:10px;
@@ -364,13 +346,42 @@
       color: rgba(255,255,255,0.70);
       text-align:center;
     }
+
+    .sync-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.80);
+      font-weight: 800;
+      font-size: 12px;
+      user-select:none;
+      margin-left: 8px;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:999px;
+      background: rgba(255,255,255,0.35);
+      box-shadow: 0 0 12px rgba(255,255,255,0.12);
+    }
+    .dot.ok{ background: rgba(62,227,140,0.9); box-shadow: 0 0 14px rgba(62,227,140,0.55); }
+    .dot.bad{ background: rgba(255,77,109,0.9); box-shadow: 0 0 14px rgba(255,77,109,0.55); }
+    .dot.work{ background: rgba(255,255,255,0.75); box-shadow: 0 0 14px rgba(255,255,255,0.35); }
   </style>
 </head>
 
 <body>
   <div class="container">
     <div class="topbar">
-      <h1>Einkaufsliste</h1>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <h1>Einkaufsliste</h1>
+        <div class="sync-pill" id="sync-pill" title="Cloud Sync">
+          <span class="dot work" id="sync-dot"></span>
+          <span id="sync-text">Lade…</span>
+        </div>
+      </div>
       <a class="back-link" href="/home">&#x2B05; Home</a>
     </div>
 
@@ -495,15 +506,83 @@
 
   <script>
     (function(){
-      // ===== Storage =====
-      const STORAGE_KEY = "einkaufData";
-      const THEME_KEY = "einkauf_theme";
-      let data = null;
+      // ===== Cloud Storage (0 localStorage) =====
+      let data = { lists: [] };
       let currentListId = null;
       let listsEditMode = false;
       let editMode = false;
 
-      // popup
+      // sync UI
+      const syncDot = document.getElementById("sync-dot");
+      const syncText = document.getElementById("sync-text");
+      function setSync(state, text){
+        syncDot.classList.remove("ok","bad","work");
+        syncDot.classList.add(state);
+        syncText.textContent = text;
+      }
+
+      function redirectToLogin(){
+        const rt = location.pathname + location.search + location.hash;
+        location.href = "/login?returnTo=" + encodeURIComponent(rt);
+      }
+
+      async function apiGet(){
+        const r = await fetch("/api/einkauf/data", { credentials: "include" });
+        if (r.status === 401) redirectToLogin();
+        const j = await r.json().catch(()=>null);
+        if (!j || j.ok !== true) throw new Error(j?.error || "load_failed");
+        return j.data || { lists: [] };
+      }
+
+      async function apiPut(obj){
+        const r = await fetch("/api/einkauf/data", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(obj)
+        });
+        if (r.status === 401) redirectToLogin();
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "save_failed");
+      }
+
+      let saveTimer = null;
+      let saving = false;
+      let saveQueued = false;
+
+      function scheduleSave(){
+        // debounce
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(()=> saveNow().catch(()=>{}), 250);
+        setSync("work", "Speichere…");
+      }
+
+      async function saveNow(){
+        if (saving){
+          saveQueued = true;
+          return;
+        }
+        saving = true;
+        try{
+          await apiPut(data);
+          setSync("ok", "Gespeichert");
+        }catch(e){
+          setSync("bad", "Fehler");
+          console.error(e);
+        }finally{
+          saving = false;
+          if (saveQueued){
+            saveQueued = false;
+            scheduleSave();
+          }
+        }
+      }
+
+      function makeId(prefix){
+        return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+      }
+
+      // ===== popup =====
       const overlay = document.getElementById("popup-overlay");
       const popupMessage = document.getElementById("popup-message");
       const popupInput = document.getElementById("popup-input");
@@ -511,25 +590,6 @@
       const popupQtyLabel = document.getElementById("popup-qty-label");
       let popupCallback = null;
 
-      function loadData(){
-        try{
-          const s = localStorage.getItem(STORAGE_KEY);
-          if (s) return JSON.parse(s);
-        }catch(_){}
-        return { lists: [] };
-      }
-      function saveData(){
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      }
-
-      function makeId(prefix){
-        return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
-      }
-
-      function getTheme(){ return localStorage.getItem(THEME_KEY) || "dark"; }
-      function applyTheme(){ document.body.classList.toggle("lightmode", getTheme()==="light"); }
-
-      // ===== Popups =====
       document.getElementById("popup-confirm").addEventListener("click", ()=> popupCallback && popupCallback(true));
       document.getElementById("popup-cancel").addEventListener("click", ()=> popupCallback && popupCallback(false));
       popupRange.addEventListener("input", ()=> popupQtyLabel.textContent = popupRange.value);
@@ -639,7 +699,7 @@
               showPrompt("Neuer Name der Liste:", list.name || "", (v)=>{
                 if (!v) return;
                 list.name = v;
-                saveData();
+                scheduleSave();
                 loadLists();
               });
             });
@@ -652,7 +712,7 @@
               e.stopPropagation();
               showConfirm(`Liste "${list.name}" wirklich löschen?`, ()=>{
                 data.lists = data.lists.filter(x=>x.id!==list.id);
-                saveData();
+                scheduleSave();
                 loadLists();
               });
             });
@@ -721,7 +781,7 @@
           const changed = sorted.some((it,i)=> it.id !== before[i]?.id);
           if (changed){
             list.items = sorted;
-            saveData();
+            scheduleSave();
           }
         }
 
@@ -759,7 +819,7 @@
                 item.name = n;
                 item.qty = q;
                 if (item.progress > item.qty) item.progress = item.qty;
-                saveData();
+                scheduleSave();
                 renderItems();
               });
             });
@@ -772,7 +832,7 @@
               e.stopPropagation();
               showConfirm(`Eintrag "${item.name}" entfernen?`, ()=>{
                 list.items.splice(idx,1);
-                saveData();
+                scheduleSave();
                 renderItems();
               });
             });
@@ -816,10 +876,11 @@
               qtyTextEl.textContent = item.progress + "/" + item.qty;
               li.classList.toggle("item-done", isDone(item));
               updateCompletion();
+              setSync("work","Speichere…");
             });
 
             const commit = ()=>{
-              saveData();
+              scheduleSave();
               if (completedBehavior === "bottom") renderItems();
             };
             sliderEl.addEventListener("change", commit);
@@ -839,7 +900,7 @@
             if (sliderEl) sliderEl.value = String(item.progress);
             if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
 
-            saveData();
+            scheduleSave();
             if (completedBehavior === "bottom") renderItems();
             else{
               li.classList.toggle("item-done", isDone(item));
@@ -857,7 +918,7 @@
               item.progress = cb.checked ? (item.qty||1) : 0;
               if (sliderEl) sliderEl.value = String(item.progress);
               if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
-              saveData();
+              scheduleSave();
               if (completedBehavior === "bottom") renderItems();
               else{
                 li.classList.toggle("item-done", isDone(item));
@@ -885,7 +946,7 @@
         t.value = "";
         q.value = "1";
         document.getElementById("new-item-qty-label").textContent = "Menge: 1";
-        saveData();
+        scheduleSave();
         renderItems();
       }
 
@@ -998,7 +1059,7 @@
             const list = getCurrentList();
             if (!list) return;
             addOrMergeItem(list, name, qty.value);
-            saveData();
+            scheduleSave();
             renderItems();
             row.remove();
           });
@@ -1051,6 +1112,8 @@ ${raw}`;
             body: JSON.stringify({ prompt })
           });
 
+          if (r.status === 401) redirectToLogin();
+
           const j = await r.json().catch(()=>null);
           if (!r.ok || !j || j.ok !== true){
             alert("KI-Fehler: " + (j?.error || j?.message || r.status));
@@ -1086,7 +1149,7 @@ ${raw}`;
           showPrompt("Name der neuen Einkaufsliste:", "", (name)=>{
             if (!name) return;
             data.lists.unshift({ id: makeId("list"), name, items: [], settings: { doneBottom:false, checkbox:false } });
-            saveData();
+            scheduleSave();
             loadLists();
           });
         });
@@ -1127,7 +1190,7 @@ ${raw}`;
               const qty = it.qty || 1;
               it.progress = allDone ? 0 : qty;
             });
-            saveData();
+            scheduleSave();
             renderItems();
           });
         });
@@ -1141,7 +1204,7 @@ ${raw}`;
           const s = ensureListSettings(list);
           s.doneBottom = !!doneBottomToggle.checked;
           s.checkbox = !!checkboxToggle.checked;
-          saveData();
+          scheduleSave();
           renderItems();
           listSettingsModal.classList.remove("active");
         });
@@ -1154,10 +1217,17 @@ ${raw}`;
         document.getElementById("ai-plan-btn").addEventListener("click", aiPlanSuggestions);
       }
 
-      function init(){
-        data = loadData();
-        if (!data || !Array.isArray(data.lists)) data = { lists: [] };
-        applyTheme();
+      async function init(){
+        try{
+          setSync("work","Lade…");
+          data = await apiGet();
+          if (!data || !Array.isArray(data.lists)) data = { lists: [] };
+          setSync("ok","Geladen");
+        }catch(e){
+          console.error(e);
+          setSync("bad","Fehler");
+          data = { lists: [] };
+        }
         bindUI();
         loadLists();
       }

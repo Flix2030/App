@@ -1,4 +1,4 @@
-// src/worker.js
+// worker.js (vollständig)
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -9,7 +9,6 @@ function makeId(prefix="id") {
   const s = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
   return `${prefix}_${s.slice(0,16)}`;
 }
-
 
 function b64urlEncode(buf) {
   const bytes = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf;
@@ -184,7 +183,6 @@ async function readToken(env, req) {
 }
 
 async function handleApi(req, env) {
-  // WICHTIG: Alles im Try/Catch, damit du NIE wieder HTML-Fehler bekommst, sondern JSON
   try {
     const url = new URL(req.url);
     const path = url.pathname;
@@ -387,7 +385,6 @@ async function handleApi(req, env) {
       }
 
       if (req.method === "DELETE") {
-        // Safety: Profil-Löschung immer bestätigen lassen (damit nichts "aus Versehen" weg ist)
         const url = new URL(req.url);
         const force = url.searchParams.get("force") === "1";
         const confirm = url.searchParams.get("confirm") || "";
@@ -430,76 +427,79 @@ async function handleApi(req, env) {
 
       return json({ error: "method" }, 405);
     }
-    // ===== /Profiles API =====
 
-    // 6) AI (Gemini) – Key bleibt im Worker (Secret: GEMINI_API_KEY)
-if (path === "/api/ai" && req.method === "POST") {
-  const uid = await readToken(env, req);
-  if (!uid) return json({ error: "unauthorized" }, 401);
+    // 6) AI (Gemini)
+    if (path === "/api/ai" && req.method === "POST") {
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
 
-  if (!env.GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY_missing" }, 500);
+      if (!env.GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY_missing" }, 500);
 
-  const body = await req.json().catch(() => null);
-  const prompt = String(body?.prompt || "").trim();
-  if (!prompt) return json({ error: "prompt_required" }, 400);
+      const body = await req.json().catch(() => null);
+      const prompt = String(body?.prompt || "").trim();
+      if (!prompt) return json({ error: "prompt_required" }, 400);
 
-  const url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-    encodeURIComponent(env.GEMINI_API_KEY);
+      const url =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+        encodeURIComponent(env.GEMINI_API_KEY);
 
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-    }),
-  });
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        }),
+      });
 
-  const j = await r.json().catch(() => null);
-  if (!r.ok) return json({ error: "gemini_error", status: r.status, details: j }, 502);
+      const j = await r.json().catch(() => null);
+      if (!r.ok) return json({ error: "gemini_error", status: r.status, details: j }, 502);
 
-  const text =
-    j?.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("\n") || "";
+      const text =
+        j?.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("\n") || "";
 
-  return json({ ok: true, text });
-}
-// ===== Einkaufsliste API =====
-if (path.startsWith("/api/einkauf/")) {
-  if (!env.DB) return json({ error: "DB not bound" }, 500);
+      return json({ ok: true, text });
+    }
 
-  const uid = await readToken(env, req);
-  if (!uid) return json({ error: "unauthorized" }, 401);
+    // ===== Einkaufsliste API =====
+    if (path.startsWith("/api/einkauf/")) {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
 
-  // GET /api/einkauf/data  -> komplette Einkaufsliste als JSON (nur Cloudflare)
-  if (path === "/api/einkauf/data" && req.method === "GET") {
-    const row = await env.DB.prepare(
-      "SELECT json FROM einkauf_data WHERE user_id = ?"
-    ).bind(uid).first();
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
 
-    return json({ ok: true, data: row?.json ? JSON.parse(row.json) : { lists: [] } });
-  }
+      // GET /api/einkauf/data
+      if (path === "/api/einkauf/data" && req.method === "GET") {
+        const row = await env.DB.prepare(
+          "SELECT json FROM einkauf_data WHERE user_id = ?"
+        ).bind(uid).first();
 
-  // PUT /api/einkauf/data -> komplette Einkaufsliste speichern
-  if (path === "/api/einkauf/data" && req.method === "PUT") {
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+        return json(
+          { ok: true, data: row?.json ? JSON.parse(row.json) : { lists: [] } },
+          200,
+          { "Cache-Control": "no-store" }
+        );
+      }
 
-    const now = new Date().toISOString();
-    await env.DB.prepare(
-      "INSERT INTO einkauf_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-      "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-    ).bind(uid, JSON.stringify(body), now).run();
+      // PUT /api/einkauf/data
+      if (path === "/api/einkauf/data" && req.method === "PUT") {
+        const body = await req.json().catch(() => null);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
 
-    return json({ ok: true });
-  }
+        const now = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO einkauf_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+        ).bind(uid, JSON.stringify(body), now).run();
 
-  return json({ error: "not_found", path }, 404);
-}
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
 
+      return json({ error: "not_found", path }, 404);
+    }
 
-return json({ error: "not_found", path }, 404);
+    return json({ error: "not_found", path }, 404);
+
   } catch (e) {
-    // Hier kommt bei CRASH immer JSON raus:
     return json(
       {
         error: "worker_crash",
@@ -530,7 +530,7 @@ export default {
       if (path.startsWith("/packliste/")) assetPath = "/packliste.html";
       if (path.startsWith("/einkaufsliste/")) assetPath = "/einkaufsliste.html";
 
-      // 1) API darf NIE umgeleitet werden (sonst kaputt)
+      // 1) API darf NIE umgeleitet werden
       if (path.startsWith("/api/")) {
         return handleApi(req, env);
       }
@@ -548,7 +548,7 @@ export default {
         return Response.redirect(loginUrl.toString(), 302);
       }
 
-      // 4) Eingeloggt → normale Dateien ausliefern (404 -> zurück zu Home mit Meldung)
+      // 4) Eingeloggt → normale Dateien ausliefern
       const res = await env.ASSETS.fetch(new Request(url.origin + assetPath, req));
       if (res.status === 404) {
         const target = new URL("/home", url.origin);
@@ -558,11 +558,9 @@ export default {
       return res;
 
     } catch (err) {
-      // ✅ NIE 1101-Screen: immer kontrollierte Antwort
       const url = new URL(req.url);
       const path = url.pathname;
 
-      // API: JSON-Fehler statt Redirect
       if (path.startsWith("/api/")) {
         return new Response(JSON.stringify({
           ok: false,
@@ -574,8 +572,6 @@ export default {
         });
       }
 
-      // HTML/Seitenaufruf: zurück zu Home + Flag für Meldung
-      // Loop verhindern
       if (path === "/home" || path === "/" || path === "/home.html") {
         return new Response("Fehler im Worker. Bitte Workers Logs prüfen.", { status: 500 });
       }
