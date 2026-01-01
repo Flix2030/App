@@ -1470,10 +1470,12 @@ function bindUI() {
       const settingsCloseBtn = document.getElementById("settings-close");
 
       function syncSettingsUI() {
-        applyDevice(getDevice());
-        const t = getTheme();
+        // Gerät-Buttons highlighten
+        applyDeviceMode();
+
+        // Theme-Switch setzen
         const themeToggle = document.getElementById("theme-toggle");
-        if (themeToggle) themeToggle.checked = (t === "dark");
+        if (themeToggle) themeToggle.checked = (getTheme() === "dark");
       }
 
       function openSettings() {
