@@ -1363,9 +1363,9 @@ function bindUI() {
         listSettingsModal.classList.add('active');
       }
 
-      // Button in der Listenansicht
-      if (openSettingsBtn) {
-        openSettingsBtn.addEventListener('click', openListSettings);
+      const openListSettingsBtn = document.getElementById("open-settings-btn");
+      if (openListSettingsBtn) {
+        openListSettingsBtn.addEventListener("click", openListSettings);
       }
 
       if (document.getElementById('list-settings-cancel')) {
