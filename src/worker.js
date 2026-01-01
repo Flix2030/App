@@ -49,6 +49,43 @@ async function hmacVerify(secret, dataBytes, sigBytes) {
   return crypto.subtle.verify("HMAC", key, sigBytes, dataBytes);
 }
 
+async function sha256B64Url(inputStr) {
+  const buf = await crypto.subtle.digest("SHA-256", encoder.encode(inputStr));
+  return b64urlEncode(new Uint8Array(buf));
+}
+
+// Confirm-Token: HMAC über JSON-Payload (kurzlebig) – verhindert "aus Versehen" destruktive Saves
+async function makeConfirmToken(env, payloadObj) {
+  if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
+  const payloadStr = JSON.stringify(payloadObj);
+  const sig = b64urlEncode(await hmacSign(env.AUTH_SECRET, encoder.encode(payloadStr)));
+  return `${b64urlEncode(encoder.encode(payloadStr))}.${sig}`;
+}
+
+async function readConfirmToken(env, token) {
+  if (!env.AUTH_SECRET) return null;
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const payloadStr = decoder.decode(b64urlDecodeToBytes(parts[0]));
+  const sigBytes = b64urlDecodeToBytes(parts[1]);
+  const ok = await hmacVerify(env.AUTH_SECRET, encoder.encode(payloadStr), sigBytes);
+  if (!ok) return null;
+  const obj = JSON.parse(payloadStr);
+  if (!obj?.exp || obj.exp < Math.floor(Date.now() / 1000)) return null;
+  return obj;
+}
+
+function countItems(profileJson) {
+  const lists = Array.isArray(profileJson?.lists) ? profileJson.lists : [];
+  let items = 0;
+  for (const l of lists) {
+    const its = Array.isArray(l?.items) ? l.items : [];
+    items += its.length;
+  }
+  return { lists: lists.length, items };
+}
+
 function parseCookies(req) {
   const h = req.headers.get("Cookie") || "";
   const out = {};
@@ -258,86 +295,79 @@ async function handleApi(req, env) {
 
       if (req.method === "PUT") {
         const body = await req.json().catch(() => null);
-        if (!body) return json({ error: "bad_json" }, 400);
-
-        const now = new Date().toISOString();
-        await env.DB.prepare(
-          "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-            "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        )
-          .bind(uid, JSON.stringify(body), now)
-          .run();
-
-        return json({ ok: true });
-      }
-
-      return json({ error: "method" }, 405);
-    }
-
-    
-    // ===== Profiles API (pro Benutzerprofil getrennte Packlisten) =====
-    // Auth: jede Profile-Route benötigt Login
-    if (path === "/api/profiles") {
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauth" }, 401);
-
-      if (req.method === "GET") {
-        const rows = await env.DB.prepare(
-          "SELECT profile_id AS id, name, updated_at FROM profiles WHERE owner_id = ? ORDER BY updated_at DESC"
-        ).bind(uid).all();
-        return json({ ok: true, profiles: rows?.results || [] });
-      }
-
-      if (req.method === "POST") {
-        const body = await req.json().catch(() => null);
-        const name = String(body?.name || "").trim();
-        if (!name) return json({ error: "name_required" }, 400);
-
-        // kurze, URL-sichere ID
-        const id = makeId("p");
-        const now = new Date().toISOString();
-
-        // profiles: Metadaten
-        await env.DB.prepare(
-          "INSERT INTO profiles (owner_id, profile_id, name, updated_at) VALUES (?, ?, ?, ?) " +
-          "ON CONFLICT(owner_id, profile_id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at"
-        ).bind(uid, id, name, now).run();
-
-        // profile_data: initiale leere Struktur
-        const initial = { id, name, lists: [] };
-        await env.DB.prepare(
-          "INSERT INTO profile_data (owner_id, profile_id, json, updated_at) VALUES (?, ?, ?, ?) " +
-          "ON CONFLICT(owner_id, profile_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(uid, id, JSON.stringify(initial), now).run();
-
-        return json({ ok: true, id });
-      }
-
-      return json({ error: "method" }, 405);
-    }
-
-    // /api/profiles/:id
-    if (path.startsWith("/api/profiles/")) {
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauth" }, 401);
-
-      const profileId = decodeURIComponent(path.split("/").slice(3).join("/") || "");
-      if (!profileId) return json({ error: "bad_profile_id" }, 400);
-
-      if (req.method === "GET") {
-        const row = await env.DB.prepare(
-          "SELECT json FROM profile_data WHERE owner_id = ? AND profile_id = ?"
-        ).bind(uid, profileId).first();
-
-        return json({ ok: true, data: row?.json ? JSON.parse(row.json) : null });
-      }
-
-      if (req.method === "PUT") {
-        const body = await req.json().catch(() => null);
         if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
 
         const name = String(body?.name || "").trim() || "Benutzer";
         const now = new Date().toISOString();
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        // Alte Version laden (für Safety-Checks)
+        const existingRow = await env.DB.prepare(
+          "SELECT json FROM profile_data WHERE owner_id = ? AND profile_id = ?"
+        ).bind(uid, profileId).first();
+
+        const oldData = existingRow?.json ? JSON.parse(existingRow.json) : null;
+
+        // Destruktive Änderungen erkennen (Listen/Items plötzlich weniger)
+        const oldCounts = countItems(oldData);
+        const newCounts = countItems(body);
+
+        const listsDeleted = Math.max(0, (oldCounts.lists || 0) - (newCounts.lists || 0));
+        const itemsDeleted = Math.max(0, (oldCounts.items || 0) - (newCounts.items || 0));
+
+        const destructive =
+          (listsDeleted >= 1) ||
+          (itemsDeleted >= 20);
+
+        // Force/Confirm prüfen
+        const force = body?._force === true;
+        const confirmToken = body?._confirm;
+
+        // Body ohne Force-Felder hashen, damit Token an GENAU dieses Update gebunden ist
+        const bodyForHash = { ...body };
+        delete bodyForHash._force;
+        delete bodyForHash._confirm;
+        const bodyHash = await sha256B64Url(JSON.stringify(bodyForHash));
+
+        if (destructive && !force) {
+          const reasons = [];
+          if (listsDeleted >= 1) reasons.push(`${listsDeleted} Liste(n) würden gelöscht/verschwinden`);
+          if (itemsDeleted >= 20) reasons.push(`${itemsDeleted} Item(s) würden gelöscht/verschwinden`);
+          const reason = reasons.join(" · ") || "Große Löschung erkannt";
+
+          const token = await makeConfirmToken(env, {
+            uid,
+            profileId,
+            bodyHash,
+            exp: nowSec + 60, // 60 Sekunden gültig
+          });
+
+          return json(
+            {
+              ok: false,
+              needsConfirm: true,
+              reason,
+              listsDeleted,
+              itemsDeleted,
+              confirmToken: token,
+            },
+            409
+          );
+        }
+
+        if (destructive && force) {
+          const tok = await readConfirmToken(env, confirmToken);
+          if (!tok || tok.uid !== uid || tok.profileId !== profileId || tok.bodyHash !== bodyHash) {
+            return json(
+              {
+                ok: false,
+                error: "confirm_failed",
+                message: "Bestätigung ungültig oder abgelaufen.",
+              },
+              409
+            );
+          }
+        }
 
         // ensure meta exists + update name
         await env.DB.prepare(
@@ -348,12 +378,48 @@ async function handleApi(req, env) {
         await env.DB.prepare(
           "INSERT INTO profile_data (owner_id, profile_id, json, updated_at) VALUES (?, ?, ?, ?) " +
           "ON CONFLICT(owner_id, profile_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(uid, profileId, JSON.stringify(body), now).run();
+        ).bind(uid, profileId, JSON.stringify(bodyForHash), now).run();
 
         return json({ ok: true });
       }
 
       if (req.method === "DELETE") {
+        // Safety: Profil-Löschung immer bestätigen lassen (damit nichts "aus Versehen" weg ist)
+        const url = new URL(req.url);
+        const force = url.searchParams.get("force") === "1";
+        const confirm = url.searchParams.get("confirm") || "";
+        const nowSec = Math.floor(Date.now() / 1000);
+
+        if (!force) {
+          const token = await makeConfirmToken(env, {
+            uid,
+            profileId,
+            bodyHash: "DELETE",
+            exp: nowSec + 60,
+          });
+          return json(
+            {
+              ok: false,
+              needsConfirm: true,
+              reason: "Dieses Profil würde gelöscht werden.",
+              confirmToken: token,
+            },
+            409
+          );
+        } else {
+          const tok = await readConfirmToken(env, confirm);
+          if (!tok || tok.uid !== uid || tok.profileId !== profileId || tok.bodyHash !== "DELETE") {
+            return json(
+              {
+                ok: false,
+                error: "confirm_failed",
+                message: "Bestätigung ungültig oder abgelaufen.",
+              },
+              409
+            );
+          }
+        }
+
         await env.DB.prepare("DELETE FROM profile_data WHERE owner_id = ? AND profile_id = ?").bind(uid, profileId).run();
         await env.DB.prepare("DELETE FROM profiles WHERE owner_id = ? AND profile_id = ?").bind(uid, profileId).run();
         return json({ ok: true });
