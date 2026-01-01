@@ -199,6 +199,9 @@ async function handleApi(req, env) {
     if (path === "/vokabeln") {
       return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
     }
+    if (path === "/einkaufsliste") {
+      return env.ASSETS.fetch(new Request(url.origin + "/einkaufsliste.html", req));
+    }
 
     // Health / Debug
     if (path === "/api/health" && req.method === "GET") {
@@ -460,6 +463,38 @@ if (path === "/api/ai" && req.method === "POST") {
 
   return json({ ok: true, text });
 }
+// ===== Einkaufsliste API =====
+if (path.startsWith("/api/einkauf/")) {
+  if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+  const uid = await readToken(env, req);
+  if (!uid) return json({ error: "unauthorized" }, 401);
+
+  // GET /api/einkauf/data  -> komplette Einkaufsliste als JSON (nur Cloudflare)
+  if (path === "/api/einkauf/data" && req.method === "GET") {
+    const row = await env.DB.prepare(
+      "SELECT json FROM einkauf_data WHERE user_id = ?"
+    ).bind(uid).first();
+
+    return json({ ok: true, data: row?.json ? JSON.parse(row.json) : { lists: [] } });
+  }
+
+  // PUT /api/einkauf/data -> komplette Einkaufsliste speichern
+  if (path === "/api/einkauf/data" && req.method === "PUT") {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      "INSERT INTO einkauf_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+      "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+    ).bind(uid, JSON.stringify(body), now).run();
+
+    return json({ ok: true });
+  }
+
+  return json({ error: "not_found", path }, 404);
+}
 
 return json({ error: "not_found", path }, 404);
   } catch (e) {
@@ -490,6 +525,9 @@ export default {
       // SPA-Routen: /packliste/<user>/<liste> soll trotzdem packliste.html liefern (URL bleibt stehen)
       if (path.startsWith("/packliste/")) {
         return env.ASSETS.fetch(new Request(url.origin + "/packliste.html", req));
+      }
+      if (path.startsWith("/einkaufsliste/")) {
+        return env.ASSETS.fetch(new Request(url.origin + "/einkaufsliste.html", req));
       }
 
       // 1) API darf NIE umgeleitet werden (sonst kaputt)
