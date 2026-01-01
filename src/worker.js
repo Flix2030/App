@@ -517,19 +517,18 @@ export default {
       const url = new URL(req.url);
       const path = url.pathname;
 
-      // 0) Pretty-URLs auf echte Dateien mappen
-      if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
-      if (path === "/packliste") return env.ASSETS.fetch(new Request(url.origin + "/packliste.html", req));
-      if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
-      if (path === "/settings") return Response.redirect(new URL("/settings.html", url.origin).toString(), 302);
+      // 0) Pretty-URLs: Ziel-Datei merken (NICHT returnen, sonst umgehst du das Gate)
+      let assetPath = path;
 
-      // SPA-Routen: /packliste/<user>/<liste> soll trotzdem packliste.html liefern (URL bleibt stehen)
-      if (path.startsWith("/packliste/")) {
-        return env.ASSETS.fetch(new Request(url.origin + "/packliste.html", req));
-      }
-      if (path.startsWith("/einkaufsliste/")) {
-        return env.ASSETS.fetch(new Request(url.origin + "/einkaufsliste.html", req));
-      }
+      if (path === "/home") assetPath = "/home.html";
+      if (path === "/packliste") assetPath = "/packliste.html";
+      if (path === "/vokabeln") assetPath = "/vokabeln.html";
+      if (path === "/settings") assetPath = "/settings.html";
+      if (path === "/einkaufsliste") assetPath = "/einkaufsliste.html";
+
+      // SPA-Routen: URL darf bleiben, aber Datei ist fix
+      if (path.startsWith("/packliste/")) assetPath = "/packliste.html";
+      if (path.startsWith("/einkaufsliste/")) assetPath = "/einkaufsliste.html";
 
       // 1) API darf NIE umgeleitet werden (sonst kaputt)
       if (path.startsWith("/api/")) {
@@ -550,7 +549,7 @@ export default {
       }
 
       // 4) Eingeloggt → normale Dateien ausliefern (404 -> zurück zu Home mit Meldung)
-      const res = await env.ASSETS.fetch(req);
+      const res = await env.ASSETS.fetch(new Request(url.origin + assetPath, req));
       if (res.status === 404) {
         const target = new URL("/home", url.origin);
         target.searchParams.set("msg", "loadfail");
