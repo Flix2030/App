@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Einkaufsliste</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg0: #05080f;
+      --bg1: #070c16;
+      --panel: rgba(17, 24, 39, 0.72);
+      --panel2: rgba(20, 28, 46, 0.78);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.62);
+      --accent: #3ee38c;
+      --accent2: #2fce7a;
+      --shadow: 0 18px 60px rgba(0,0,0,0.55);
+      --radius: 18px;
+      --danger: #ff4d6d;
+    }
+
+    body.lightmode {
+      --bg0: #f6f7fb;
+      --bg1: #ffffff;
+      --panel: rgba(255,255,255,0.86);
+      --panel2: rgba(255,255,255,0.92);
+      --border: rgba(0,0,0,0.10);
+      --text: rgba(10,12,18,0.92);
+      --muted: rgba(10,12,18,0.62);
+      --shadow: 0 18px 60px rgba(0,0,0,0.18);
+    }
+
+    html, body{
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    body{
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 34px 16px 40px;
+      box-sizing: border-box;
+    }
+
+    .container{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 26px 26px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 14px;
+    }
+    h1{ margin:0; font-size: 2rem; letter-spacing: .2px; }
+    h2{ margin: 18px 0 10px; font-size: 1.45rem; letter-spacing: .2px; }
+
+    .btn{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: #03130a;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin: 4px;
+      transition: transform 0.15s ease, filter 0.2s ease;
+      box-shadow: 0 10px 24px rgba(62,227,140,0.14);
+      user-select: none;
+    }
+    .btn:hover{ filter: brightness(1.03); }
+    .btn:active{ transform: translateY(1px); }
+    .btn-small{ padding: 6px 12px; font-size: .85rem; }
+    .btn-secondary{
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    .btn-secondary:hover{ filter: brightness(1.06); }
+
+    .back-link{
+      display:inline-block;
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      text-decoration:none;
+      user-select:none;
+    }
+
+    .toolbar{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap:12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .toolbar .left, .toolbar .right{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+
+    ul{ list-style:none; padding:0; margin:0; }
+    .list-item{
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      gap:12px;
+      -webkit-user-select:none;
+      user-select:none;
+    }
+    .item-name{ flex:1; cursor:pointer; }
+    .actions{ display:flex; gap:6px; }
+
+    input[type="text"]{
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      outline: none;
+      min-width: 220px;
+    }
+    input[type="text"]::placeholder{ color: rgba(235,244,255,0.55); }
+    input[type="range"]{ accent-color: var(--accent); }
+
+    .hidden{ display:none; }
+
+    /* Progress Header (wie Packliste) */
+    .list-header{
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .progress-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(62,227,140,0.25);
+      background: rgba(62,227,140,0.10);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      box-shadow: 0 10px 30px rgba(62,227,140,0.08);
+    }
+    .progress-dot{
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 16px rgba(62,227,140,0.65);
+    }
+    .progress-bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      overflow:hidden;
+      margin: 12px 0 10px;
+    }
+    .progress-bar > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent), rgba(62,227,140,0.35));
+      border-radius: 999px;
+      transition: width 220ms ease;
+    }
+
+    /* Add Row */
+    .add-row{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .qty-label{ min-width:64px; text-align:right; color: rgba(235,244,255,0.75); font-weight: 800; }
+    .qty-text{ min-width:64px; text-align:right; color: rgba(235,244,255,0.78); font-weight: 800; letter-spacing: .2px; }
+
+    /* Fertig = grün */
+    #items-list .list-item.item-done{
+      background: rgba(62,227,140,0.16) !important;
+      border-color: rgba(62,227,140,0.65) !important;
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    }
+
+    /* Klick auf ganze Zeile nur wenn NICHT checkbox-mode */
+    #items-list .list-item{ cursor:pointer; }
+    #items-list .list-item .item-name,
+    #items-list .list-item .qty-text{ pointer-events:none; }
+    #items-list .list-item input[type="range"]{ pointer-events:auto; }
+
+    body.checkbox-mode #items-list .list-item{ cursor:default; }
+    body.checkbox-mode #items-list .list-item .item-name,
+    body.checkbox-mode #items-list .list-item .qty-text{ pointer-events:auto; }
+
+    #items-list .item-check{
+      width: 22px;
+      height: 22px;
+      margin-right: 10px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Popup */
+    .popup-overlay{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 1000;
+      overscroll-behavior: contain;
+    }
+    .popup-overlay.active{ display:flex; }
+    .popup{
+      background: rgba(15, 20, 34, 0.92);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 20px 22px;
+      border-radius: 16px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+      min-width: 280px;
+      max-height: 86vh;
+      overflow: hidden;
+    }
+    .popup p{ margin:0 0 10px; color: var(--text); }
+    .popup input[type="text"], .popup input[type="range"]{
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      box-sizing: border-box;
+    }
+    .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; }
+
+    /* Switch (wie Packliste) */
+    .switch{ position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
+    .switch input{ opacity:0; width:0; height:0; }
+    .slider-round{
+      position:absolute; cursor:pointer; inset:0;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.18);
+      transition: .2s;
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18);
+    }
+    .slider-round:before{
+      position:absolute; content:"";
+      height:22px; width:22px;
+      left:4px; top:50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.92);
+      transition: .2s;
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    .switch input:checked + .slider-round{
+      background: rgba(62,227,140,0.22);
+      border-color: rgba(62,227,140,0.55);
+    }
+    .switch input:checked + .slider-round:before{
+      transform: translate(22px, -50%);
+    }
+
+    /* AI */
+    .ai-mini{ margin-top: 12px; display:flex; justify-content:flex-start; }
+    .taik-btn{
+      display:inline-flex; align-items:center; gap:10px;
+      padding: 10px 12px; border-radius: 14px;
+    }
+    .taik-btn .taik-label{ font-weight:900; letter-spacing:.4px; display:inline-flex; gap:6px; align-items:baseline; }
+    .taik-btn .taik-t{ color: var(--text); font-weight: 900; }
+    .taik-btn .taik-ai{ color: var(--accent); font-weight: 900; }
+    .taik-btn .taik-k{ color: #ffffff; font-weight: 900; }
+
+    .ai-add textarea{
+      width:100%;
+      resize: vertical;
+      min-height: 78px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.20);
+      color: rgba(255,255,255,0.92);
+      outline:none;
+      box-sizing:border-box;
+    }
+    .ai-actions{ margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
+
+    body.modal-open{ overflow:hidden; }
+    .ai-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; max-height: 52vh; overflow:auto; padding-right: 4px; overscroll-behavior: contain; }
+    .ai-row{
+      display:flex; gap:10px; align-items:center; justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+    }
+    .ai-main{ flex:1; min-width:0; }
+    .ai-name{ font-weight: 800; }
+    .ai-reason{ margin-top: 2px; }
+    .ai-ctrl{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
+    .ai-qty{ width: 120px; }
+    .ai-qty-label{ min-width: 22px; text-align:right; color: rgba(255,255,255,0.82); font-variant-numeric: tabular-nums; }
+    .icon-btn{
+      width: 34px; height: 34px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.92);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition: transform .08s ease, filter .12s ease;
+      user-select:none;
+    }
+    .icon-btn:hover{ filter: brightness(1.08); transform: translateY(-1px); }
+    .icon-btn.ok{ border-color: rgba(62,227,140,0.35); }
+    .icon-btn.no{ border-color: rgba(255,77,109,0.35); }
+    .ai-empty{
+      padding: 14px 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.70);
+      text-align:center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="topbar">
+      <h1>Einkaufsliste</h1>
+      <a class="back-link" href="/home">&#x2B05; Home</a>
+    </div>
+
+    <!-- Listenübersicht -->
+    <div id="lists-section">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Listen</h2>
+          <button id="add-list-btn" class="btn btn-small">Neue Liste</button>
+          <button id="lists-edit-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+        </div>
+        <div class="right">
+          <span id="lists-edit-hint" style="display:none; color: var(--muted); font-weight: 800;">Bearbeiten aktiv</span>
+        </div>
+      </div>
+      <ul id="lists-list"></ul>
+    </div>
+
+    <!-- Listen-Editor -->
+    <div id="list-edit-section" class="hidden">
+      <div class="list-header">
+        <h2 id="current-list-title" style="margin:0;"></h2>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
+            <button id="open-list-settings-btn" class="btn btn-small btn-secondary" style="margin:0;">⚙️ Einstellungen</button>
+          </div>
+          <div class="progress-pill">
+            <span class="progress-dot"></span>
+            <span id="completion-percentage">0% geschafft</span>
+          </div>
+        </div>
+      </div>
+      <div class="progress-bar"><div id="completion-bar"></div></div>
+
+      <div class="toolbar" style="margin-top:10px;">
+        <div class="left">
+          <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+        </div>
+        <div class="right">
+          <button id="check-all-btn" class="btn btn-small btn-secondary">Alle abhaken</button>
+        </div>
+      </div>
+
+      <div id="new-item-section" style="margin-top:10px; display:none;">
+        <div class="add-row">
+          <input type="text" id="new-item-text" placeholder="Neuer Einkauf" />
+          <input type="range" id="new-item-qty" min="1" max="30" value="1" />
+          <span id="new-item-qty-label" class="qty-label">Menge: 1</span>
+          <button id="add-item-btn" class="btn btn-small">Hinzufügen</button>
+        </div>
+
+        <div class="ai-mini">
+          <button id="taik-open" class="btn btn-small btn-secondary taik-btn" type="button" title="KI fragen">
+            <span class="taik-label">Ask <span class="taik-t">t</span><span class="taik-ai">AI</span><span class="taik-k">k</span></span>
+          </button>
+        </div>
+      </div>
+
+      <ul id="items-list"></ul>
+    </div>
+  </div>
+
+  <!-- Listen-Einstellungen -->
+  <div id="list-settings-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 style="margin:0 0 12px;">Listen-Einstellungen</h3>
+
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font-weight:900;">Fertige nach unten</div>
+          <label class="switch" aria-label="Fertige nach unten">
+            <input id="list-done-bottom-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font-weight:900;">Abhaken mit Kästchen</div>
+          <label class="switch" aria-label="Abhaken mit Kästchen">
+            <input id="list-checkbox-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button id="list-settings-cancel" class="btn btn-small btn-secondary" type="button">Schließen</button>
+        <button id="list-settings-save" class="btn btn-small" type="button">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic Popup -->
+  <div id="popup-overlay" class="popup-overlay">
+    <div class="popup">
+      <p id="popup-message"></p>
+      <input type="text" id="popup-input" class="hidden" />
+      <input type="range" id="popup-range" class="hidden" min="1" max="30" value="1" />
+      <span id="popup-qty-label" class="hidden" style="text-align:right; display:block; margin-bottom:10px;">1</span>
+      <div class="popup-buttons">
+        <button id="popup-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
+        <button id="popup-confirm" class="btn btn-small">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KI Popup -->
+  <div id="ai-modal" class="popup-overlay">
+    <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
+      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
+      <div class="ai-add" style="margin: 10px 0 6px;">
+        <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich will Pasta, Tomatensoße, Käse, 2x Milch und Snacks kaufen."></textarea>
+        <div class="ai-actions">
+          <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
+          <span class="muted">TAIK erkennt Einkaufs-Dinge + sinnvolle Extras.</span>
+        </div>
+      </div>
+      <div id="ai-suggestions" class="ai-list"></div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // ===== Storage =====
+      const STORAGE_KEY = "einkaufData";
+      const THEME_KEY = "einkauf_theme";
+      let data = null;
+      let currentListId = null;
+      let listsEditMode = false;
+      let editMode = false;
+
+      // popup
+      const overlay = document.getElementById("popup-overlay");
+      const popupMessage = document.getElementById("popup-message");
+      const popupInput = document.getElementById("popup-input");
+      const popupRange = document.getElementById("popup-range");
+      const popupQtyLabel = document.getElementById("popup-qty-label");
+      let popupCallback = null;
+
+      function loadData(){
+        try{
+          const s = localStorage.getItem(STORAGE_KEY);
+          if (s) return JSON.parse(s);
+        }catch(_){}
+        return { lists: [] };
+      }
+      function saveData(){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+
+      function makeId(prefix){
+        return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+      }
+
+      function getTheme(){ return localStorage.getItem(THEME_KEY) || "dark"; }
+      function applyTheme(){ document.body.classList.toggle("lightmode", getTheme()==="light"); }
+
+      // ===== Popups =====
+      document.getElementById("popup-confirm").addEventListener("click", ()=> popupCallback && popupCallback(true));
+      document.getElementById("popup-cancel").addEventListener("click", ()=> popupCallback && popupCallback(false));
+      popupRange.addEventListener("input", ()=> popupQtyLabel.textContent = popupRange.value);
+
+      function showPrompt(msg, def, onOk){
+        popupMessage.textContent = msg;
+        popupInput.value = def || "";
+        popupInput.classList.remove("hidden");
+        popupRange.classList.add("hidden");
+        popupQtyLabel.classList.add("hidden");
+        overlay.classList.add("active");
+        popupCallback = (ok)=>{
+          overlay.classList.remove("active");
+          if (ok) onOk(popupInput.value.trim());
+          popupInput.classList.add("hidden");
+        };
+      }
+      function showConfirm(msg, onOk){
+        popupMessage.textContent = msg;
+        popupInput.classList.add("hidden");
+        popupRange.classList.add("hidden");
+        popupQtyLabel.classList.add("hidden");
+        overlay.classList.add("active");
+        popupCallback = (ok)=>{
+          overlay.classList.remove("active");
+          if (ok) onOk();
+        };
+      }
+      function showItemEditor(item, onOk){
+        popupMessage.textContent = "Eintrag bearbeiten:";
+        popupInput.classList.remove("hidden");
+        popupRange.classList.remove("hidden");
+        popupQtyLabel.classList.remove("hidden");
+        popupInput.value = item.name || "";
+        popupRange.value = String(item.qty || 1);
+        popupQtyLabel.textContent = popupRange.value;
+        overlay.classList.add("active");
+        popupCallback = (ok)=>{
+          overlay.classList.remove("active");
+          if (ok){
+            const n = popupInput.value.trim();
+            const q = Math.max(1, parseInt(popupRange.value,10)||1);
+            if (n) onOk(n,q);
+          }
+          popupInput.classList.add("hidden");
+          popupRange.classList.add("hidden");
+          popupQtyLabel.classList.add("hidden");
+        };
+      }
+
+      // ===== Lists =====
+      function ensureListSettings(list){
+        if (!list.settings || typeof list.settings !== "object") list.settings = {};
+        if (typeof list.settings.doneBottom !== "boolean") list.settings.doneBottom = false;
+        if (typeof list.settings.checkbox !== "boolean") list.settings.checkbox = false;
+        return list.settings;
+      }
+
+      function getCurrentList(){
+        return (data.lists || []).find(l => l.id === currentListId) || null;
+      }
+
+      function showListsSection(){
+        currentListId = null;
+        document.getElementById("lists-section").classList.remove("hidden");
+        document.getElementById("list-edit-section").classList.add("hidden");
+        loadLists();
+      }
+      function showListEditSection(){
+        const list = getCurrentList();
+        if (!list){ showListsSection(); return; }
+        document.getElementById("lists-section").classList.add("hidden");
+        document.getElementById("list-edit-section").classList.remove("hidden");
+        document.getElementById("current-list-title").textContent = list.name || "Liste";
+        editMode = false;
+        document.getElementById("edit-mode-toggle").textContent = "Bearbeiten";
+        document.getElementById("new-item-section").style.display = "none";
+        renderItems();
+      }
+
+      function loadLists(){
+        const ul = document.getElementById("lists-list");
+        ul.innerHTML = "";
+        (data.lists||[]).forEach(list=>{
+          const li = document.createElement("li");
+          li.className = "list-item";
+
+          const name = document.createElement("span");
+          name.className = "item-name";
+          name.textContent = list.name || "Liste";
+          li.appendChild(name);
+
+          name.addEventListener("click", ()=>{
+            currentListId = list.id;
+            showListEditSection();
+          });
+
+          if (listsEditMode){
+            const actions = document.createElement("div");
+            actions.className = "actions";
+
+            const renameBtn = document.createElement("button");
+            renameBtn.className = "btn btn-small btn-secondary";
+            renameBtn.textContent = "Namen ändern";
+            renameBtn.addEventListener("click", (e)=>{
+              e.stopPropagation();
+              showPrompt("Neuer Name der Liste:", list.name || "", (v)=>{
+                if (!v) return;
+                list.name = v;
+                saveData();
+                loadLists();
+              });
+            });
+            actions.appendChild(renameBtn);
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "btn btn-small btn-secondary";
+            delBtn.textContent = "Löschen";
+            delBtn.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              showConfirm(`Liste "${list.name}" wirklich löschen?`, ()=>{
+                data.lists = data.lists.filter(x=>x.id!==list.id);
+                saveData();
+                loadLists();
+              });
+            });
+            actions.appendChild(delBtn);
+
+            li.appendChild(actions);
+          }
+
+          ul.appendChild(li);
+        });
+      }
+
+      // ===== Completion =====
+      function updateCompletion(){
+        const list = getCurrentList();
+        const percEl = document.getElementById("completion-percentage");
+        const barEl = document.getElementById("completion-bar");
+        if (!list){ return; }
+
+        const total = (list.items||[]).length;
+        if (!total){
+          percEl.textContent = "0% geschafft";
+          barEl.style.width = "0%";
+          return;
+        }
+        let sum = 0;
+        (list.items||[]).forEach(it=>{
+          const qty = it.qty || 1;
+          const prog = it.progress || 0;
+          sum += qty ? (prog/qty) : 1;
+        });
+        const percent = (sum/total)*100;
+        percEl.textContent = Math.round(percent) + "% geschafft";
+        barEl.style.width = Math.max(0, Math.min(100, percent)).toFixed(2) + "%";
+      }
+
+      // ===== Items =====
+      function renderItems(){
+        const list = getCurrentList();
+        if (!list) return;
+        const s = ensureListSettings(list);
+        const completedBehavior = s.doneBottom ? "bottom" : "none";
+        const checkboxMode = !!s.checkbox;
+
+        document.body.classList.toggle("checkbox-mode", checkboxMode);
+
+        const isDone = (it)=> (it.progress||0) >= (it.qty||1);
+
+        list.items = (list.items||[]).map(it=>{
+          if (typeof it === "string") return { id: makeId("item"), name: it, qty: 1, progress: 0 };
+          if (it && typeof it === "object"){
+            if (!it.id) it.id = makeId("item");
+            if (!it.name) it.name = "";
+            if (typeof it.qty !== "number" || it.qty < 1) it.qty = 1;
+            if (typeof it.progress !== "number" || it.progress < 0) it.progress = 0;
+            if (it.progress > it.qty) it.progress = it.qty;
+            return it;
+          }
+          return { id: makeId("item"), name:"", qty:1, progress:0 };
+        });
+
+        // Sortieren nur im Fortschrittsmodus (nicht editMode)
+        if (!editMode && completedBehavior === "bottom"){
+          const before = list.items.slice();
+          const sorted = before.slice().sort((a,b)=>(isDone(a)?1:0)-(isDone(b)?1:0));
+          const changed = sorted.some((it,i)=> it.id !== before[i]?.id);
+          if (changed){
+            list.items = sorted;
+            saveData();
+          }
+        }
+
+        const ul = document.getElementById("items-list");
+        ul.innerHTML = "";
+        updateCompletion();
+
+        list.items.forEach((item, idx)=>{
+          const li = document.createElement("li");
+          li.className = "list-item";
+          if (isDone(item)) li.classList.add("item-done");
+
+          // EDIT MODE
+          if (editMode){
+            const name = document.createElement("span");
+            name.className = "item-name";
+            name.style.flex = "1";
+            name.textContent = item.name;
+            li.appendChild(name);
+
+            const qtyText = document.createElement("span");
+            qtyText.className = "qty-text";
+            qtyText.textContent = (item.progress||0) + "/" + (item.qty||1);
+            li.appendChild(qtyText);
+
+            const actions = document.createElement("div");
+            actions.className = "actions";
+
+            const editBtn = document.createElement("button");
+            editBtn.className = "btn btn-small btn-secondary";
+            editBtn.textContent = "Bearbeiten";
+            editBtn.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              showItemEditor(item,(n,q)=>{
+                item.name = n;
+                item.qty = q;
+                if (item.progress > item.qty) item.progress = item.qty;
+                saveData();
+                renderItems();
+              });
+            });
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "btn btn-small btn-secondary";
+            delBtn.textContent = "Entfernen";
+            delBtn.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              showConfirm(`Eintrag "${item.name}" entfernen?`, ()=>{
+                list.items.splice(idx,1);
+                saveData();
+                renderItems();
+              });
+            });
+            actions.appendChild(delBtn);
+
+            li.appendChild(actions);
+            ul.appendChild(li);
+            return;
+          }
+
+          // PROGRESS MODE
+          const nameSpan = document.createElement("span");
+          nameSpan.className = "item-name";
+          nameSpan.style.flex = "1";
+          nameSpan.textContent = item.name;
+          li.appendChild(nameSpan);
+
+          let sliderEl = null;
+          let qtyTextEl = null;
+
+          if ((item.qty||1) > 1){
+            const right = document.createElement("div");
+            right.style.display = "flex";
+            right.style.alignItems = "center";
+            right.style.gap = "10px";
+
+            sliderEl = document.createElement("input");
+            sliderEl.type = "range";
+            sliderEl.min = "0";
+            sliderEl.max = String(item.qty);
+            sliderEl.value = String(item.progress||0);
+            sliderEl.style.minWidth = "220px";
+
+            qtyTextEl = document.createElement("span");
+            qtyTextEl.className = "qty-text";
+            qtyTextEl.textContent = (item.progress||0) + "/" + (item.qty||1);
+
+            sliderEl.addEventListener("input", ()=>{
+              item.progress = parseInt(sliderEl.value,10) || 0;
+              if (item.progress > (item.qty||1)) item.progress = (item.qty||1);
+              qtyTextEl.textContent = item.progress + "/" + item.qty;
+              li.classList.toggle("item-done", isDone(item));
+              updateCompletion();
+            });
+
+            const commit = ()=>{
+              saveData();
+              if (completedBehavior === "bottom") renderItems();
+            };
+            sliderEl.addEventListener("change", commit);
+            sliderEl.addEventListener("pointerup", commit);
+
+            right.appendChild(sliderEl);
+            right.appendChild(qtyTextEl);
+            li.appendChild(right);
+
+            sliderEl.addEventListener("click", (e)=> e.stopPropagation());
+            sliderEl.addEventListener("pointerdown", (e)=> e.stopPropagation());
+          }
+
+          const doToggleDone = ()=>{
+            const done = isDone(item);
+            item.progress = done ? 0 : (item.qty||1);
+            if (sliderEl) sliderEl.value = String(item.progress);
+            if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
+
+            saveData();
+            if (completedBehavior === "bottom") renderItems();
+            else{
+              li.classList.toggle("item-done", isDone(item));
+              updateCompletion();
+            }
+          };
+
+          if (checkboxMode){
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.className = "item-check";
+            cb.checked = isDone(item);
+            cb.addEventListener("click",(e)=> e.stopPropagation());
+            cb.addEventListener("change", ()=>{
+              item.progress = cb.checked ? (item.qty||1) : 0;
+              if (sliderEl) sliderEl.value = String(item.progress);
+              if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
+              saveData();
+              if (completedBehavior === "bottom") renderItems();
+              else{
+                li.classList.toggle("item-done", isDone(item));
+                updateCompletion();
+              }
+            });
+            li.insertBefore(cb, li.firstChild);
+          } else {
+            li.addEventListener("click", doToggleDone);
+          }
+
+          ul.appendChild(li);
+        });
+      }
+
+      function addItem(){
+        const list = getCurrentList();
+        if (!list) return;
+        const t = document.getElementById("new-item-text");
+        const q = document.getElementById("new-item-qty");
+        const name = (t.value||"").trim();
+        if (!name) return;
+        const qty = Math.max(1, parseInt(q.value,10)||1);
+        list.items.push({ id: makeId("item"), name, qty, progress: 0 });
+        t.value = "";
+        q.value = "1";
+        document.getElementById("new-item-qty-label").textContent = "Menge: 1";
+        saveData();
+        renderItems();
+      }
+
+      // ===== Settings Modal =====
+      const listSettingsModal = document.getElementById("list-settings-modal");
+      const doneBottomToggle = document.getElementById("list-done-bottom-toggle");
+      const checkboxToggle = document.getElementById("list-checkbox-toggle");
+
+      function openListSettings(){
+        const list = getCurrentList();
+        if (!list) return;
+        const s = ensureListSettings(list);
+        doneBottomToggle.checked = !!s.doneBottom;
+        checkboxToggle.checked = !!s.checkbox;
+        listSettingsModal.classList.add("active");
+      }
+
+      // ===== AI =====
+      function normalizeItemName(name){
+        return String(name||"").trim().replace(/\s+/g," ").replace(/^[\-–—•·]+\s*/,"");
+      }
+      function addOrMergeItem(list, name, qty){
+        const n = normalizeItemName(name);
+        if (!n) return;
+        const q = Math.max(1, parseInt(qty||1,10)||1);
+        const existing = (list.items||[]).find(it => (it.name||"").trim().toLowerCase() === n.toLowerCase());
+        if (existing){ existing.qty = Math.max(1, (parseInt(existing.qty||1,10)||1) + q); return; }
+        list.items.push({ id: makeId("item"), name:n, qty:q, progress:0 });
+      }
+      function extractJsonArray(text){
+        if (!text) return null;
+        let s = String(text).trim();
+        s = s.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
+        const a = s.indexOf("[");
+        const b = s.lastIndexOf("]");
+        if (a===-1 || b===-1 || b<=a) return null;
+        try{ return JSON.parse(s.slice(a,b+1)); }catch(_){ return null; }
+      }
+      function openAiModal(){
+        document.getElementById("ai-modal")?.classList.add("active");
+        document.body.classList.add("modal-open");
+      }
+      function closeAiModal(){
+        document.getElementById("ai-modal")?.classList.remove("active");
+        document.body.classList.remove("modal-open");
+      }
+      document.getElementById("ai-modal")?.addEventListener("click", (e)=>{
+        if (e.target.id === "ai-modal") closeAiModal();
+      });
+
+      function renderAiSuggestions(suggestions){
+        const box = document.getElementById("ai-suggestions");
+        box.innerHTML = "";
+
+        if (!Array.isArray(suggestions) || !suggestions.length){
+          const empty = document.createElement("div");
+          empty.className = "ai-empty";
+          empty.textContent = "Keine Vorschläge erkannt.";
+          box.appendChild(empty);
+          return;
+        }
+
+        suggestions.forEach(s=>{
+          const name = normalizeItemName(s.name);
+          if (!name) return;
+
+          const row = document.createElement("div");
+          row.className = "ai-row";
+
+          const main = document.createElement("div");
+          main.className = "ai-main";
+
+          const title = document.createElement("div");
+          title.className = "ai-name";
+          title.textContent = name;
+
+          const reason = document.createElement("div");
+          reason.className = "ai-reason muted";
+          reason.textContent = normalizeItemName(s.reason || "Vorschlag");
+
+          main.appendChild(title);
+          main.appendChild(reason);
+
+          const ctrl = document.createElement("div");
+          ctrl.className = "ai-ctrl";
+
+          const qty = document.createElement("input");
+          qty.type = "range";
+          qty.min = "1";
+          qty.max = "30";
+          qty.value = String(Math.max(1, parseInt(s.qty||1,10)||1));
+          qty.className = "ai-qty";
+
+          const qtyLabel = document.createElement("span");
+          qtyLabel.className = "ai-qty-label";
+          qtyLabel.textContent = qty.value;
+          qty.addEventListener("input", ()=> qtyLabel.textContent = qty.value);
+
+          const ok = document.createElement("button");
+          ok.className = "icon-btn ok";
+          ok.textContent = "+";
+          ok.title = "Hinzufügen";
+
+          const no = document.createElement("button");
+          no.className = "icon-btn no";
+          no.textContent = "×";
+          no.title = "Nicht hinzufügen";
+
+          ok.addEventListener("click", ()=>{
+            const list = getCurrentList();
+            if (!list) return;
+            addOrMergeItem(list, name, qty.value);
+            saveData();
+            renderItems();
+            row.remove();
+          });
+          no.addEventListener("click", ()=> row.remove());
+
+          ctrl.appendChild(qty);
+          ctrl.appendChild(qtyLabel);
+          ctrl.appendChild(ok);
+          ctrl.appendChild(no);
+
+          row.appendChild(main);
+          row.appendChild(ctrl);
+          box.appendChild(row);
+        });
+      }
+
+      async function aiPlanSuggestions(){
+        const list = getCurrentList();
+        if (!list) return;
+
+        const ta = document.getElementById("ai-item-text");
+        const btn = document.getElementById("ai-plan-btn");
+        const raw = (ta.value||"").trim();
+        if (!raw) return;
+
+        const old = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "KI läuft...";
+
+        try{
+          const prompt =
+`Du bist eine Einkaufs-Assistentin für eine Einkaufsliste.
+Aufgabe: Erstelle Vorschläge für Einkaufs-Artikel.
+Regeln:
+- Übernimm explizit genannte Dinge IMMER.
+- Ergänze sinnvolle typische Einkäufe passend zum Kontext (aber nicht übertreiben; eher 8-18 Vorschläge).
+- Mengen:
+  - Wenn genannt (z.B. "2 Milch") -> qty=2
+  - Wenn es nach "für X Tage/Personen/Party" klingt -> realistische Mengen.
+Antworte NUR als JSON-Array (ohne Markdown, ohne Erklärtext).
+Format: [{"name":"...","qty":1,"reason":"kurzer Grund"}]
+
+TEXT:
+${raw}`;
+
+          const r = await fetch("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ prompt })
+          });
+
+          const j = await r.json().catch(()=>null);
+          if (!r.ok || !j || j.ok !== true){
+            alert("KI-Fehler: " + (j?.error || j?.message || r.status));
+            return;
+          }
+
+          const arr = extractJsonArray(j.text);
+          if (!Array.isArray(arr)){
+            alert("KI-Antwort nicht verstanden.");
+            return;
+          }
+
+          const suggestions = arr.map(x=>({
+            name: normalizeItemName(x?.name ?? x),
+            qty: Math.max(1, parseInt(x?.qty ?? 1,10) || 1),
+            reason: normalizeItemName(x?.reason || "")
+          })).filter(x=>x.name);
+
+          renderAiSuggestions(suggestions);
+          openAiModal();
+        }catch(e){
+          alert("KI-Fehler: " + (e?.message || e));
+        }finally{
+          btn.disabled = false;
+          btn.textContent = old;
+        }
+      }
+
+      // ===== Bind UI =====
+      function bindUI(){
+        // lists
+        document.getElementById("add-list-btn").addEventListener("click", ()=>{
+          showPrompt("Name der neuen Einkaufsliste:", "", (name)=>{
+            if (!name) return;
+            data.lists.unshift({ id: makeId("list"), name, items: [], settings: { doneBottom:false, checkbox:false } });
+            saveData();
+            loadLists();
+          });
+        });
+
+        document.getElementById("lists-edit-toggle").addEventListener("click", function(){
+          listsEditMode = !listsEditMode;
+          document.getElementById("lists-edit-hint").style.display = listsEditMode ? "inline" : "none";
+          this.textContent = listsEditMode ? "Fertig" : "Bearbeiten";
+          loadLists();
+        });
+
+        document.getElementById("back-to-lists-btn").addEventListener("click", showListsSection);
+
+        // editor mode
+        document.getElementById("edit-mode-toggle").addEventListener("click", function(){
+          editMode = !editMode;
+          this.textContent = editMode ? "Fertig" : "Bearbeiten";
+          document.getElementById("new-item-section").style.display = editMode ? "block" : "none";
+          renderItems();
+        });
+
+        document.getElementById("new-item-qty").addEventListener("input", function(){
+          document.getElementById("new-item-qty-label").textContent = "Menge: " + this.value;
+        });
+
+        document.getElementById("add-item-btn").addEventListener("click", addItem);
+
+        // check all
+        document.getElementById("check-all-btn").addEventListener("click", ()=>{
+          if (editMode) return;
+          const list = getCurrentList();
+          if (!list) return;
+          const total = (list.items||[]).length;
+          if (!total) return;
+          const allDone = list.items.every(it => (it.progress||0) >= (it.qty||1));
+          showConfirm(allDone ? "Alles wieder abwählen?" : "Alles abhaken?", ()=>{
+            list.items.forEach(it=>{
+              const qty = it.qty || 1;
+              it.progress = allDone ? 0 : qty;
+            });
+            saveData();
+            renderItems();
+          });
+        });
+
+        // settings
+        document.getElementById("open-list-settings-btn").addEventListener("click", openListSettings);
+        document.getElementById("list-settings-cancel").addEventListener("click", ()=> listSettingsModal.classList.remove("active"));
+        document.getElementById("list-settings-save").addEventListener("click", ()=>{
+          const list = getCurrentList();
+          if (!list){ listSettingsModal.classList.remove("active"); return; }
+          const s = ensureListSettings(list);
+          s.doneBottom = !!doneBottomToggle.checked;
+          s.checkbox = !!checkboxToggle.checked;
+          saveData();
+          renderItems();
+          listSettingsModal.classList.remove("active");
+        });
+
+        // AI
+        document.getElementById("taik-open").addEventListener("click", ()=>{
+          openAiModal();
+          setTimeout(()=> document.getElementById("ai-item-text")?.focus(), 0);
+        });
+        document.getElementById("ai-plan-btn").addEventListener("click", aiPlanSuggestions);
+      }
+
+      function init(){
+        data = loadData();
+        if (!data || !Array.isArray(data.lists)) data = { lists: [] };
+        applyTheme();
+        bindUI();
+        loadLists();
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
+</body>
+</html>
