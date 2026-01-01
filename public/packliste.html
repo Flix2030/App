@@ -1230,6 +1230,7 @@ function ensureListSettings(list) {
 }
 
 function bindUI() {
+  const openSettingsBtn = document.getElementById('open-settings-btn'); // Listen-Settings Button
       // Benutzer verwalten (Popup)
       const userModal = document.getElementById('user-modal');
       document.getElementById('user-manage-btn').addEventListener('click', function() {
@@ -1463,7 +1464,6 @@ function bindUI() {
 
       // ⚙️ Einstellungen
       const settingsModal = document.getElementById("settings-modal");
-      const openSettingsBtn = document.getElementById("open-settings-btn");
       const openSettingsBtnHome = document.getElementById("open-settings-btn-home");
       const openSettingsBtnLists = document.getElementById("open-settings-btn-lists");
       const deviceBtns = Array.from(document.querySelectorAll(".device-btn"));
@@ -1481,7 +1481,6 @@ function bindUI() {
         settingsModal.classList.add("active");
       }
 
-      if (openSettingsBtn) openSettingsBtn.addEventListener("click", openSettings);
       if (openSettingsBtnHome) openSettingsBtnHome.addEventListener("click", openSettings);
       if (openSettingsBtnLists) openSettingsBtnLists.addEventListener("click", openSettings);
 
