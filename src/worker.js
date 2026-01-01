@@ -496,6 +496,7 @@ if (path.startsWith("/api/einkauf/")) {
   return json({ error: "not_found", path }, 404);
 }
 
+
 return json({ error: "not_found", path }, 404);
   } catch (e) {
     // Hier kommt bei CRASH immer JSON raus:
