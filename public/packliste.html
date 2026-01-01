@@ -684,6 +684,19 @@ h1 {
     body.device-phone  #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
     body.device-phone  #user-section > div { row-gap: 8px; }
 
+    /* FIX: Seite nicht abschneiden – Scroll erlauben */
+    html, body{
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Falls irgendwo modal-open hängen bleibt: nur dann sperren */
+    body.modal-open{
+      overflow: hidden;
+    }
+
   </style>
 </head>
 <body>
