@@ -890,21 +890,22 @@ h1 {
       loadUsers();
     }
 
-    function applyRouteToState() {
+    
+function applyRouteToState() {
       const r = getRouteParts();
-      // user
-      if (r.userId && data?.users?.some(u => u.id === r.userId)) {
+      // user (Profile)
+      if (r.userId && (profilesMeta?.some(p => p.id === r.userId) || data?.users?.some(u => u.id === r.userId))) {
         currentUserId = r.userId;
-      } else if (!currentUserId && data?.users?.length) {
-        currentUserId = data.users[0].id;
+      } else if (!currentUserId && (profilesMeta?.length || data?.users?.length)) {
+        currentUserId = (profilesMeta?.[0]?.id) || (data?.users?.[0]?.id) || null;
         // Route korrigieren (damit URL stimmt)
-        setRoute(currentUserId, null, true);
+        if (currentUserId) setRoute(currentUserId, null, true);
       }
 
       // list
       currentListId = null;
       if (currentUserId && r.listId) {
-        const user = data.users.find(u => u.id === currentUserId);
+        const user = (data?.users || []).find(u => u.id === currentUserId);
         const exists = user?.lists?.some(l => l.id === r.listId);
         if (exists) currentListId = r.listId;
       }
@@ -952,11 +953,73 @@ h1 {
       return { users: [] };
     }
     
-    function saveData() {
+    
+function saveData() {
+      // lokal immer (offline fallback)
       localStorage.setItem('packlisteData', JSON.stringify(data));
-      apiSaveData(data).catch(()=>{});
+
+      // cloud: aktuelles Profil speichern (debounced)
+      scheduleProfileSave();
     }
 
+    
+    // ===== Cloud Profiles API (statt global /api/data) =====
+    // Profiles = "Benutzer" in der UI (jedes Profil hat eigene Listen)
+    let profilesMeta = [];          // [{id,name,updated_at}]
+    let profileData = null;         // {id,name,lists:[]}
+
+    async function apiListProfiles() {
+      const r = await fetch("/api/profiles", { credentials: "include" });
+      if (r.status === 401) return { unauth: true, profiles: [] };
+      if (!r.ok) throw new Error("apiListProfiles failed: " + r.status);
+      const j = await r.json().catch(() => null);
+      return { unauth: false, profiles: (j && j.ok && Array.isArray(j.profiles)) ? j.profiles : [] };
+    }
+
+    async function apiCreateProfile(name) {
+      const r = await fetch("/api/profiles", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      if (r.status === 401) return { unauth: true, id: null };
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || j.ok !== true) throw new Error("apiCreateProfile failed");
+      return { unauth: false, id: j.id };
+    }
+
+    async function apiGetProfile(profileId) {
+      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), { credentials: "include" });
+      if (r.status === 401) return { unauth: true, data: null };
+      if (!r.ok) throw new Error("apiGetProfile failed: " + r.status);
+      const j = await r.json().catch(() => null);
+      return { unauth: false, data: (j && j.ok && j.data) ? j.data : null };
+    }
+
+    async function apiSaveProfile(profileId, body) {
+      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (r.status === 401) return { unauth: true };
+      if (!r.ok) throw new Error("apiSaveProfile failed: " + r.status);
+      return { unauth: false };
+    }
+
+    async function apiDeleteProfile(profileId) {
+      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
+        method: "DELETE",
+        credentials: "include"
+      });
+      if (r.status === 401) return { unauth: true };
+      if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
+      return { unauth: false };
+    }
+
+    // Legacy (falls du später wieder globalen State willst)
     async function apiGetData() {
       const r = await fetch("/api/data", { credentials: "include" });
       if (r.status === 401) return { unauth: true, data: null };
@@ -973,8 +1036,76 @@ h1 {
         body: JSON.stringify(data)
       });
     }
+    // ===== /Cloud Profiles API =====
 
-    function handleRoute() {
+
+    // ===== Profiles: Laden / Wechseln / Speichern =====
+    let saveTimer = null;
+    function scheduleProfileSave() {
+      if (!currentUserId) return;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          const u = getCurrentUser();
+          if (!u) return;
+          // Name muss mit Meta konsistent sein
+          u.id = currentUserId;
+          if (!u.name) u.name = "Benutzer";
+          await apiSaveProfile(currentUserId, u);
+          // Meta refresh (damit Sortierung/Name passt)
+          try { profilesMeta = (await apiListProfiles()).profiles || profilesMeta; } catch (_) {}
+        } catch (_) {
+          // silent (offline)
+        }
+      }, 350);
+    }
+
+    async function refreshProfilesAndMaybeSelect() {
+      const res = await apiListProfiles();
+      if (res.unauth) return { unauth: true };
+      profilesMeta = res.profiles || [];
+
+      // Wenn noch kein Profil existiert: eins anlegen und lokale Daten seed'en
+      if (!profilesMeta.length) {
+        const local = loadData();
+        // Seed: falls alte lokale Struktur {users:[...]} existiert, nimm ersten User, sonst leer
+        const seedUser = (local && Array.isArray(local.users) && local.users[0]) ? local.users[0] : null;
+        const name = (seedUser && seedUser.name) ? String(seedUser.name) : "Standard";
+        const created = await apiCreateProfile(name);
+        if (created.unauth) return { unauth: true };
+        const id = created.id;
+        const initial = seedUser && typeof seedUser === "object"
+          ? { id, name, lists: Array.isArray(seedUser.lists) ? seedUser.lists : [] }
+          : { id, name, lists: [] };
+        await apiSaveProfile(id, initial);
+        profilesMeta = (await apiListProfiles()).profiles || [];
+      }
+
+      // aktuelle Auswahl validieren
+      if (!currentUserId || !profilesMeta.some(p => p.id === currentUserId)) {
+        currentUserId = profilesMeta[0]?.id || null;
+        currentListId = null;
+      }
+      return { unauth: false };
+    }
+
+    async function loadCurrentProfileData() {
+      if (!currentUserId) { data = { users: [] }; return; }
+      const res = await apiGetProfile(currentUserId);
+      if (res.unauth) return { unauth: true };
+      const meta = profilesMeta.find(p => p.id === currentUserId);
+      const name = meta?.name || res.data?.name || "Benutzer";
+      profileData = res.data && typeof res.data === "object"
+        ? { id: currentUserId, name, lists: Array.isArray(res.data.lists) ? res.data.lists : [] }
+        : { id: currentUserId, name, lists: [] };
+
+      // App erwartet data.users
+      data = { users: [profileData] };
+      return { unauth: false };
+    }
+    // ===== /Profiles =====
+
+function handleRoute() {
   // URL -> State
   applyRouteToState();
 
@@ -1017,30 +1148,18 @@ async function init() {
     return;
   }
 
-  // 2) Cloud laden (Cloud ist Master)
-  let cloud = null;
+  // 2) Cloud Profiles laden (Profile = Benutzer)
   try {
-    cloud = await apiGetData(); // { unauth, data }
+    const metaRes = await refreshProfilesAndMaybeSelect();
+    if (metaRes.unauth) { goLogin(); return; }
+    const profRes = await loadCurrentProfileData();
+    if (profRes.unauth) { goLogin(); return; }
   } catch (_) {
-    cloud = null; // API down → NICHT in die Cloud schreiben!
-  }
-
-  if (cloud && cloud.unauth) {
-    goLogin();
-    return;
-  }
-
-  if (cloud && cloud.data) {
-    data = cloud.data;
-  } else if (cloud && cloud.data === null) {
-    // Cloud erreichbar, aber noch keine Daten gespeichert → seed aus local/default
+    // Cloud nicht erreichbar → nur lokal arbeiten (offline)
     data = loadData();
     if (!data || !Array.isArray(data.users)) data = { users: [] };
-    try { await apiSaveData(data); } catch (_) {}
-  } else {
-    // Cloud nicht erreichbar → nur lokal arbeiten
-    data = loadData();
-    if (!data || !Array.isArray(data.users)) data = { users: [] };
+    currentUserId = data.users[0]?.id || null;
+    currentListId = null;
   }
 
   // 3) localStorage synchron halten
@@ -1051,7 +1170,7 @@ async function init() {
   bindUI();
   applyTheme();
   applyDeviceMode();
-  loadUsers();
+  await loadUsers();
 }
 
 
@@ -1120,31 +1239,65 @@ function bindUI() {
         userModal.classList.remove('active');
       });
       document.getElementById('user-add').addEventListener('click', function() {
-        showPrompt('Name des neuen Benutzers:', '', function(name) {
+        showPrompt('Name des neuen Benutzers:', '', async function(name) {
           if (!name) return;
-          const id = Date.now().toString();
-          data.users.push({ id, name, lists: [] });
-          saveData();
-          currentUserId = id;
-          currentListId = null;
-          loadUsers();
-          userModal.classList.remove('active');
+          try {
+            // Cloud Profil anlegen
+            const created = await apiCreateProfile(name);
+            if (created.unauth) {
+              location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+              return;
+            }
+            await refreshProfilesAndMaybeSelect();
+            currentUserId = created.id;
+            currentListId = null;
+            await loadCurrentProfileData();
+            await loadUsers();
+            userModal.classList.remove('active');
+          } catch (_) {
+            // Offline fallback: lokal
+            const id = Date.now().toString();
+            data.users.push({ id, name, lists: [] });
+            currentUserId = id;
+            currentListId = null;
+            saveData();
+            loadUsers();
+            userModal.classList.remove('active');
+          }
         });
       });
       document.getElementById('user-delete').addEventListener('click', function() {
         if (!currentUserId) return;
-        const user = data.users.find(u => u.id === currentUserId);
-        if (!user) return;
-        showConfirm(`Benutzer "${user.name}" wirklich löschen?`, function() {
-          data.users = data.users.filter(u => u.id !== currentUserId);
-          currentUserId = null;
-          currentListId = null;
-          listsEditMode = false;
-          selectedItemIds.clear();
-          saveData();
-          loadUsers();
-          userModal.classList.remove('active');
+
+        // Name aus Meta holen
+        const meta = profilesMeta?.find(p => p.id === currentUserId);
+        const displayName = meta?.name || getCurrentUser()?.name || "Benutzer";
+
+        showConfirm(`Benutzer "${displayName}" wirklich löschen?`, async function() {
+          try {
+            const del = await apiDeleteProfile(currentUserId);
+            if (del.unauth) {
+              location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+              return;
+            }
+            await refreshProfilesAndMaybeSelect();
+            currentListId = null;
+            await loadCurrentProfileData();
+            await loadUsers();
+            userModal.classList.remove('active');
+          } catch (_) {
+            // Offline fallback: lokal löschen
+            if (data?.users) data.users = data.users.filter(u => u.id !== currentUserId);
+            currentUserId = data.users?.[0]?.id || null;
+            currentListId = null;
+            listsEditMode = false;
+            selectedItemIds.clear();
+            saveData();
+            loadUsers();
+            userModal.classList.remove('active');
+          }
         });
+      });
       });
       document.getElementById('user-export').addEventListener('click', function() {
         exportAll();
@@ -1155,13 +1308,15 @@ function bindUI() {
           userModal.classList.remove('active');
         });
       });
-      document.getElementById('user-select').addEventListener('change', function() {
+      document.getElementById('user-select').addEventListener('change', async function() {
         currentUserId = this.value || null;
         currentListId = null;
 
         // URL: /packliste/<user>
         setRoute(currentUserId, null);
 
+        // Profil laden (Cloud)
+        try { await loadCurrentProfileData(); } catch (_) {}
         loadLists();
       });
       // Event-Handler für Listen
@@ -1464,35 +1619,85 @@ function bindUI() {
     }
 
     // Benutzer laden
-    function loadUsers() {
+    
+    // Benutzer (= Profile) laden
+    async function loadUsers() {
       const select = document.getElementById('user-select');
+      if (!select) return;
+
+      // Route -> Auswahl (wenn direkt /packliste/<profile>/<list> geöffnet wurde)
+      const r = getRouteParts();
+      if (r.userId && profilesMeta?.some(p => p.id === r.userId)) {
+        currentUserId = r.userId;
+      }
+
+      // Meta ggf. nachladen (falls init offline war, später aber online)
+      if (!profilesMeta || profilesMeta.length === 0) {
+        try {
+          const metaRes = await refreshProfilesAndMaybeSelect();
+          if (metaRes.unauth) {
+            location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+            return;
+          }
+        } catch (_) {}
+      }
+
       select.innerHTML = '';
-      // Route -> State (falls direkt /packliste/<user>/<list> geöffnet wurde)
-      applyRouteToState();
-      if (data.users.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = '— keinen Benutzer —';
-        select.appendChild(opt);
-        select.disabled = true;
-        document.getElementById('lists-section').classList.add('hidden');
-        document.getElementById('list-edit-section').classList.add('hidden');
-        currentUserId = null;
+
+      if (!profilesMeta || profilesMeta.length === 0) {
+        // Offline-Fallback: lokale "users" anzeigen
+        const localUsers = (data && Array.isArray(data.users)) ? data.users : [];
+        if (localUsers.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '— kein Profil —';
+          select.appendChild(opt);
+          select.disabled = true;
+          document.getElementById('lists-section').classList.add('hidden');
+          document.getElementById('list-edit-section').classList.add('hidden');
+          currentUserId = null;
+          return;
+        }
+        select.disabled = false;
+        localUsers.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.name;
+          select.appendChild(opt);
+        });
+        if (!currentUserId || !localUsers.some(u => u.id === currentUserId)) currentUserId = localUsers[0].id;
+        select.value = currentUserId;
+        loadLists();
         return;
       }
+
+      // Online: Profiles Meta rendern
       select.disabled = false;
-      data.users.forEach(u => {
+      profilesMeta.forEach(p => {
         const opt = document.createElement('option');
-        opt.value = u.id;
-        opt.textContent = u.name;
+        opt.value = p.id;
+        opt.textContent = p.name;
         select.appendChild(opt);
       });
-      if (!currentUserId || !data.users.some(u => u.id === currentUserId)) {
-        currentUserId = data.users[0].id;
+
+      if (!currentUserId || !profilesMeta.some(p => p.id === currentUserId)) {
+        currentUserId = profilesMeta[0].id;
+        currentListId = null;
       }
       select.value = currentUserId;
+
+      // aktuelles Profil laden (damit Listen/Items stimmen)
+      try {
+        const profRes = await loadCurrentProfileData();
+        if (profRes.unauth) {
+          location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+          return;
+        }
+      } catch (_) {}
+
       loadLists();
     }
+
 
     // Listen laden oder Editor anzeigen
     function loadLists() {
