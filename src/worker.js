@@ -428,35 +428,34 @@ async function handleApi(req, env) {
       return json({ error: "method" }, 405);
     }
 
-    // 6) AI (Gemini)
+    // 6) AI (Groq)
     if (path === "/api/ai" && req.method === "POST") {
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
-      if (!env.GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY_missing" }, 500);
+      if (!env.Groq_API) return json({ error: "Groq_API_missing" }, 500);
 
       const body = await req.json().catch(() => null);
       const prompt = String(body?.prompt || "").trim();
       if (!prompt) return json({ error: "prompt_required" }, 400);
 
-      const url =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-        encodeURIComponent(env.GEMINI_API_KEY);
-
-      const r = await fetch(url, {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Authorization": `Bearer ${env.Groq_API}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          model: "llama3-8b-8192",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
         }),
       });
 
       const j = await r.json().catch(() => null);
-      if (!r.ok) return json({ error: "gemini_error", status: r.status, details: j }, 502);
+      if (!r.ok) return json({ error: "groq_error", status: r.status, details: j }, 502);
 
-      const text =
-        j?.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("\n") || "";
-
+      const text = j?.choices?.[0]?.message?.content || "";
       return json({ ok: true, text });
     }
 
