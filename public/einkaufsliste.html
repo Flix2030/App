@@ -234,7 +234,20 @@
       z-index: 1000;
       overscroll-behavior: contain;
     }
-    .popup-overlay.active{ display:flex; }
+    
+    /* ===== FIX: ai-modal muss wie echtes Overlay funktionieren (kein Side-Panel) ===== */
+    .ai-modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      overscroll-behavior: contain;
+    }
+    .ai-modal.active{ display:flex; }
+.popup-overlay.active{ display:flex; }
 
     .popup{
       position: relative; /* für X */
@@ -706,7 +719,7 @@
   </div>
 
   <!-- KI Popup -->
-  <div id="ai-modal" class="ai-modal" class="popup-overlay">
+  <div id="ai-modal" class="popup-overlay ai-modal">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
       <button class="popup-close" type="button" id="ai-x" aria-label="Schließen">✕</button>
 
