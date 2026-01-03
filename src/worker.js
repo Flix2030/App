@@ -437,7 +437,7 @@ async function handleApi(req, env) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+          model: "moonshotai/kimi-k2-instruct",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
         }),
