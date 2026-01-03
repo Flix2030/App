@@ -364,7 +364,11 @@
       font-size: 16px;
     }
     .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; }
-
+    
+    .ai-list{
+      scrollbar-gutter: stable;
+    }
+    
     /* Switch */
     .switch{ position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
     .switch input{ opacity:0; width:0; height:0; }
@@ -1289,8 +1293,11 @@
           ctrl.appendChild(ok);
           ctrl.appendChild(no);
 
-          row.appendChild(main);
-          row.appendChild(ctrl);
+          row.appendChild(title);     // Name
+          row.appendChild(qty);       // Slider
+          row.appendChild(qtyLabel);  // Zahl
+          row.appendChild(ok);        // +
+          row.appendChild(no);  
           box.appendChild(row);
         });
       }
