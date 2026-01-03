@@ -398,6 +398,118 @@
     .dot.ok{ background: rgba(62,227,140,0.9); box-shadow: 0 0 14px rgba(62,227,140,0.55); }
     .dot.bad{ background: rgba(255,77,109,0.9); box-shadow: 0 0 14px rgba(255,77,109,0.55); }
     .dot.work{ background: rgba(255,255,255,0.75); box-shadow: 0 0 14px rgba(255,255,255,0.35); }
+  
+
+    /* ===== FIXES: Slider-Länge, echtes 0%-Fill, Mobile nichts abgeschnitten ===== */
+
+    /* In der Listenansicht (Editor) keinen Home-Button oben */
+    body.in-list-editor #top-home-link{ display:none !important; }
+    body.in-list-editor #top-back-link{ display:inline-block !important; }
+    body:not(.in-list-editor) #top-back-link{ display:none !important; }
+
+    /* List items: dürfen umbrechen (Handy) */
+    .list-item{
+      flex-wrap: wrap;
+      justify-content: flex-start; /* statt space-between -> weniger "abgeschnitten" */
+    }
+    .item-name{
+      min-width: 140px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .actions{
+      flex-wrap: wrap; /* Bearbeiten/Entfernen darf umbrechen */
+      margin-left: auto;
+    }
+
+    /* Slider + Text als Block, damit rechts die 0/5 sichtbar bleibt */
+    .item-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex: 1 1 360px;
+      min-width: 240px;
+      margin-left: auto;
+    }
+    .item-range{
+      flex: 1 1 auto;
+      min-width: 140px;
+      max-width: 240px; /* ✅ nicht zu lang */
+    }
+    .qty-text{
+      min-width: 56px;
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Add-row Slider (neuer Einkauf) */
+    #new-item-qty{
+      width: auto;
+      flex: 1 1 auto;
+      min-width: 140px;
+      max-width: 240px; /* ✅ nicht zu lang */
+    }
+
+    /* AI Slider */
+    .ai-qty{
+      width: auto;
+      flex: 1 1 auto;
+      min-width: 140px;
+      max-width: 240px; /* ✅ nicht zu lang */
+    }
+
+    /* ✅ Range: echtes 0%-Fill (kein "sieht aus wie 2") */
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height: 10px;
+      border-radius: 999px;
+      outline:none;
+
+      /* Grün bis --p, danach neutral */
+      background: linear-gradient(to right,
+        var(--accent) 0 var(--p, 0%),
+        rgba(255,255,255,0.14) var(--p, 0%) 100%
+      );
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      border: 0;
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      border: 0;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-track{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 0;
+    }
+
+    /* Handy: noch etwas kompakter */
+    @media (max-width: 520px){
+      .item-right{ min-width: 0; flex: 1 1 100%; margin-left: 0; }
+      .item-range{ max-width: 200px; }
+      #new-item-qty{ max-width: 200px; }
+      .ai-qty{ max-width: 200px; }
+      .actions{ margin-left: 0; }
+    }
+
   </style>
 </head>
 
@@ -411,7 +523,8 @@
           <span id="sync-text">Lade…</span>
         </div>
       </div>
-      <a class="back-link" href="/home">&#x2B05; Home</a>
+      <a class="back-link" id="top-home-link" href="/home">&#x2B05; Home</a>
+      <a class="back-link hidden" id="top-back-link" href="#" role="button">⟵ Zurück zu Listen</a>
     </div>
 
     <!-- Listenübersicht -->
@@ -627,8 +740,15 @@
 
       function setRangeGreen(el){
         if (!el) return;
+        const max = parseInt(el.max, 10) || 0;
         const v = parseInt(el.value, 10) || 0;
+
+        // ✅ class bleibt für Logik erhalten
         el.classList.toggle("range-active", v > 0);
+
+        // ✅ echtes 0%-Fill, damit 0 nicht wie "2" aussieht
+        const pct = (max > 0) ? (Math.max(0, Math.min(v, max)) / max) * 100 : 0;
+        el.style.setProperty("--p", (v > 0 ? pct : 0) + "%");
       }
 
       // ===== popup =====
@@ -709,12 +829,14 @@
       }
 
       function showListsSection(){
+        document.body.classList.remove("in-list-editor");
         currentListId = null;
         document.getElementById("lists-section").classList.remove("hidden");
         document.getElementById("list-edit-section").classList.add("hidden");
         loadLists();
       }
       function showListEditSection(){
+        document.body.classList.add("in-list-editor");
         const list = getCurrentList();
         if (!list){ showListsSection(); return; }
         document.getElementById("lists-section").classList.add("hidden");
@@ -908,17 +1030,18 @@
 
           if ((item.qty||1) > 1){
             const right = document.createElement("div");
+            right.className = "item-right";
             right.style.display = "flex";
             right.style.alignItems = "center";
             right.style.gap = "10px";
 
             sliderEl = document.createElement("input");
+            sliderEl.className = "item-range";
             sliderEl.type = "range";
             sliderEl.min = "0";
             sliderEl.max = String(item.qty);
             sliderEl.value = String(item.progress||0);
-            sliderEl.style.minWidth = "220px";
-            setRangeGreen(sliderEl);
+                        setRangeGreen(sliderEl);
 
             qtyTextEl = document.createElement("span");
             qtyTextEl.className = "qty-text";
@@ -1222,6 +1345,15 @@ ${raw}`;
         });
 
         document.getElementById("back-to-lists-btn").addEventListener("click", showListsSection);
+
+        // Topbar "Zurück zu Listen"
+        const topBack = document.getElementById("top-back-link");
+        if (topBack){
+          topBack.addEventListener("click", (e)=>{
+            e.preventDefault();
+            showListsSection();
+          });
+        }
 
         // editor mode
         document.getElementById("edit-mode-toggle").addEventListener("click", function(){
