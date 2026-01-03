@@ -709,6 +709,68 @@
       );
       border: 0;
     }
+
+
+    /* ===== FIX (KI) v6: exakt wie "abhaken"-Karten (Name oben, Slider darunter) ===== */
+    .ai-row{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+      padding:14px;
+      border-radius: 16px;
+    }
+    .ai-main{ margin:0; }
+    .ai-name{
+      font-weight:900;
+      font-size:22px;
+      line-height:1.15;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    /* 2. Zeile: Slider | Zahl | + | x */
+    .ai-ctrl{
+      display:grid;
+      grid-template-columns: 1fr auto auto auto;
+      gap:12px;
+      align-items:center;
+      width:100%;
+    }
+
+    .ai-qty{
+      width:100%;
+      min-width:0;
+      max-width:none;
+    }
+
+    .ai-qty-label{
+      min-width: 26px;
+      text-align:right;
+      font-weight:900;
+      white-space:nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .icon-btn{
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      padding:0;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* iOS: Track mit Gradient-Fill */
+    input[type="range"].ai-qty::-webkit-slider-runnable-track{
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(to right,
+        var(--accent) 0 var(--p, 0%),
+        rgba(255,255,255,0.14) var(--p, 0%) 100%
+      );
+    }
 </style>
 </head>
 
