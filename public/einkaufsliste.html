@@ -18,6 +18,7 @@
       --shadow: 0 18px 60px rgba(0,0,0,0.55);
       --radius: 18px;
       --danger: #ff4d6d;
+      --rangeNeutral: rgba(255,255,255,0.55);
     }
 
     html, body{
@@ -127,18 +128,22 @@
     .item-name{ flex:1; cursor:pointer; }
     .actions{ display:flex; gap:6px; }
 
+    /* Mobile: kein Zoom beim Tippen -> >=16px */
     input[type="text"]{
       padding: 12px 12px;
       border: 1px solid var(--border);
       background: rgba(0,0,0,0.25);
       color: var(--text);
       border-radius: 14px;
-      font-size: 0.95rem;
+      font-size: 16px;
       outline: none;
       min-width: 220px;
     }
     input[type="text"]::placeholder{ color: rgba(235,244,255,0.55); }
-    input[type="range"]{ accent-color: var(--accent); }
+
+    /* Slider: neutral bei 0, grün erst >0 (per class) */
+    input[type="range"]{ accent-color: var(--rangeNeutral); }
+    input[type="range"].range-active{ accent-color: var(--accent); }
 
     .hidden{ display:none; }
 
@@ -230,7 +235,9 @@
       overscroll-behavior: contain;
     }
     .popup-overlay.active{ display:flex; }
+
     .popup{
+      position: relative; /* für X */
       background: rgba(15, 20, 34, 0.92);
       border: 1px solid var(--border);
       backdrop-filter: blur(12px);
@@ -242,16 +249,38 @@
       max-height: 86vh;
       overflow: hidden;
     }
+
+    /* X oben rechts */
+    .popup-close{
+      position:absolute;
+      top:10px;
+      right:12px;
+      width:36px;
+      height:36px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      user-select:none;
+    }
+    .popup-close:hover{ filter: brightness(1.08); }
+
     .popup p{ margin:0 0 10px; color: var(--text); }
-    .popup input[type="text"], .popup input[type="range"]{
+    .popup input[type="text"], .popup input[type="range"], .popup textarea{
       width: 100%;
       margin-bottom: 10px;
-      padding: 10px;
+      padding: 10px 12px;
       border: 1px solid var(--border);
       border-radius: 14px;
       background: rgba(0,0,0,0.25);
       color: var(--text);
       box-sizing: border-box;
+      font-size: 16px; /* kein Mobile-Zoom */
     }
     .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; }
 
@@ -295,7 +324,7 @@
 
     .ai-add textarea{
       width:100%;
-      resize: vertical;
+      resize: none;            /* nicht größer ziehen */
       min-height: 78px;
       padding: 10px 12px;
       border-radius: 12px;
@@ -304,6 +333,7 @@
       color: rgba(255,255,255,0.92);
       outline:none;
       box-sizing:border-box;
+      font-size: 16px;         /* kein Mobile-Zoom */
     }
     .ai-actions{ margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
@@ -319,7 +349,6 @@
     }
     .ai-main{ flex:1; min-width:0; }
     .ai-name{ font-weight: 800; }
-    .ai-reason{ margin-top: 2px; }
     .ai-ctrl{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
     .ai-qty{ width: 120px; }
     .ai-qty-label{ min-width: 22px; text-align:right; color: rgba(255,255,255,0.82); font-variant-numeric: tabular-nums; }
@@ -394,7 +423,8 @@
           <button id="lists-edit-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
         </div>
         <div class="right">
-          <span id="lists-edit-hint" style="display:none; color: var(--muted); font-weight: 800;">Bearbeiten aktiv</span>
+          <!-- Erklärungstext entfernt -->
+          <span id="lists-edit-hint" style="display:none;"></span>
         </div>
       </div>
       <ul id="lists-list"></ul>
@@ -429,7 +459,8 @@
       <div id="new-item-section" style="margin-top:10px; display:none;">
         <div class="add-row">
           <input type="text" id="new-item-text" placeholder="Neuer Einkauf" />
-          <input type="range" id="new-item-qty" min="1" max="30" value="1" />
+          <!-- max 10 -->
+          <input type="range" id="new-item-qty" min="1" max="10" value="1" />
           <span id="new-item-qty-label" class="qty-label">Menge: 1</span>
           <button id="add-item-btn" class="btn btn-small">Hinzufügen</button>
         </div>
@@ -448,6 +479,8 @@
   <!-- Listen-Einstellungen -->
   <div id="list-settings-modal" class="popup-overlay">
     <div class="popup">
+      <button class="popup-close" type="button" id="list-settings-x" aria-label="Schließen">✕</button>
+
       <h3 style="margin:0 0 12px;">Listen-Einstellungen</h3>
 
       <div style="display:flex; flex-direction:column; gap:14px;">
@@ -478,9 +511,12 @@
   <!-- Generic Popup -->
   <div id="popup-overlay" class="popup-overlay">
     <div class="popup">
+      <button class="popup-close" type="button" id="popup-x" aria-label="Schließen">✕</button>
+
       <p id="popup-message"></p>
       <input type="text" id="popup-input" class="hidden" />
-      <input type="range" id="popup-range" class="hidden" min="1" max="30" value="1" />
+      <!-- max 10 -->
+      <input type="range" id="popup-range" class="hidden" min="1" max="10" value="1" />
       <span id="popup-qty-label" class="hidden" style="text-align:right; display:block; margin-bottom:10px;">1</span>
       <div class="popup-buttons">
         <button id="popup-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
@@ -492,12 +528,14 @@
   <!-- KI Popup -->
   <div id="ai-modal" class="popup-overlay">
     <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
+      <button class="popup-close" type="button" id="ai-x" aria-label="Schließen">✕</button>
+
       <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
       <div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich will Pasta, Tomatensoße, Käse, 2x Milch und Snacks kaufen."></textarea>
         <div class="ai-actions">
           <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
-          <span class="muted">TAIK erkennt Einkaufs-Dinge + sinnvolle Extras.</span>
+          <!-- Erklärungstext entfernt -->
         </div>
       </div>
       <div id="ai-suggestions" class="ai-list"></div>
@@ -551,7 +589,6 @@
       let saveQueued = false;
 
       function scheduleSave(){
-        // debounce
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(()=> saveNow().catch(()=>{}), 250);
         setSync("work", "Speichere…");
@@ -582,6 +619,18 @@
         return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
       }
 
+      function clampQty10(n){
+        n = parseInt(n, 10);
+        if (!Number.isFinite(n)) n = 1;
+        return Math.max(1, Math.min(10, n));
+      }
+
+      function setRangeGreen(el){
+        if (!el) return;
+        const v = parseInt(el.value, 10) || 0;
+        el.classList.toggle("range-active", v > 0);
+      }
+
       // ===== popup =====
       const overlay = document.getElementById("popup-overlay");
       const popupMessage = document.getElementById("popup-message");
@@ -590,9 +639,15 @@
       const popupQtyLabel = document.getElementById("popup-qty-label");
       let popupCallback = null;
 
+      const popupX = document.getElementById("popup-x");
+      if (popupX) popupX.addEventListener("click", ()=> popupCallback && popupCallback(false));
+
       document.getElementById("popup-confirm").addEventListener("click", ()=> popupCallback && popupCallback(true));
       document.getElementById("popup-cancel").addEventListener("click", ()=> popupCallback && popupCallback(false));
-      popupRange.addEventListener("input", ()=> popupQtyLabel.textContent = popupRange.value);
+      popupRange.addEventListener("input", ()=>{
+        popupQtyLabel.textContent = popupRange.value;
+        setRangeGreen(popupRange);
+      });
 
       function showPrompt(msg, def, onOk){
         popupMessage.textContent = msg;
@@ -624,14 +679,15 @@
         popupRange.classList.remove("hidden");
         popupQtyLabel.classList.remove("hidden");
         popupInput.value = item.name || "";
-        popupRange.value = String(item.qty || 1);
+        popupRange.value = String(clampQty10(item.qty || 1));
         popupQtyLabel.textContent = popupRange.value;
+        setRangeGreen(popupRange);
         overlay.classList.add("active");
         popupCallback = (ok)=>{
           overlay.classList.remove("active");
           if (ok){
             const n = popupInput.value.trim();
-            const q = Math.max(1, parseInt(popupRange.value,10)||1);
+            const q = clampQty10(popupRange.value);
             if (n) onOk(n,q);
           }
           popupInput.classList.add("hidden");
@@ -766,7 +822,7 @@
           if (it && typeof it === "object"){
             if (!it.id) it.id = makeId("item");
             if (!it.name) it.name = "";
-            if (typeof it.qty !== "number" || it.qty < 1) it.qty = 1;
+            it.qty = clampQty10(it.qty || 1);
             if (typeof it.progress !== "number" || it.progress < 0) it.progress = 0;
             if (it.progress > it.qty) it.progress = it.qty;
             return it;
@@ -774,7 +830,6 @@
           return { id: makeId("item"), name:"", qty:1, progress:0 };
         });
 
-        // Sortieren nur im Fortschrittsmodus (nicht editMode)
         if (!editMode && completedBehavior === "bottom"){
           const before = list.items.slice();
           const sorted = before.slice().sort((a,b)=>(isDone(a)?1:0)-(isDone(b)?1:0));
@@ -794,7 +849,6 @@
           li.className = "list-item";
           if (isDone(item)) li.classList.add("item-done");
 
-          // EDIT MODE
           if (editMode){
             const name = document.createElement("span");
             name.className = "item-name";
@@ -817,7 +871,7 @@
               e.stopPropagation();
               showItemEditor(item,(n,q)=>{
                 item.name = n;
-                item.qty = q;
+                item.qty = clampQty10(q);
                 if (item.progress > item.qty) item.progress = item.qty;
                 scheduleSave();
                 renderItems();
@@ -843,7 +897,6 @@
             return;
           }
 
-          // PROGRESS MODE
           const nameSpan = document.createElement("span");
           nameSpan.className = "item-name";
           nameSpan.style.flex = "1";
@@ -865,6 +918,7 @@
             sliderEl.max = String(item.qty);
             sliderEl.value = String(item.progress||0);
             sliderEl.style.minWidth = "220px";
+            setRangeGreen(sliderEl);
 
             qtyTextEl = document.createElement("span");
             qtyTextEl.className = "qty-text";
@@ -876,6 +930,7 @@
               qtyTextEl.textContent = item.progress + "/" + item.qty;
               li.classList.toggle("item-done", isDone(item));
               updateCompletion();
+              setRangeGreen(sliderEl);
               setSync("work","Speichere…");
             });
 
@@ -897,7 +952,10 @@
           const doToggleDone = ()=>{
             const done = isDone(item);
             item.progress = done ? 0 : (item.qty||1);
-            if (sliderEl) sliderEl.value = String(item.progress);
+            if (sliderEl){
+              sliderEl.value = String(item.progress);
+              setRangeGreen(sliderEl);
+            }
             if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
 
             scheduleSave();
@@ -916,7 +974,10 @@
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
               item.progress = cb.checked ? (item.qty||1) : 0;
-              if (sliderEl) sliderEl.value = String(item.progress);
+              if (sliderEl){
+                sliderEl.value = String(item.progress);
+                setRangeGreen(sliderEl);
+              }
               if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
               scheduleSave();
               if (completedBehavior === "bottom") renderItems();
@@ -941,7 +1002,7 @@
         const q = document.getElementById("new-item-qty");
         const name = (t.value||"").trim();
         if (!name) return;
-        const qty = Math.max(1, parseInt(q.value,10)||1);
+        const qty = clampQty10(q.value);
         list.items.push({ id: makeId("item"), name, qty, progress: 0 });
         t.value = "";
         q.value = "1";
@@ -971,9 +1032,13 @@
       function addOrMergeItem(list, name, qty){
         const n = normalizeItemName(name);
         if (!n) return;
-        const q = Math.max(1, parseInt(qty||1,10)||1);
+        const q = clampQty10(qty || 1);
         const existing = (list.items||[]).find(it => (it.name||"").trim().toLowerCase() === n.toLowerCase());
-        if (existing){ existing.qty = Math.max(1, (parseInt(existing.qty||1,10)||1) + q); return; }
+        if (existing){
+          existing.qty = clampQty10((parseInt(existing.qty||1,10)||1) + q);
+          if (existing.progress > existing.qty) existing.progress = existing.qty;
+          return;
+        }
         list.items.push({ id: makeId("item"), name:n, qty:q, progress:0 });
       }
       function extractJsonArray(text){
@@ -1004,7 +1069,7 @@
         if (!Array.isArray(suggestions) || !suggestions.length){
           const empty = document.createElement("div");
           empty.className = "ai-empty";
-          empty.textContent = "Keine Vorschläge erkannt.";
+          empty.textContent = "Keine Vorschläge.";
           box.appendChild(empty);
           return;
         }
@@ -1023,12 +1088,8 @@
           title.className = "ai-name";
           title.textContent = name;
 
-          const reason = document.createElement("div");
-          reason.className = "ai-reason muted";
-          reason.textContent = normalizeItemName(s.reason || "Vorschlag");
-
+          /* Erklärungstext („Vorschlag“) entfernt -> kein reason rendern */
           main.appendChild(title);
-          main.appendChild(reason);
 
           const ctrl = document.createElement("div");
           ctrl.className = "ai-ctrl";
@@ -1036,14 +1097,18 @@
           const qty = document.createElement("input");
           qty.type = "range";
           qty.min = "1";
-          qty.max = "30";
-          qty.value = String(Math.max(1, parseInt(s.qty||1,10)||1));
+          qty.max = "10";
+          qty.value = String(clampQty10(s.qty||1));
           qty.className = "ai-qty";
+          setRangeGreen(qty);
 
           const qtyLabel = document.createElement("span");
           qtyLabel.className = "ai-qty-label";
           qtyLabel.textContent = qty.value;
-          qty.addEventListener("input", ()=> qtyLabel.textContent = qty.value);
+          qty.addEventListener("input", ()=>{
+            qtyLabel.textContent = qty.value;
+            setRangeGreen(qty);
+          });
 
           const ok = document.createElement("button");
           ok.className = "icon-btn ok";
@@ -1092,15 +1157,12 @@
         try{
           const prompt =
 `Du bist eine Einkaufs-Assistentin für eine Einkaufsliste.
-Aufgabe: Erstelle Vorschläge für Einkaufs-Artikel.
+Gib NUR ein JSON-Array zurück (ohne Markdown, ohne Erklärtext).
+Format: [{"name":"...","qty":1}]
 Regeln:
 - Übernimm explizit genannte Dinge IMMER.
-- Ergänze sinnvolle typische Einkäufe passend zum Kontext (aber nicht übertreiben; eher 8-18 Vorschläge).
-- Mengen:
-  - Wenn genannt (z.B. "2 Milch") -> qty=2
-  - Wenn es nach "für X Tage/Personen/Party" klingt -> realistische Mengen.
-Antworte NUR als JSON-Array (ohne Markdown, ohne Erklärtext).
-Format: [{"name":"...","qty":1}]
+- Ergänze sinnvolle Einkäufe passend zum Kontext, aber nicht zu viele.
+- qty immer 1 bis 10.
 
 TEXT:
 ${raw}`;
@@ -1128,8 +1190,7 @@ ${raw}`;
 
           const suggestions = arr.map(x=>({
             name: normalizeItemName(x?.name ?? x),
-            qty: Math.max(1, parseInt(x?.qty ?? 1,10) || 1),
-            reason: normalizeItemName(x?.reason || "")
+            qty: clampQty10(x?.qty ?? 1)
           })).filter(x=>x.name);
 
           renderAiSuggestions(suggestions);
@@ -1144,7 +1205,7 @@ ${raw}`;
 
       // ===== Bind UI =====
       function bindUI(){
-        // lists
+        // Listen
         document.getElementById("add-list-btn").addEventListener("click", ()=>{
           showPrompt("Name der neuen Einkaufsliste:", "", (name)=>{
             if (!name) return;
@@ -1156,7 +1217,6 @@ ${raw}`;
 
         document.getElementById("lists-edit-toggle").addEventListener("click", function(){
           listsEditMode = !listsEditMode;
-          document.getElementById("lists-edit-hint").style.display = listsEditMode ? "inline" : "none";
           this.textContent = listsEditMode ? "Fertig" : "Bearbeiten";
           loadLists();
         });
@@ -1171,9 +1231,16 @@ ${raw}`;
           renderItems();
         });
 
-        document.getElementById("new-item-qty").addEventListener("input", function(){
-          document.getElementById("new-item-qty-label").textContent = "Menge: " + this.value;
+        const newQty = document.getElementById("new-item-qty");
+        newQty.addEventListener("input", function(){
+          // max 10 + Label
+          const v = clampQty10(this.value);
+          this.value = String(v);
+          document.getElementById("new-item-qty-label").textContent = "Menge: " + v;
+          setRangeGreen(this);
         });
+        // initial
+        setRangeGreen(newQty);
 
         document.getElementById("add-item-btn").addEventListener("click", addItem);
 
@@ -1198,6 +1265,7 @@ ${raw}`;
         // settings
         document.getElementById("open-list-settings-btn").addEventListener("click", openListSettings);
         document.getElementById("list-settings-cancel").addEventListener("click", ()=> listSettingsModal.classList.remove("active"));
+        document.getElementById("list-settings-x").addEventListener("click", ()=> listSettingsModal.classList.remove("active"));
         document.getElementById("list-settings-save").addEventListener("click", ()=>{
           const list = getCurrentList();
           if (!list){ listSettingsModal.classList.remove("active"); return; }
@@ -1215,6 +1283,7 @@ ${raw}`;
           setTimeout(()=> document.getElementById("ai-item-text")?.focus(), 0);
         });
         document.getElementById("ai-plan-btn").addEventListener("click", aiPlanSuggestions);
+        document.getElementById("ai-x").addEventListener("click", closeAiModal);
       }
 
       async function init(){
