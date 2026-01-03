@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <title>Einkaufsliste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
+    <!-- responsive-fix v8: laptop single-row + mobile wrap + ai suggestions layout -->
+<style>
     :root {
       --bg0: #05080f;
       --bg1: #070c16;
@@ -420,9 +421,9 @@
     body.in-list-editor #top-back-link{ display:inline-block !important; }
     body:not(.in-list-editor) #top-back-link{ display:none !important; }
 
-    /* List items: dürfen umbrechen (Handy) */
+    /* List items: Laptop in einer Reihe, Handy darf umbrechen */
     .list-item{
-      flex-wrap: wrap;
+      flex-wrap: nowrap;          /* ✅ Laptop: eine Reihe */
       justify-content: flex-start; /* statt space-between -> weniger "abgeschnitten" */
     }
     .item-name{
@@ -516,6 +517,9 @@
 
     /* Handy: noch etwas kompakter */
     @media (max-width: 520px){
+      .list-item{ flex-wrap: wrap; }
+      .actions{ flex-wrap: wrap; }
+
       .item-right{ min-width: 0; flex: 1 1 100%; margin-left: 0; }
       .item-range{ max-width: 200px; }
       #new-item-qty{ max-width: 200px; }
