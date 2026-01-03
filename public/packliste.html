@@ -1214,6 +1214,7 @@ async function init() {
   // UI-Events binden (nur einmal)
   bindUI();
   applyTheme();
+  autoDetectDeviceModeIfUnset();
   applyDeviceMode();
   await loadUsers();
 }
@@ -1222,6 +1223,21 @@ async function init() {
 
     // === Geräte-Modus (Laptop / iPad / Handy) ===
     const DEVICE_KEY = "packliste_device_mode";
+
+    function autoDetectDeviceModeIfUnset() {
+      // Nur automatisch setzen, wenn der User noch nie gewählt hat
+      const existing = localStorage.getItem(DEVICE_KEY);
+      if (existing === "laptop" || existing === "ipad" || existing === "phone") return;
+
+      const w = Math.min(window.innerWidth || 9999, screen.width || 9999);
+
+      // simple & robust nach Breite
+      let mode = "laptop";
+      if (w <= 700) mode = "phone";
+      else if (w <= 1024) mode = "ipad";
+
+      localStorage.setItem(DEVICE_KEY, mode);
+    }
 
     function getDeviceMode() {
       const v = localStorage.getItem(DEVICE_KEY);
