@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Einkaufsliste</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Packlisten verwalten</title>
   <style>
+    /* Dark UI (angelehnt an dein Beispiel) */
     :root {
       --bg0: #05080f;
       --bg1: #070c16;
@@ -15,22 +15,26 @@
       --muted: rgba(255,255,255,0.62);
       --accent: #3ee38c;
       --accent2: #2fce7a;
+      --danger: #ff4d6d;
       --shadow: 0 18px 60px rgba(0,0,0,0.55);
       --radius: 18px;
-      --danger: #ff4d6d;
-      --rangeNeutral: rgba(255,255,255,0.55);
     }
 
-    html, body{
-      height: auto;
-      min-height: 100vh;
-      overflow-y: auto;
-      overflow-x: hidden;
+    
+    /* Lightmode */
+    body.lightmode {
+      --bg0: #f6f7fb;
+      --bg1: #ffffff;
+      --panel: rgba(255,255,255,0.86);
+      --panel2: rgba(255,255,255,0.92);
+      --border: rgba(0,0,0,0.10);
+      --text: rgba(10,12,18,0.92);
+      --muted: rgba(10,12,18,0.62);
+      --shadow: 0 18px 60px rgba(0,0,0,0.18);
     }
-
-    body{
+body {
       margin: 0;
-      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
       color: var(--text);
       background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
                   radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
@@ -43,7 +47,7 @@
       box-sizing: border-box;
     }
 
-    .container{
+    .container {
       background: var(--panel);
       border: 1px solid var(--border);
       backdrop-filter: blur(14px);
@@ -55,6 +59,7 @@
       width: 100%;
     }
 
+    
     .topbar{
       display:flex;
       align-items:center;
@@ -62,46 +67,111 @@
       gap:12px;
       margin-bottom: 14px;
     }
-    h1{ margin:0; font-size: 2rem; letter-spacing: .2px; }
-    h2{ margin: 18px 0 10px; font-size: 1.45rem; letter-spacing: .2px; }
+    .topbar h1{ margin:0; }
+    .topbar .back-link{ margin-top:0; }
+h1 {
+      color: var(--text);
+      margin: 0 0 18px;
+      font-size: 2rem;
+      letter-spacing: 0.2px;
+    }
 
-    .btn{
+    h2 {
+      color: var(--text);
+      margin-top: 22px;
+      margin-bottom: 10px;
+      font-size: 1.45rem;
+      letter-spacing: 0.2px;
+    }
+
+    /* Button-Grundstile */
+    .btn {
       background: linear-gradient(180deg, var(--accent), var(--accent2));
       color: #03130a;
       border: 1px solid rgba(255,255,255,0.10);
       border-radius: 12px;
       padding: 10px 16px;
       font-size: 0.92rem;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
       margin: 4px;
       transition: transform 0.15s ease, filter 0.2s ease;
       box-shadow: 0 10px 24px rgba(62,227,140,0.14);
-      user-select: none;
     }
-    .btn:hover{ filter: brightness(1.03); }
-    .btn:active{ transform: translateY(1px); }
-    .btn-small{ padding: 6px 12px; font-size: .85rem; }
-    .btn-secondary{
+    .btn:hover { filter: brightness(1.03); }
+    .btn:active { transform: translateY(1px); }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .btn-secondary {
       background: rgba(255,255,255,0.06);
       color: var(--text);
       border: 1px solid var(--border);
       box-shadow: none;
     }
-    .btn-secondary:hover{ filter: brightness(1.06); }
+    .btn-secondary:hover { filter: brightness(1.06); }
 
-    .back-link{
-      display:inline-block;
-      padding: 12px 18px;
-      background: rgba(255,255,255,0.06);
+    /* Listen & Elemente */
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel2);
       border: 1px solid var(--border);
-      color: var(--text);
       border-radius: 14px;
-      text-decoration:none;
-      user-select:none;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      gap: 12px;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .list-item .item-name {
+      flex: 1;
+      cursor: pointer;
+    }
+    .actions {
+      display: flex;
+      gap: 4px;
     }
 
-    .toolbar{
+    /* Eingabefelder */
+    input[type="text"] {
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      outline: none;
+      min-width: 220px;
+    }
+    input[type="text"]::placeholder { color: rgba(235,244,255,0.55); }
+
+    select {
+      padding: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      outline: none;
+      min-width: 220px;
+    }
+    select:focus{ border-color: rgba(62,227,140,0.45); box-shadow: 0 0 0 3px rgba(62,227,140,0.12); }
+    /* Dropdown-Optionen (damit es im Darkmode nicht grau/hell aussieht) */
+    option {
+      background: #0b1220;
+      color: rgba(255,255,255,0.92);
+    }
+    option{ background: #0b1220; color: rgba(255,255,255,0.92); }
+
+    .toolbar {
       display:flex;
       align-items:center;
       justify-content: space-between;
@@ -111,133 +181,159 @@
     }
     .toolbar .left, .toolbar .right{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
 
-    ul{ list-style:none; padding:0; margin:0; }
-    .list-item{
-      display:flex;
-      justify-content: space-between;
+    .bulkbar{
+      display:none;
       align-items:center;
-      background: var(--panel2);
-      border: 1px solid var(--border);
+      justify-content: space-between;
+      gap:10px;
+      background: rgba(62,227,140,0.08);
+      border: 1px solid rgba(62,227,140,0.20);
       border-radius: 14px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
-      gap:12px;
-      -webkit-user-select:none;
-      user-select:none;
+      padding: 10px 12px;
+      margin-top: 10px;
     }
-    .item-name{ flex:1; cursor:pointer; }
-    .actions{ display:flex; gap:6px; }
+    .bulkbar .count{ color: var(--accent); font-weight:800; }
+    .selected {
+      outline: 2px solid rgba(59,130,246,0.80);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+    }
 
-    /* Mobile: kein Zoom beim Tippen -> >=16px */
-    input[type="text"]{
-      padding: 12px 12px;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,0.25);
+    /* Keine Browser-Textauswahl beim Auswählen/Dragging */
+    body.noselect, body.noselect * {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Select / Dropdown dunkler (so gut es der Browser erlaubt) */
+    select {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
       color: var(--text);
-      border-radius: 14px;
-      font-size: 16px;
+      border-radius: 12px;
+      padding: 10px 12px;
       outline: none;
-      min-width: 220px;
     }
-    input[type="text"]::placeholder{ color: rgba(235,244,255,0.55); }
+    select:focus {
+      border-color: rgba(62,227,140,0.55);
+      box-shadow: 0 0 0 4px rgba(62,227,140,0.12);
+    }
+    option {
+      background: #0e1624;
+      color: #ffffff;
+    }
 
-    /* Slider: neutral bei 0, grün erst >0 (per class) */
-    input[type="range"]{ accent-color: var(--rangeNeutral); }
-    input[type="range"].range-active{ accent-color: var(--accent); }
-
-    .hidden{ display:none; }
-
-    .list-header{
-      display:flex;
+    /* Kopfbereich + Fortschritt */
+    .list-header {
+      display: flex;
       justify-content: space-between;
-      align-items:center;
+      align-items: center;
       gap: 12px;
       margin-top: 18px;
     }
-    .progress-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
+    .progress-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 12px;
       border-radius: 999px;
       border: 1px solid rgba(62,227,140,0.25);
       background: rgba(62,227,140,0.10);
       color: var(--accent);
-      font-weight: 800;
+      font-weight: 700;
       font-size: 0.95rem;
       white-space: nowrap;
       box-shadow: 0 10px 30px rgba(62,227,140,0.08);
     }
-    .progress-dot{
-      width: 8px; height: 8px; border-radius: 50%;
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
       background: var(--accent);
       box-shadow: 0 0 16px rgba(62,227,140,0.65);
     }
-    .progress-bar{
+    .progress-bar {
       height: 10px;
       border-radius: 999px;
       background: rgba(255,255,255,0.06);
       border: 1px solid var(--border);
-      overflow:hidden;
+      overflow: hidden;
       margin: 12px 0 10px;
     }
-    .progress-bar > div{
-      height:100%;
-      width:0%;
+    .progress-bar > div {
+      height: 100%;
+      width: 0%;
       background: linear-gradient(90deg, var(--accent), rgba(62,227,140,0.35));
       border-radius: 999px;
       transition: width 220ms ease;
     }
 
-    .add-row{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      flex-wrap:wrap;
+    /* Add-Row (nicht gequetscht) */
+    .add-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
       background: rgba(255,255,255,0.04);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 12px;
     }
-    .qty-label{ min-width:64px; text-align:right; color: rgba(235,244,255,0.75); font-weight: 800; }
-    .qty-text{ min-width:64px; text-align:right; color: rgba(235,244,255,0.78); font-weight: 800; letter-spacing: .2px; }
-
-    #items-list .list-item.item-done{
-      background: rgba(62,227,140,0.16) !important;
-      border-color: rgba(62,227,140,0.65) !important;
-      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    .add-row input[type="range"] { flex: 1; min-width: 200px; }
+    .qty-label {
+      min-width: 64px;
+      text-align: right;
+      color: rgba(235,244,255,0.75);
+      font-weight: 700;
     }
 
-    #items-list .list-item{ cursor:pointer; }
-    #items-list .list-item .item-name,
-    #items-list .list-item .qty-text{ pointer-events:none; }
-    #items-list .list-item input[type="range"]{ pointer-events:auto; }
+    .qty-text {
+      min-width: 64px;
+      text-align: right;
+      color: rgba(235,244,255,0.78);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
 
-    body.checkbox-mode #items-list .list-item{ cursor:default; }
-    body.checkbox-mode #items-list .list-item .item-name,
-    body.checkbox-mode #items-list .list-item .qty-text{ pointer-events:auto; }
-
-    #items-list .item-check{
-      width: 22px;
-      height: 22px;
-      margin-right: 10px;
+    input[type="range"] {
       accent-color: var(--accent);
-      cursor: pointer;
     }
 
-    .popup-overlay{
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.5);
-      display:none;
-      align-items:center;
-      justify-content:center;
+    .hidden {
+      display: none;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 40px;
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      text-decoration: none;
+      transition: filter 0.2s ease, transform 0.15s ease;
+    }
+    .back-link:hover {
+      filter: brightness(1.08);
+    }
+
+    /* Popup-Overlay für Dialoge */
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
       z-index: 1000;
-      overscroll-behavior: contain;
     }
-    .popup-overlay.active{ display:flex; }
-
-    .popup{
-      position: relative; /* für X */
+    .popup-overlay.active {
+      display: flex;
+    }
+    .popup {
       background: rgba(15, 20, 34, 0.92);
       border: 1px solid var(--border);
       backdrop-filter: blur(12px);
@@ -246,58 +342,164 @@
       border-radius: 16px;
       box-shadow: 0 18px 60px rgba(0,0,0,0.55);
       min-width: 280px;
-      max-height: 86vh;
-      overflow: hidden;
     }
-
-    /* X oben rechts */
-    .popup-close{
-      position:absolute;
-      top:10px;
-      right:12px;
-      width:36px;
-      height:36px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.85);
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:18px;
-      user-select:none;
+    .popup p {
+      margin: 0;
+      margin-bottom: 10px;
+      color: var(--text);
     }
-    .popup-close:hover{ filter: brightness(1.08); }
-
-    .popup p{ margin:0 0 10px; color: var(--text); }
-    .popup input[type="text"], .popup input[type="range"], .popup textarea{
+    .popup input[type="text"], .popup input[type="range"] {
       width: 100%;
       margin-bottom: 10px;
-      padding: 10px 12px;
+      padding: 10px;
       border: 1px solid var(--border);
       border-radius: 14px;
       background: rgba(0,0,0,0.25);
       color: var(--text);
-      box-sizing: border-box;
-      font-size: 16px; /* kein Mobile-Zoom */
     }
-    .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; }
+    .popup-buttons {
+      text-align: right;
+    }
 
-    .switch{ position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
-    .switch input{ opacity:0; width:0; height:0; }
+    /* Anzeige der Mengenangabe im Popup */
+    #popup-qty-label {
+      /* Der Text wird rechts ausgerichtet und mit Abstand versehen. */
+      text-align: right;
+      margin-bottom: 10px;
+    }
+
+    /* Animation für verschobene Elemente */
+    .list-item.moved {
+      animation: flash-bg 0.4s;
+    }
+    @keyframes flash-bg {
+      from { background-color: #e4e0f2; }
+      to { background-color: #f8f8fc; }
+    }
+
+    /* Stil für Drag-Handle in Bearbeitungsmodus */
+    .drag-handle {
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      margin-right: 8px;
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
+
+    /* Drag & Drop Animation wie in Apps: Item hebt ab, Platzhalter */
+    .list-item.dragging {
+      will-change: top, left, transform;
+      transform: translate3d(0,0,0) scale(1.02);
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      transform: scale(1.02);
+      opacity: 0.65; /* leicht durchsichtig, damit man darunter sieht */
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    .drop-placeholder {
+      height: 12px;
+      border: 2px dashed rgba(62,227,140,0.55);
+      border-radius: 12px;
+      margin: 8px 0;
+      background: rgba(62,227,140,0.06);
+    }
+
+    /* UL als Bezug für Breite/Spur */
+    #items-list { position: relative; }
+  
+    /* Fertige Items: grün sichtbar */
+    .list-item.done {
+      background: rgba(62,227,140,0.18) !important;
+      border-color: rgba(62,227,140,0.55) !important;
+      box-shadow: 0 10px 26px rgba(62,227,140,0.10);
+    }
+    .list-item.done .item-name { color: rgba(255,255,255,0.95); }
+    .list-item.done .qty-text { color: rgba(235,244,255,0.90); }
+
+    /* iPad/Safari: Drag-Griff soll Scrollen blocken */
+    .drag-handle { touch-action: none; }
+
+    /* Fertige Items: grün gefüllt */
+    .list-item.item-done{
+      background: rgba(62,227,140,0.16) !important;
+      border-color: rgba(62,227,140,0.65) !important;
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    }
+
+    /* iPad / Touch Fix */
+    .drag-handle{
+      touch-action: none;
+    }
+    .list-item.dragging{
+      will-change: top, left, transform;
+      transform: translate3d(0,0,0) scale(1.02);
+    }
+
+    
+    /* Item klickbar wie eine Zeile (ohne Checkbox) – NUR in der Item-Liste */
+    #items-list .list-item {
+      cursor: pointer;
+    }
+    
+    #items-list .list-item .item-name,
+    #items-list .list-item .qty-text {
+      pointer-events: none; /* Klick geht auf die ganze Zeile */
+    }
+    
+    /* Slider bleibt bedienbar */
+    #items-list .list-item input[type="range"] {
+      pointer-events: auto;
+    }
+    
+    /* Fertig = grün gefüllt */
+    #items-list .list-item.item-done {
+      background: rgba(62,227,140,0.16) !important;
+      border-color: rgba(62,227,140,0.65) !important;
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    }
+    /* Einstellungen Toggle */
+    .settings-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .switch{
+      position:relative;
+      display:inline-block;
+      width:52px;
+      height:30px;
+      flex:0 0 auto;
+    }
+    .switch input{
+      opacity:0;
+      width:0;
+      height:0;
+    }
     .slider-round{
-      position:absolute; cursor:pointer; inset:0;
+      position:absolute;
+      cursor:pointer;
+      top:0; left:0; right:0; bottom:0;
       background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.18);
+      border:1px solid rgba(255,255,255,0.18);
       transition: .2s;
       border-radius: 999px;
       box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18);
     }
     .slider-round:before{
-      position:absolute; content:"";
-      height:22px; width:22px;
-      left:4px; top:50%;
+      position:absolute;
+      content:"";
+      height:22px;
+      width:22px;
+      left:4px;
+      top:50%;
       transform: translateY(-50%);
       background: rgba(255,255,255,0.92);
       transition: .2s;
@@ -311,49 +513,118 @@
     .switch input:checked + .slider-round:before{
       transform: translate(22px, -50%);
     }
-
-    .ai-mini{ margin-top: 12px; display:flex; justify-content:flex-start; }
-    .taik-btn{
-      display:inline-flex; align-items:center; gap:10px;
-      padding: 10px 12px; border-radius: 14px;
+    /* Checkbox-Mode in der Item-Liste */
+    #items-list .item-check {
+      width: 22px;
+      height: 22px;
+      margin-right: 10px;
+      accent-color: var(--accent);
+      cursor: pointer;
     }
-    .taik-btn .taik-label{ font-weight:900; letter-spacing:.4px; display:inline-flex; gap:6px; align-items:baseline; }
-    .taik-btn .taik-t{ color: var(--text); font-weight: 900; }
-    .taik-btn .taik-ai{ color: var(--accent); font-weight: 900; }
-    .taik-btn .taik-k{ color: #ffffff; font-weight: 900; }
+    body.checkbox-mode #items-list .list-item { cursor: default; }
+    body.checkbox-mode #items-list .list-item .item-name,
+    body.checkbox-mode #items-list .list-item .qty-text { pointer-events: auto; }
 
+
+
+  
+    /* KI-Vorschläge UI */
+    .ai-add { margin-top: 12px; }
     .ai-add textarea{
-      width:100%;
-      resize: none;            /* nicht größer ziehen */
+      width: 100%;
+      resize: vertical;
       min-height: 78px;
       padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(0,0,0,0.20);
       color: rgba(255,255,255,0.92);
-      outline:none;
-      box-sizing:border-box;
-      font-size: 16px;         /* kein Mobile-Zoom */
+      outline: none;
     }
-    .ai-actions{ margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .ai-actions{
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
 
     body.modal-open{ overflow:hidden; }
-    .ai-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; max-height: 52vh; overflow:auto; padding-right: 4px; overscroll-behavior: contain; }
+
+    /* Modal: Scroll nur im Popup, nicht im Hintergrund */
+    .popup-overlay{ overscroll-behavior: contain; }
+    .popup{ max-height: 86vh; overflow: hidden; }
+    .ai-list{ overscroll-behavior: contain; }
+
+    /* TAIK Button (klein statt großem Textfeld) */
+    .ai-mini{ margin-top: 12px; display:flex; justify-content:flex-start; }
+    .taik-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+    }
+    .taik-btn .taik-t{ font-weight:900; letter-spacing:0.5px; }
+    .taik-btn .taik-ai{ font-weight:900; letter-spacing:0.5px; }
+    
+    .taik-btn .taik-label{ font-weight:900; letter-spacing:0.4px; display:inline-flex; gap:6px; align-items:baseline; }
+    .taik-btn .taik-t{ color: rgba(255,255,255,0.82); }
+    .taik-btn .taik-ai{ color: var(--accent); }
+    .taik-btn .taik-k{ color: #ffffff; }
+
+    .taik-btn .taik-k{ font-weight:900; letter-spacing:0.5px; }
+    .taik-btn .taik-sub{ opacity:.85; font-weight:700; }
+    /* Farbakzente (nutzt vorhandene CSS-Variablen) */
+    .taik-btn .taik-t{ color: var(--text); }
+
+    .taik-btn .taik-k{ color: #ffffff; }
+
+    /* AI Vorschläge: Name + Pinsel */
+    .ai-name-wrap{ display:flex; align-items:center; gap:8px; }
+    .ai-rename-btn{ width: 32px; height: 32px; border-radius: 12px; }
+
+    .ai-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top: 10px;
+      max-height: 52vh;
+      overflow:auto;
+      padding-right: 4px;
+    }
     .ai-row{
-      display:flex; gap:10px; align-items:center; justify-content: space-between;
+      display:flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
       padding: 10px 12px;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.10);
       background: rgba(255,255,255,0.04);
     }
-    .ai-main{ flex:1; min-width:0; }
-    .ai-name{ font-weight: 800; }
-    .ai-ctrl{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
-    .ai-qty{ width: 120px; }
-    .ai-qty-label{ min-width: 22px; text-align:right; color: rgba(255,255,255,0.82); font-variant-numeric: tabular-nums; }
+    .ai-main{ flex: 1; min-width: 0; }
+    .ai-name{ font-weight: 700; }
+    .ai-reason{ margin-top: 2px; }
+    .ai-ctrl{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap: nowrap;
+    }
+    .ai-qty{
+      width: 120px;
+    }
+    .ai-qty-label{
+      min-width: 22px;
+      text-align: right;
+      color: rgba(255,255,255,0.82);
+      font-variant-numeric: tabular-nums;
+    }
     .icon-btn{
-      width: 34px; height: 34px;
+      width: 34px;
+      height: 34px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.06);
@@ -368,6 +639,7 @@
     .icon-btn:hover{ filter: brightness(1.08); transform: translateY(-1px); }
     .icon-btn.ok{ border-color: rgba(62,227,140,0.35); }
     .icon-btn.no{ border-color: rgba(255,77,109,0.35); }
+
     .ai-empty{
       padding: 14px 12px;
       border-radius: 14px;
@@ -376,229 +648,263 @@
       text-align:center;
     }
 
-    .sync-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.80);
-      font-weight: 800;
-      font-size: 12px;
-      user-select:none;
-      margin-left: 8px;
-    }
-    .dot{
-      width:8px;height:8px;border-radius:999px;
-      background: rgba(255,255,255,0.35);
-      box-shadow: 0 0 12px rgba(255,255,255,0.12);
-    }
-    .dot.ok{ background: rgba(62,227,140,0.9); box-shadow: 0 0 14px rgba(62,227,140,0.55); }
-    .dot.bad{ background: rgba(255,77,109,0.9); box-shadow: 0 0 14px rgba(255,77,109,0.55); }
-    .dot.work{ background: rgba(255,255,255,0.75); box-shadow: 0 0 14px rgba(255,255,255,0.35); }
   
+    /* === Responsive Layout (automatisch wie in Einkaufsliste) === */
+/* Standard = Desktop/Laptop */
 
-    /* ===== FIXES: Slider-Länge, echtes 0%-Fill, Mobile nichts abgeschnitten ===== */
+@media (max-width: 1024px) {
+  .container { max-width: 900px; }
+}
 
-    /* In der Listenansicht (Editor) keinen Home-Button oben */
-    body.in-list-editor #top-home-link{ display:none !important; }
-    body.in-list-editor #top-back-link{ display:inline-block !important; }
-    body:not(.in-list-editor) #top-back-link{ display:none !important; }
+@media (max-width: 700px) {
+  /* Gesamtfläche: besser lesbar am Handy */
+  body { padding: 18px 12px 26px; font-size: 16px; }
 
-    /* List items: dürfen umbrechen (Handy) */
-    .list-item{
-      flex-wrap: wrap;
-      justify-content: flex-start; /* statt space-between -> weniger "abgeschnitten" */
-    }
-    .item-name{
-      min-width: 140px;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .actions{
-      flex-wrap: wrap; /* Bearbeiten/Entfernen darf umbrechen */
-      margin-left: auto;
-    }
+  .container { max-width: 100%; width: 100%; padding: 16px; }
 
-    /* Slider + Text als Block, damit rechts die 0/5 sichtbar bleibt */
-    .item-right{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex: 1 1 360px;
-      min-width: 240px;
-      margin-left: auto;
-    }
-    .item-range{
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ nicht zu lang */
-    }
-    .qty-text{
-      min-width: 56px;
-      text-align: right;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
+  h1 { font-size: 30px; }
+  h2 { font-size: 22px; }
 
-    /* Add-row Slider (neuer Einkauf) */
-    #new-item-qty{
-      width: auto;
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ nicht zu lang */
+  .btn { padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; }
+  .btn-small { padding: 10px 14px; font-size: 0.9rem; }
+
+  /* Inputs/Dropdowns dürfen nicht “zu breit” sein */
+  input[type="text"], select { min-width: 0; width: 100%; }
+
+  /* Zeilen dürfen umbrechen, damit nichts überlappt */
+  .list-item { padding: 14px 14px; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* Slider soll am Handy immer passen (überschreibt inline minWidth) */
+  #items-list input[type="range"] { width: 100% !important; min-width: 0 !important; }
+
+  /* Text etwas größer */
+  .list-item .item-name { font-size: 1rem; }
+  .qty-text { font-size: 0.95rem; }
+
+  /* Toolbars am Handy untereinander, damit nix abgeschnitten wird */
+  .toolbar { gap: 10px; }
+  .toolbar .left, .toolbar .right { width: 100%; justify-content: flex-start; }
+  #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
+
+  /* User-Zeile: Buttons untereinander, wenn nötig */
+  #user-section > div { row-gap: 10px; }
+}
+
+
+
+    /* FIX: Seite nicht abschneiden – Scroll erlauben */
+    html, body{
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
-    /* AI Slider */
-    .ai-qty{
-      width: auto;
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ nicht zu lang */
+    /* Falls irgendwo modal-open hängen bleibt: nur dann sperren */
+    body.modal-open{
+      overflow: hidden;
     }
 
-    /* ✅ Range: echtes 0%-Fill (kein "sieht aus wie 2") */
-    input[type="range"]{
-      -webkit-appearance:none;
-      appearance:none;
-      height: 10px;
-      border-radius: 999px;
-      outline:none;
+  
+/* === Mobile Fix: KI Modal / Vorschläge (iPhone) === */
+@media (max-width: 700px) {
 
-      /* Grün bis --p, danach neutral */
-      background: linear-gradient(to right,
-        var(--accent) 0 var(--p, 0%),
-        rgba(255,255,255,0.14) var(--p, 0%) 100%
-      );
-    }
-    input[type="range"]::-webkit-slider-thumb{
-      -webkit-appearance:none;
-      appearance:none;
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.92);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-      border: 0;
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-thumb{
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.92);
-      border: 0;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-track{
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.14);
-      border: 0;
-    }
+  /* iOS: verhindert Auto-Zoom bei Inputs/Textareas */
+  #ai-modal textarea,
+  #ai-modal input,
+  #ai-modal select,
+  #ai-modal button{
+    font-size: 16px;
+  }
 
-    /* Handy: noch etwas kompakter */
-    @media (max-width: 520px){
-      .item-right{ min-width: 0; flex: 1 1 100%; margin-left: 0; }
-      .item-range{ max-width: 200px; }
-      #new-item-qty{ max-width: 200px; }
-      .ai-qty{ max-width: 200px; }
-      .actions{ margin-left: 0; }
-    }
+  /* Popup nutzt die Breite besser, ohne abgeschnitten zu werden */
+  #ai-modal .popup{
+    width: calc(100vw - 20px) !important;
+    max-width: none !important;
+    padding: 14px 14px !important;
+    border-radius: 18px !important;
+  }
 
-  </style>
+  /* Vorschlags-Zeilen: untereinander statt gequetscht */
+  #ai-modal .ai-row{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  #ai-modal .ai-main{
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Controls: Slider volle Breite + Buttons rechts in einer Zeile */
+  #ai-modal .ai-ctrl{
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  #ai-modal .ai-qty{
+    width: 100%;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  #ai-modal .ai-qty-label{
+    min-width: 28px;
+    text-align: right;
+  }
+
+  #ai-modal .icon-btn{
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  /* Textfeld + Button sollen nicht überlaufen */
+  #ai-modal .ai-actions{
+    gap: 10px;
+  }
+  #ai-modal .ai-actions .btn{
+    white-space: nowrap;
+  }
+}
+
+</style>
 </head>
-
 <body>
   <div class="container">
     <div class="topbar">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <h1>Einkaufsliste</h1>
-        <div class="sync-pill" id="sync-pill" title="Cloud Sync">
-          <span class="dot work" id="sync-dot"></span>
-          <span id="sync-text">Lade…</span>
-        </div>
+    <h1>Packlisten verwalten</h1>
+    <a id="back-home-link" class="back-link" href="/home">&#x2B05; Home</a>
+  </div>
+    <div id="user-section">
+      <h2>Benutzer</h2>
+      <div style="display:flex; align-items:center; flex-wrap: wrap; margin-bottom: 10px;">
+        <select id="user-select"></select>
+        <button id="user-manage-btn" class="btn btn-small btn-secondary">Benutzer verwalten</button>
+        <button id="open-settings-btn-home" class="btn btn-small btn-secondary" type="button">⚙️ Einstellungen</button>
       </div>
-      <a class="back-link" id="top-home-link" href="/home">&#x2B05; Home</a>
-      <a class="back-link hidden" id="top-back-link" href="#" role="button">⟵ Zurück zu Listen</a>
     </div>
-
-    <!-- Listenübersicht -->
-    <div id="lists-section">
+    <!-- Listen-Übersicht -->
+    <div id="lists-section" class="hidden">
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">Listen</h2>
           <button id="add-list-btn" class="btn btn-small">Neue Liste</button>
+          <button id="import-new-list-btn" class="btn btn-small btn-secondary">Importieren</button>
           <button id="lists-edit-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+          <button id="open-settings-btn-lists" class="btn btn-small btn-secondary" type="button">⚙️ Einstellungen</button>
         </div>
         <div class="right">
-          <!-- Erklärungstext entfernt -->
-          <span id="lists-edit-hint" style="display:none;"></span>
+          <span class="hint" id="lists-edit-hint" style="display:none;">Bearbeiten aktiv</span>
         </div>
       </div>
       <ul id="lists-list"></ul>
     </div>
-
-    <!-- Listen-Editor -->
+    <!-- Listen-Bearbeitung -->
     <div id="list-edit-section" class="hidden">
+      <!-- Kopfbereich mit Titel und Fortschrittsanzeige -->
       <div class="list-header">
         <h2 id="current-list-title" style="margin:0;"></h2>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
-            <button id="open-list-settings-btn" class="btn btn-small btn-secondary" style="margin:0;">⚙️ Einstellungen</button>
-          </div>
-          <div class="progress-pill">
-            <span class="progress-dot"></span>
-            <span id="completion-percentage">0% geschafft</span>
-          </div>
-        </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button id="back-to-lists-btn" class="btn btn-small btn-secondary" style="margin:0;">Zurück zu Listen</button>
+    <button id="open-settings-btn" class="btn btn-small btn-secondary" style="margin:0;">⚙️ Einstellungen</button>
+  </div>
+
+  <div class="progress-pill">
+    <span class="progress-dot"></span>
+    <span id="completion-percentage">0% geschafft</span>
+  </div>
+</div>
       </div>
       <div class="progress-bar"><div id="completion-bar"></div></div>
-
+      <!-- Umschalter für Bearbeitungsmodus -->
       <div class="toolbar" style="margin-top:10px;">
         <div class="left">
           <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
         </div>
         <div class="right">
+          <!-- Nur im Fortschrittsmodus sichtbar -->
           <button id="check-all-btn" class="btn btn-small btn-secondary">Alle abhaken</button>
+          <!-- Nur im Bearbeitungsmodus sichtbar (und nur wenn Auswahl vorhanden) -->
+          <button id="bulk-delete" class="btn btn-small btn-secondary" style="display:none;">Auswahl löschen</button>
+          <button id="bulk-duplicate" class="btn btn-small btn-secondary" style="display:none;">Duplizieren</button>
+          <button id="bulk-share" class="btn btn-small btn-secondary" style="display:none;">Teilen</button>
         </div>
       </div>
-
+      <!-- Abschnitt zum Hinzufügen neuer Artikel (wird nur im Bearbeitungsmodus angezeigt) -->
       <div id="new-item-section" style="margin-top:10px; display:none;">
         <div class="add-row">
-          <input type="text" id="new-item-text" placeholder="Neuer Einkauf" />
-          <!-- max 10 -->
-          <input type="range" id="new-item-qty" min="1" max="10" value="1" />
+          <input type="text" id="new-item-text" placeholder="Neuer Artikel" />
+          <input type="range" id="new-item-qty" min="1" max="30" value="1" />
           <span id="new-item-qty-label" class="qty-label">Menge: 1</span>
           <button id="add-item-btn" class="btn btn-small">Hinzufügen</button>
         </div>
-
+      
+        <!-- KI: Text → Vorschläge (TAIK) -->
         <div class="ai-mini">
           <button id="taik-open" class="btn btn-small btn-secondary taik-btn" type="button" title="KI fragen">
             <span class="taik-label">Ask <span class="taik-t">t</span><span class="taik-ai">AI</span><span class="taik-k">k</span></span>
           </button>
         </div>
-      </div>
-
+</div>
+      <!-- Liste der Artikel -->
       <ul id="items-list"></ul>
+      <!-- Zurück-Button -->
+    </div>
+    
+  </div>
+
+  <!-- Benutzer verwalten Popup -->
+  <div id="user-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 style="margin:0 0 8px;">Benutzer verwalten</h3>
+      <p style="margin:0 0 14px; color: var(--muted);">Benutzer hinzufügen/löschen oder Daten importieren/exportieren.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="user-add" class="btn btn-small">Hinzufügen</button>
+        <button id="user-delete" class="btn btn-small btn-secondary">Löschen</button>
+        <button id="user-export" class="btn btn-small btn-secondary">Exportieren</button>
+        <button id="user-import" class="btn btn-small btn-secondary">Importieren</button>
+      </div>
+      <div style="text-align:right; margin-top:14px;">
+        <button id="user-close" class="btn btn-small btn-secondary">Schließen</button>
+      </div>
     </div>
   </div>
+
+  <!-- Duplizieren / Teilen Popup -->
+  <div id="assign-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 id="assign-title" style="margin:0 0 8px;">Ausgewählte Artikel kopieren</h3>
+<div style="display:flex; flex-direction:column; gap:10px;">
+        <label style="color:var(--muted); font-size:0.9rem;">Ziel-Benutzer</label>
+        <select id="assign-user"></select>
+        <label style="color:var(--muted); font-size:0.9rem;">Ziel-Liste</label>
+        <select id="assign-list"></select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+        <button id="assign-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
+        <button id="assign-confirm" class="btn btn-small">Kopieren</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Listen-Einstellungen -->
   <div id="list-settings-modal" class="popup-overlay">
     <div class="popup">
-      <button class="popup-close" type="button" id="list-settings-x" aria-label="Schließen">✕</button>
-
       <h3 style="margin:0 0 12px;">Listen-Einstellungen</h3>
 
       <div style="display:flex; flex-direction:column; gap:14px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <div style="font-weight:900;">Fertige nach unten</div>
+          <div>
+            <div style="font-weight:800; margin:0;">Fertige nach unten</div>
+          </div>
           <label class="switch" aria-label="Fertige nach unten">
             <input id="list-done-bottom-toggle" type="checkbox">
             <span class="slider-round"></span>
@@ -606,7 +912,9 @@
         </div>
 
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <div style="font-weight:900;">Abhaken mit Kästchen</div>
+          <div>
+            <div style="font-weight:800; margin:0;">Abhaken mit Kästchen</div>
+          </div>
           <label class="switch" aria-label="Abhaken mit Kästchen">
             <input id="list-checkbox-toggle" type="checkbox">
             <span class="slider-round"></span>
@@ -621,16 +929,16 @@
     </div>
   </div>
 
-  <!-- Generic Popup -->
+
+  <!-- Popup für Bestätigungen und Eingaben -->
   <div id="popup-overlay" class="popup-overlay">
     <div class="popup">
-      <button class="popup-close" type="button" id="popup-x" aria-label="Schließen">✕</button>
-
       <p id="popup-message"></p>
+      <!-- Textfeld für generische Eingaben -->
       <input type="text" id="popup-input" class="hidden" />
-      <!-- max 10 -->
-      <input type="range" id="popup-range" class="hidden" min="1" max="10" value="1" />
-      <span id="popup-qty-label" class="hidden" style="text-align:right; display:block; margin-bottom:10px;">1</span>
+      <!-- Slider und Label für Mengenauswahl -->
+      <input type="range" id="popup-range" class="hidden" min="1" max="30" value="1" />
+      <span id="popup-qty-label" class="hidden">1</span>
       <div class="popup-buttons">
         <button id="popup-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
         <button id="popup-confirm" class="btn btn-small">OK</button>
@@ -638,803 +946,1929 @@
     </div>
   </div>
 
-  <!-- KI Popup -->
-  <div id="ai-modal" class="popup-overlay">
-    <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
-      <button class="popup-close" type="button" id="ai-x" aria-label="Schließen">✕</button>
-
-      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
-      <div class="ai-add" style="margin: 10px 0 6px;">
-        <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich will Pasta, Tomatensoße, Käse, 2x Milch und Snacks kaufen."></textarea>
-        <div class="ai-actions">
-          <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
-          <!-- Erklärungstext entfernt -->
-        </div>
-      </div>
-      <div id="ai-suggestions" class="ai-list"></div>
-    </div>
-  </div>
-
   <script>
-    (function(){
-      // ===== Cloud Storage (0 localStorage) =====
-      let data = { lists: [] };
-      let currentListId = null;
-      let listsEditMode = false;
-      let editMode = false;
+  (function() {
+    // Daten und Zustandsvariablen
+    let data = null;
+    let currentUserId = null;
+    let currentListId = null;
+    let popupCallback = null;
+    
 
-      // sync UI
-      const syncDot = document.getElementById("sync-dot");
-      const syncText = document.getElementById("sync-text");
-      function setSync(state, text){
-        syncDot.classList.remove("ok","bad","work");
-        syncDot.classList.add(state);
-        syncText.textContent = text;
+    // --- Routing: /packliste/<userId>/<listId> (SPA, Worker liefert immer packliste.html aus) ---
+    function getRouteParts() {
+      const parts = location.pathname.split("/").filter(Boolean);
+      if (parts[0] !== "packliste") return { userId: null, listId: null };
+      return {
+        userId: parts[1] ? decodeURIComponent(parts[1]) : null,
+        listId: parts[2] ? decodeURIComponent(parts[2]) : null
+      };
+    }
+
+    function setRoute(userId, listId, replace = false) {
+      // Basis immer "/packliste" (nicht vom aktuellen Pfad ableiten!)
+      let url = "/packliste";
+      if (userId) url += "/" + encodeURIComponent(userId);
+      if (listId) url += "/" + encodeURIComponent(listId);
+
+      if (replace) history.replaceState({}, "", url);
+      else history.pushState({}, "", url);
+
+      // ✅ UI neu anwenden (ohne extra handleRoute-Abhängigkeit)
+      applyRouteToState();
+      loadUsers();
+    }
+
+    
+function applyRouteToState() {
+      const r = getRouteParts();
+      // user (Profile)
+      if (r.userId && (profilesMeta?.some(p => p.id === r.userId) || data?.users?.some(u => u.id === r.userId))) {
+        currentUserId = r.userId;
+      } else if (!currentUserId && (profilesMeta?.length || data?.users?.length)) {
+        currentUserId = (profilesMeta?.[0]?.id) || (data?.users?.[0]?.id) || null;
+        // Route korrigieren (damit URL stimmt)
+        if (currentUserId) setRoute(currentUserId, null, true);
       }
 
-      function redirectToLogin(){
-        const rt = location.pathname + location.search + location.hash;
-        location.href = "/login?returnTo=" + encodeURIComponent(rt);
+      // list
+      currentListId = null;
+      if (currentUserId && r.listId) {
+        const user = (data?.users || []).find(u => u.id === currentUserId);
+        const exists = user?.lists?.some(l => l.id === r.listId);
+        if (exists) currentListId = r.listId;
       }
+    }
 
-      async function apiGet(){
-        const r = await fetch("/api/einkauf/data", { credentials: "include" });
-        if (r.status === 401) redirectToLogin();
-        const j = await r.json().catch(()=>null);
-        if (!j || j.ok !== true) throw new Error(j?.error || "load_failed");
-        return j.data || { lists: [] };
-      }
+    window.addEventListener("popstate", () => {
+      // Zurück/Vorwärts im Browser
+      applyRouteToState();
+      // UI passend anzeigen
+      loadUsers();
+    });
+    // --- /Routing ---
+// Bearbeitungsmodus steuert, ob wir Artikel bearbeiten (hinzufügen/reordern) oder abhaken
+    let editMode = false;
+    // Bearbeiten-Modus in der Listenübersicht (zeigt Rename/Delete/Export pro Liste)
+    let listsEditMode = false;
+    // Mehrfachauswahl von Artikeln im Bearbeitungsmodus
+    let selectedItemIds = new Set();
+    // Drag & Drop State (nur im Bearbeitungsmodus, gestartet über den Griff)
+    let draggingEl = null;
+    let placeholderEl = null;
+    let dragStartY = 0;
+    let dragOffsetY = 0;
+    // Modal für Duplizieren/Teilen
+    let copyAction = 'share'; // 'duplicate' | 'share'
+    const overlay = document.getElementById('popup-overlay');
+    const popupMessage = document.getElementById('popup-message');
+    const popupInput = document.getElementById('popup-input');
+    const popupRange = document.getElementById('popup-range');
+    const popupQtyLabel = document.getElementById('popup-qty-label');
 
-      async function apiPut(obj){
-        const r = await fetch("/api/einkauf/data", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(obj)
-        });
-        if (r.status === 401) redirectToLogin();
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "save_failed");
-      }
+    document.getElementById('popup-confirm').addEventListener('click', function() {
+      if (popupCallback) popupCallback(true);
+    });
+    document.getElementById('popup-cancel').addEventListener('click', function() {
+      if (popupCallback) popupCallback(false);
+    });
 
-      let saveTimer = null;
-      let saving = false;
-      let saveQueued = false;
+    // Daten aus dem lokalen Speicher laden und speichern
+    function loadData() {
+      try {
+        const stored = localStorage.getItem('packlisteData');
+        if (stored) return JSON.parse(stored);
+      } catch (e) {}
+      return { users: [] };
+    }
+    
+    
+function saveData() {
+      // lokal immer (offline fallback)
+      localStorage.setItem('packlisteData', JSON.stringify(data));
 
-      function scheduleSave(){
-        if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(()=> saveNow().catch(()=>{}), 250);
-        setSync("work", "Speichere…");
-      }
+      // cloud: aktuelles Profil speichern (debounced)
+      scheduleProfileSave();
+    }
 
-      async function saveNow(){
-        if (saving){
-          saveQueued = true;
-          return;
-        }
-        saving = true;
-        try{
-          await apiPut(data);
-          setSync("ok", "Gespeichert");
-        }catch(e){
-          setSync("bad", "Fehler");
-          console.error(e);
-        }finally{
-          saving = false;
-          if (saveQueued){
-            saveQueued = false;
-            scheduleSave();
-          }
-        }
-      }
+    
+    // ===== Cloud Profiles API (statt global /api/data) =====
+    // Profiles = "Benutzer" in der UI (jedes Profil hat eigene Listen)
+    let profilesMeta = [];          // [{id,name,updated_at}]
+    let profileData = null;         // {id,name,lists:[]}
 
-      function makeId(prefix){
-        return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
-      }
+    async function apiListProfiles() {
+      const r = await fetch("/api/profiles", { credentials: "include" });
+      if (r.status === 401) return { unauth: true, profiles: [] };
+      if (!r.ok) throw new Error("apiListProfiles failed: " + r.status);
+      const j = await r.json().catch(() => null);
+      return { unauth: false, profiles: (j && j.ok && Array.isArray(j.profiles)) ? j.profiles : [] };
+    }
 
-      function clampQty10(n){
-        n = parseInt(n, 10);
-        if (!Number.isFinite(n)) n = 1;
-        return Math.max(1, Math.min(10, n));
-      }
-
-      function setRangeGreen(el){
-        if (!el) return;
-        const max = parseInt(el.max, 10) || 0;
-        const v = parseInt(el.value, 10) || 0;
-
-        // ✅ class bleibt für Logik erhalten
-        el.classList.toggle("range-active", v > 0);
-
-        // ✅ echtes 0%-Fill, damit 0 nicht wie "2" aussieht
-        const pct = (max > 0) ? (Math.max(0, Math.min(v, max)) / max) * 100 : 0;
-        el.style.setProperty("--p", (v > 0 ? pct : 0) + "%");
-      }
-
-      // ===== popup =====
-      const overlay = document.getElementById("popup-overlay");
-      const popupMessage = document.getElementById("popup-message");
-      const popupInput = document.getElementById("popup-input");
-      const popupRange = document.getElementById("popup-range");
-      const popupQtyLabel = document.getElementById("popup-qty-label");
-      let popupCallback = null;
-
-      const popupX = document.getElementById("popup-x");
-      if (popupX) popupX.addEventListener("click", ()=> popupCallback && popupCallback(false));
-
-      document.getElementById("popup-confirm").addEventListener("click", ()=> popupCallback && popupCallback(true));
-      document.getElementById("popup-cancel").addEventListener("click", ()=> popupCallback && popupCallback(false));
-      popupRange.addEventListener("input", ()=>{
-        popupQtyLabel.textContent = popupRange.value;
-        setRangeGreen(popupRange);
+    async function apiCreateProfile(name) {
+      const r = await fetch("/api/profiles", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
       });
+      if (r.status === 401) return { unauth: true, id: null };
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || j.ok !== true) throw new Error("apiCreateProfile failed");
+      return { unauth: false, id: j.id };
+    }
 
-      function showPrompt(msg, def, onOk){
-        popupMessage.textContent = msg;
-        popupInput.value = def || "";
-        popupInput.classList.remove("hidden");
-        popupRange.classList.add("hidden");
-        popupQtyLabel.classList.add("hidden");
-        overlay.classList.add("active");
-        popupCallback = (ok)=>{
-          overlay.classList.remove("active");
-          if (ok) onOk(popupInput.value.trim());
-          popupInput.classList.add("hidden");
-        };
-      }
-      function showConfirm(msg, onOk){
-        popupMessage.textContent = msg;
-        popupInput.classList.add("hidden");
-        popupRange.classList.add("hidden");
-        popupQtyLabel.classList.add("hidden");
-        overlay.classList.add("active");
-        popupCallback = (ok)=>{
-          overlay.classList.remove("active");
-          if (ok) onOk();
-        };
-      }
-      function showItemEditor(item, onOk){
-        popupMessage.textContent = "Eintrag bearbeiten:";
-        popupInput.classList.remove("hidden");
-        popupRange.classList.remove("hidden");
-        popupQtyLabel.classList.remove("hidden");
-        popupInput.value = item.name || "";
-        popupRange.value = String(clampQty10(item.qty || 1));
-        popupQtyLabel.textContent = popupRange.value;
-        setRangeGreen(popupRange);
-        overlay.classList.add("active");
-        popupCallback = (ok)=>{
-          overlay.classList.remove("active");
-          if (ok){
-            const n = popupInput.value.trim();
-            const q = clampQty10(popupRange.value);
-            if (n) onOk(n,q);
-          }
-          popupInput.classList.add("hidden");
-          popupRange.classList.add("hidden");
-          popupQtyLabel.classList.add("hidden");
-        };
-      }
+    async function apiGetProfile(profileId) {
+      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), { credentials: "include" });
+      if (r.status === 401) return { unauth: true, data: null };
+      if (!r.ok) throw new Error("apiGetProfile failed: " + r.status);
+      const j = await r.json().catch(() => null);
+      return { unauth: false, data: (j && j.ok && j.data) ? j.data : null };
+    }
 
-      // ===== Lists =====
-      function ensureListSettings(list){
-        if (!list.settings || typeof list.settings !== "object") list.settings = {};
-        if (typeof list.settings.doneBottom !== "boolean") list.settings.doneBottom = false;
-        if (typeof list.settings.checkbox !== "boolean") list.settings.checkbox = false;
-        return list.settings;
-      }
+    async function apiSaveProfile(profileId, body) {
+      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (r.status === 401) return { unauth: true };
+      if (!r.ok) throw new Error("apiSaveProfile failed: " + r.status);
+      return { unauth: false };
+    }
 
-      function getCurrentList(){
-        return (data.lists || []).find(l => l.id === currentListId) || null;
-      }
+    async function apiDeleteProfile(profileId) {
+      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
+        method: "DELETE",
+        credentials: "include"
+      });
+      if (r.status === 401) return { unauth: true };
+      if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
+      return { unauth: false };
+    }
 
-      function showListsSection(){
-        document.body.classList.remove("in-list-editor");
-        currentListId = null;
-        document.getElementById("lists-section").classList.remove("hidden");
-        document.getElementById("list-edit-section").classList.add("hidden");
-        loadLists();
-      }
-      function showListEditSection(){
-        document.body.classList.add("in-list-editor");
-        const list = getCurrentList();
-        if (!list){ showListsSection(); return; }
-        document.getElementById("lists-section").classList.add("hidden");
-        document.getElementById("list-edit-section").classList.remove("hidden");
-        document.getElementById("current-list-title").textContent = list.name || "Liste";
-        editMode = false;
-        document.getElementById("edit-mode-toggle").textContent = "Bearbeiten";
-        document.getElementById("new-item-section").style.display = "none";
-        renderItems();
-      }
+    // Legacy (falls du später wieder globalen State willst)
+    async function apiGetData() {
+      const r = await fetch("/api/data", { credentials: "include" });
+      if (r.status === 401) return { unauth: true, data: null };
+      if (!r.ok) throw new Error("apiGetData failed: " + r.status);
+      const j = await r.json().catch(() => null);
+      return { unauth: false, data: (j && ("data" in j) ? j.data : null) };
+    }
 
-      function loadLists(){
-        const ul = document.getElementById("lists-list");
-        ul.innerHTML = "";
-        (data.lists||[]).forEach(list=>{
-          const li = document.createElement("li");
-          li.className = "list-item";
+    async function apiSaveData(data) {
+      await fetch("/api/data", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+    }
+    // ===== /Cloud Profiles API =====
 
-          const name = document.createElement("span");
-          name.className = "item-name";
-          name.textContent = list.name || "Liste";
-          li.appendChild(name);
 
-          name.addEventListener("click", ()=>{
-            currentListId = list.id;
-            showListEditSection();
-          });
-
-          if (listsEditMode){
-            const actions = document.createElement("div");
-            actions.className = "actions";
-
-            const renameBtn = document.createElement("button");
-            renameBtn.className = "btn btn-small btn-secondary";
-            renameBtn.textContent = "Namen ändern";
-            renameBtn.addEventListener("click", (e)=>{
-              e.stopPropagation();
-              showPrompt("Neuer Name der Liste:", list.name || "", (v)=>{
-                if (!v) return;
-                list.name = v;
-                scheduleSave();
-                loadLists();
-              });
-            });
-            actions.appendChild(renameBtn);
-
-            const delBtn = document.createElement("button");
-            delBtn.className = "btn btn-small btn-secondary";
-            delBtn.textContent = "Löschen";
-            delBtn.addEventListener("click",(e)=>{
-              e.stopPropagation();
-              showConfirm(`Liste "${list.name}" wirklich löschen?`, ()=>{
-                data.lists = data.lists.filter(x=>x.id!==list.id);
-                scheduleSave();
-                loadLists();
-              });
-            });
-            actions.appendChild(delBtn);
-
-            li.appendChild(actions);
-          }
-
-          ul.appendChild(li);
-        });
-      }
-
-      // ===== Completion =====
-      function updateCompletion(){
-        const list = getCurrentList();
-        const percEl = document.getElementById("completion-percentage");
-        const barEl = document.getElementById("completion-bar");
-        if (!list){ return; }
-
-        const total = (list.items||[]).length;
-        if (!total){
-          percEl.textContent = "0% geschafft";
-          barEl.style.width = "0%";
-          return;
+    // ===== Profiles: Laden / Wechseln / Speichern =====
+    let saveTimer = null;
+    function scheduleProfileSave() {
+      if (!currentUserId) return;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          const u = getCurrentUser();
+          if (!u) return;
+          // Name muss mit Meta konsistent sein
+          u.id = currentUserId;
+          if (!u.name) u.name = "Benutzer";
+          await apiSaveProfile(currentUserId, u);
+          // Meta refresh (damit Sortierung/Name passt)
+          try { profilesMeta = (await apiListProfiles()).profiles || profilesMeta; } catch (_) {}
+        } catch (_) {
+          // silent (offline)
         }
-        let sum = 0;
-        (list.items||[]).forEach(it=>{
-          const qty = it.qty || 1;
-          const prog = it.progress || 0;
-          sum += qty ? (prog/qty) : 1;
-        });
-        const percent = (sum/total)*100;
-        percEl.textContent = Math.round(percent) + "% geschafft";
-        barEl.style.width = Math.max(0, Math.min(100, percent)).toFixed(2) + "%";
+      }, 350);
+    }
+
+    async function refreshProfilesAndMaybeSelect() {
+      const res = await apiListProfiles();
+      if (res.unauth) return { unauth: true };
+      profilesMeta = res.profiles || [];
+
+      // Wenn noch kein Profil existiert: eins anlegen und lokale Daten seed'en
+      if (!profilesMeta.length) {
+        const local = loadData();
+        // Seed: falls alte lokale Struktur {users:[...]} existiert, nimm ersten User, sonst leer
+        const seedUser = (local && Array.isArray(local.users) && local.users[0]) ? local.users[0] : null;
+        const name = (seedUser && seedUser.name) ? String(seedUser.name) : "Standard";
+        const created = await apiCreateProfile(name);
+        if (created.unauth) return { unauth: true };
+        const id = created.id;
+        const initial = seedUser && typeof seedUser === "object"
+          ? { id, name, lists: Array.isArray(seedUser.lists) ? seedUser.lists : [] }
+          : { id, name, lists: [] };
+        await apiSaveProfile(id, initial);
+        profilesMeta = (await apiListProfiles()).profiles || [];
       }
 
-      // ===== Items =====
-      function renderItems(){
+      // aktuelle Auswahl validieren
+      if (!currentUserId || !profilesMeta.some(p => p.id === currentUserId)) {
+        currentUserId = profilesMeta[0]?.id || null;
+        currentListId = null;
+      }
+      return { unauth: false };
+    }
+
+    async function loadCurrentProfileData() {
+      if (!currentUserId) { data = { users: [] }; return; }
+      const res = await apiGetProfile(currentUserId);
+      if (res.unauth) return { unauth: true };
+      const meta = profilesMeta.find(p => p.id === currentUserId);
+      const name = meta?.name || res.data?.name || "Benutzer";
+      profileData = res.data && typeof res.data === "object"
+        ? { id: currentUserId, name, lists: Array.isArray(res.data.lists) ? res.data.lists : [] }
+        : { id: currentUserId, name, lists: [] };
+
+      // App erwartet data.users
+      data = { users: [profileData] };
+      return { unauth: false };
+    }
+    // ===== /Profiles =====
+
+function handleRoute() {
+  // URL -> State
+  applyRouteToState();
+
+  // UI neu aufbauen
+  loadUsers();
+
+  // Wenn ein User gewählt ist, Listen laden
+  if (typeof currentUserId !== "undefined" && currentUserId) {
+    // Wenn eine Liste gewählt ist -> Editor anzeigen + Items rendern
+    if (typeof currentListId !== "undefined" && currentListId) {
+      if (typeof showListEditSection === "function") showListEditSection();
+      if (typeof renderItems === "function") renderItems();
+    } else {
+      // Keine Liste gewählt -> sicher zurück in die Listenübersicht (wichtig nach "Zurück")
+      if (typeof showListsSection === "function") showListsSection();
+      else loadLists();
+    }
+  }
+}
+
+// Back/Forward im Browser
+window.addEventListener("popstate", handleRoute);
+
+// Initialisierung der Seite
+async function init() {
+  // Helper: immer auf /login (mit returnTo) statt /home
+  function goLogin() {
+    const returnTo = location.pathname + location.search;
+    location.href = "/login?returnTo=" + encodeURIComponent(returnTo);
+  }
+
+  // 1) Seite schützen: nur eingeloggt
+  try {
+    const meRes = await fetch("/api/me", { credentials: "include" });
+    if (meRes.status === 401) { goLogin(); return; }
+    const me = await meRes.json().catch(() => null);
+    if (!me || !me.loggedIn) { goLogin(); return; }
+  } catch (_) {
+    goLogin();
+    return;
+  }
+
+  // 2) Cloud Profiles laden (Profile = Benutzer)
+  try {
+    const metaRes = await refreshProfilesAndMaybeSelect();
+    if (metaRes.unauth) { goLogin(); return; }
+    const profRes = await loadCurrentProfileData();
+    if (profRes.unauth) { goLogin(); return; }
+  } catch (_) {
+    // Cloud nicht erreichbar → nur lokal arbeiten (offline)
+    data = loadData();
+    if (!data || !Array.isArray(data.users)) data = { users: [] };
+    currentUserId = data.users[0]?.id || null;
+    currentListId = null;
+  }
+
+  // 3) localStorage synchron halten
+  localStorage.setItem("packlisteData", JSON.stringify(data));
+
+  // 4) UI rendern
+  // UI-Events binden (nur einmal)
+  bindUI();
+  applyTheme();
+  await loadUsers();
+}
+
+
+
+    
+function getCompletedBehavior() {
+  // Werte: "none" | "bottom"
+  return localStorage.getItem("packliste_completedBehavior") || "none";
+}
+
+function setCompletedBehavior(v) {
+  localStorage.setItem("packliste_completedBehavior", v === "bottom" ? "bottom" : "none");
+}
+
+
+
+
+
+function getTheme() {
+  return localStorage.getItem("packliste_theme") || "dark";
+}
+function setTheme(v) {
+  localStorage.setItem("packliste_theme", v === "light" ? "light" : "dark");
+  applyTheme();
+}
+function applyTheme() {
+  const v = getTheme();
+  document.body.classList.toggle("lightmode", v === "light");
+}
+
+function ensureListSettings(list) {
+  if (!list.settings || typeof list.settings !== "object") list.settings = {};
+  if (typeof list.settings.doneBottom !== "boolean") list.settings.doneBottom = false;
+  if (typeof list.settings.checkbox !== "boolean") list.settings.checkbox = false;
+  return list.settings;
+}
+
+function bindUI() {
+  const openSettingsBtn = document.getElementById('open-settings-btn'); // Listen-Settings Button
+      // Benutzer verwalten (Popup)
+      const userModal = document.getElementById('user-modal');
+      document.getElementById('user-manage-btn').addEventListener('click', function() {
+        userModal.classList.add('active');
+      });
+      document.getElementById('user-close').addEventListener('click', function() {
+        userModal.classList.remove('active');
+      });
+      document.getElementById('user-add').addEventListener('click', function() {
+        showPrompt('Name des neuen Benutzers:', '', async function(name) {
+          if (!name) return;
+          try {
+            // Cloud Profil anlegen
+            const created = await apiCreateProfile(name);
+            if (created.unauth) {
+              location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+              return;
+            }
+            await refreshProfilesAndMaybeSelect();
+            currentUserId = created.id;
+            currentListId = null;
+            await loadCurrentProfileData();
+            await loadUsers();
+            userModal.classList.remove('active');
+          } catch (_) {
+            // Offline fallback: lokal
+            const id = Date.now().toString();
+            data.users.push({ id, name, lists: [] });
+            currentUserId = id;
+            currentListId = null;
+            saveData();
+            loadUsers();
+            userModal.classList.remove('active');
+          }
+        });
+      });
+      document.getElementById('user-delete').addEventListener('click', function() {
+        if (!currentUserId) return;
+
+        // Name aus Meta holen
+        const meta = profilesMeta?.find(p => p.id === currentUserId);
+        const displayName = meta?.name || getCurrentUser()?.name || "Benutzer";
+
+        showConfirm(`Benutzer "${displayName}" wirklich löschen?`, async function() {
+          try {
+            const del = await apiDeleteProfile(currentUserId);
+            if (del.unauth) {
+              location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+              return;
+            }
+            await refreshProfilesAndMaybeSelect();
+            currentListId = null;
+            await loadCurrentProfileData();
+            await loadUsers();
+            userModal.classList.remove('active');
+          } catch (_) {
+            // Offline fallback: lokal löschen
+            if (data?.users) data.users = data.users.filter(u => u.id !== currentUserId);
+            currentUserId = data.users?.[0]?.id || null;
+            currentListId = null;
+            listsEditMode = false;
+            selectedItemIds.clear();
+            saveData();
+            loadUsers();
+            userModal.classList.remove('active');
+          }
+        });
+      });
+      document.getElementById('user-export').addEventListener('click', function() {
+        exportAll();
+      });
+      document.getElementById('user-import').addEventListener('click', function() {
+        importAll(function() {
+          loadUsers();
+          userModal.classList.remove('active');
+        });
+      });
+      document.getElementById('user-select').addEventListener('change', async function() {
+        currentUserId = this.value || null;
+        currentListId = null;
+
+        // URL: /packliste/<user>
+        setRoute(currentUserId, null);
+
+        // Profil laden (Cloud)
+        try { await loadCurrentProfileData(); } catch (_) {}
+        loadLists();
+      });
+      // Event-Handler für Listen
+      document.getElementById('add-list-btn').addEventListener('click', function() {
+        const user = getCurrentUser();
+        if (!user) return;
+        showPrompt('Name der neuen Liste:', '', function(name) {
+          if (!name) return;
+          const id = Date.now().toString();
+          user.lists.push({ id: id, name: name, items: [] });
+          saveData();
+          loadLists();
+        });
+      });
+      // Neue Liste importieren (als eigene Liste)
+      document.getElementById('import-new-list-btn').addEventListener('click', function() {
+        importAsNewList();
+      });
+      // Bearbeiten in Listenübersicht (zeigt Aktionen pro Liste)
+      document.getElementById('lists-edit-toggle').addEventListener('click', function() {
+        listsEditMode = !listsEditMode;
+        document.getElementById('lists-edit-hint').style.display = listsEditMode ? 'inline' : 'none';
+        this.textContent = listsEditMode ? 'Fertig' : 'Bearbeiten';
+        loadLists();
+      });
+      document.getElementById('back-to-lists-btn').addEventListener('click', function() {
+        currentListId = null;
+
+        // URL zurück: /packliste/<user>
+        setRoute(currentUserId, null);
+
+        showListsSection();
+      });
+      // Listen-Einstellungen (⚙️)
+      const listSettingsModal = document.getElementById('list-settings-modal');
+      const listDoneBottomToggle = document.getElementById('list-done-bottom-toggle');
+      const listCheckboxToggle = document.getElementById('list-checkbox-toggle');
+
+      function openListSettings() {
         const list = getCurrentList();
         if (!list) return;
         const s = ensureListSettings(list);
-        const completedBehavior = s.doneBottom ? "bottom" : "none";
-        const checkboxMode = !!s.checkbox;
+        if (listDoneBottomToggle) listDoneBottomToggle.checked = !!s.doneBottom;
+        if (listCheckboxToggle) listCheckboxToggle.checked = !!s.checkbox;
+        listSettingsModal.classList.add('active');
+      }
 
-        document.body.classList.toggle("checkbox-mode", checkboxMode);
+      const openListSettingsBtn = document.getElementById("open-settings-btn");
+      if (openListSettingsBtn) {
+        openListSettingsBtn.addEventListener("click", openListSettings);
+      }
 
-        const isDone = (it)=> (it.progress||0) >= (it.qty||1);
-
-        list.items = (list.items||[]).map(it=>{
-          if (typeof it === "string") return { id: makeId("item"), name: it, qty: 1, progress: 0 };
-          if (it && typeof it === "object"){
-            if (!it.id) it.id = makeId("item");
-            if (!it.name) it.name = "";
-            it.qty = clampQty10(it.qty || 1);
-            if (typeof it.progress !== "number" || it.progress < 0) it.progress = 0;
-            if (it.progress > it.qty) it.progress = it.qty;
-            return it;
-          }
-          return { id: makeId("item"), name:"", qty:1, progress:0 };
+      if (document.getElementById('list-settings-cancel')) {
+        document.getElementById('list-settings-cancel').addEventListener('click', () => {
+          listSettingsModal.classList.remove('active');
         });
+      }
 
-        if (!editMode && completedBehavior === "bottom"){
-          const before = list.items.slice();
-          const sorted = before.slice().sort((a,b)=>(isDone(a)?1:0)-(isDone(b)?1:0));
-          const changed = sorted.some((it,i)=> it.id !== before[i]?.id);
-          if (changed){
-            list.items = sorted;
-            scheduleSave();
+      if (document.getElementById('list-settings-save')) {
+        document.getElementById('list-settings-save').addEventListener('click', () => {
+          const list = getCurrentList();
+          if (!list) { listSettingsModal.classList.remove('active'); return; }
+          const s = ensureListSettings(list);
+          s.doneBottom = !!(listDoneBottomToggle && listDoneBottomToggle.checked);
+          s.checkbox = !!(listCheckboxToggle && listCheckboxToggle.checked);
+          saveData();
+          renderItems();
+          listSettingsModal.classList.remove('active');
+        });
+      }
+
+      // Event-Handler für Artikel hinzufügen
+      document.getElementById('new-item-qty').addEventListener('input', function() {
+        document.getElementById('new-item-qty-label').textContent = 'Menge: ' + this.value;
+      });
+      document.getElementById('add-item-btn').addEventListener('click', addItem);
+
+    // TAIK Button: öffnet nur die Vorschau/KI-Box (ohne sofort zu starten)
+    const taikOpenBtn = document.getElementById('taik-open');
+    if (taikOpenBtn) taikOpenBtn.addEventListener('click', () => {
+      openAiModal();
+      setTimeout(() => document.getElementById('ai-item-text')?.focus(), 0);
+    });
+
+      
+    const aiPlanBtn = document.getElementById('ai-plan-btn');
+    if (aiPlanBtn) aiPlanBtn.addEventListener('click', aiPlanSuggestions);
+// Bulk-Aktionen (Auswahl im Bearbeitungsmodus) – Buttons oben rechts
+      document.getElementById('bulk-delete').addEventListener('click', bulkDeleteSelected);
+      document.getElementById('bulk-duplicate').addEventListener('click', function() { openAssignModal('duplicate'); });
+      document.getElementById('bulk-share').addEventListener('click', function() { openAssignModal('share'); });
+
+      // Alle abhaken (nur im Fortschrittsmodus)
+      document.getElementById('check-all-btn').addEventListener('click', function() {
+        if (editMode) return;
+        const list = getCurrentList();
+        if (!list) return;
+        const total = list.items.length;
+        if (total === 0) return;
+        const allDone = list.items.every(it => (it.progress || 0) >= (it.qty || 1));
+        const msg = allDone ? 'Alles wieder abwählen?' : 'Alles abhaken?';
+        showConfirm(msg, function() {
+          list.items.forEach(it => {
+            const qty = it.qty || 1;
+            it.progress = allDone ? 0 : qty;
+          });
+          saveData();
+          renderItems();
+        });
+      });
+
+      // Assign-Modal
+      const assignModal = document.getElementById('assign-modal');
+      document.getElementById('assign-cancel').addEventListener('click', function() {
+        assignModal.classList.remove('active');
+      });
+      document.getElementById('assign-confirm').addEventListener('click', function() {
+        confirmAssign();
+      });
+      // Popup-Range-Update
+      popupRange.addEventListener('input', function() {
+        popupQtyLabel.textContent = this.value;
+      });
+
+      // Umschalter für Bearbeitungsmodus
+      const editToggle = document.getElementById('edit-mode-toggle');
+      if (editToggle) {
+        editToggle.addEventListener('click', function() {
+          // Modus wechseln
+          editMode = !editMode;
+          // Buttontext anpassen
+          this.textContent = editMode ? 'Fertig' : 'Bearbeiten';
+          // Auswahl zurücksetzen, wenn wir Bearbeiten beenden
+          if (!editMode) {
+            selectedItemIds.clear();
           }
+          updateBulkbar();
+          // Eingabebereich für neue Artikel ein-/ausblenden
+          const newSection = document.getElementById('new-item-section');
+          if (newSection) newSection.style.display = editMode ? 'block' : 'none';
+          // Liste neu rendern
+          renderItems();
+        });
+      };
+
+      // ⚙️ Einstellungen
+      const settingsModal = document.getElementById("settings-modal");
+      const openSettingsBtnHome = document.getElementById("open-settings-btn-home");
+      const openSettingsBtnLists = document.getElementById("open-settings-btn-lists");
+      const settingsCloseBtn = document.getElementById("settings-close");
+
+      function syncSettingsUI() {
+        // Gerät-Buttons highlighten
+        // Theme-Switch setzen
+        const themeToggle = document.getElementById("theme-toggle");
+        if (themeToggle) themeToggle.checked = (getTheme() === "dark");
+      }
+
+      function openSettings() {
+        syncSettingsUI();
+        settingsModal.classList.add("active");
+      }
+
+      if (openSettingsBtnHome) openSettingsBtnHome.addEventListener("click", openSettings);
+      if (openSettingsBtnLists) openSettingsBtnLists.addEventListener("click", openSettings);
+
+      if (settingsCloseBtn) {
+        settingsCloseBtn.addEventListener("click", () => {
+          settingsModal.classList.remove("active");
+        });
+      }
+
+      const themeToggle = document.getElementById("theme-toggle");
+      if (themeToggle) {
+        themeToggle.addEventListener("change", () => {
+          setTheme(themeToggle.checked ? "dark" : "light");
+        });
+      }
+
+      // ===== AI Modal: nur Outside-Click schließt (keine Buttons) =====
+      const aiModal = document.getElementById("ai-modal");
+      if (aiModal) {
+        aiModal.addEventListener("click", (e) => {
+          if (e.target === aiModal) closeAiModal();
+        });
+      }
+
+} // <- NUR DIESE EINE KLAMMER schließt bindUI()
+
+    // Popups
+    function showPrompt(message, defaultValue, onConfirm) {
+      popupMessage.textContent = message;
+      popupInput.value = defaultValue || '';
+      popupInput.classList.remove('hidden');
+      popupRange.classList.add('hidden');
+      popupQtyLabel.classList.add('hidden');
+      overlay.classList.add('active');
+      popupCallback = function(ok) {
+        overlay.classList.remove('active');
+        if (ok) {
+          const val = popupInput.value.trim();
+          onConfirm(val);
         }
+        popupInput.classList.add('hidden');
+      };
+    }
 
-        const ul = document.getElementById("items-list");
-        ul.innerHTML = "";
-        updateCompletion();
+    function showConfirm(message, onConfirm) {
+      popupMessage.textContent = message;
+      popupInput.classList.add('hidden');
+      popupRange.classList.add('hidden');
+      popupQtyLabel.classList.add('hidden');
+      overlay.classList.add('active');
+      popupCallback = function(ok) {
+        overlay.classList.remove('active');
+        if (ok) {
+          onConfirm();
+        }
+      };
+    }
 
-        list.items.forEach((item, idx)=>{
-          const li = document.createElement("li");
-          li.className = "list-item";
-          if (isDone(item)) li.classList.add("item-done");
+    function showItemEditor(item, onConfirm) {
+      popupMessage.textContent = 'Artikel bearbeiten:';
+      popupInput.classList.remove('hidden');
+      popupRange.classList.remove('hidden');
+      popupQtyLabel.classList.remove('hidden');
+      popupInput.value = item.name;
+      popupRange.value = item.qty;
+      popupQtyLabel.textContent = item.qty;
+      overlay.classList.add('active');
+      popupCallback = function(ok) {
+        overlay.classList.remove('active');
+        if (ok) {
+          const newName = popupInput.value.trim();
+          const newQty = parseInt(popupRange.value);
+          if (newName) onConfirm(newName, newQty);
+        }
+        popupInput.classList.add('hidden');
+        popupRange.classList.add('hidden');
+        popupQtyLabel.classList.add('hidden');
+      };
+    }
 
-          if (editMode){
-            const name = document.createElement("span");
-            name.className = "item-name";
-            name.style.flex = "1";
-            name.textContent = item.name;
-            li.appendChild(name);
+    // Helper: aktuell ausgewählten Benutzer und Liste ermitteln
+    function getCurrentUser() {
+      return data.users.find(u => u.id === currentUserId) || null;
+    }
+    function getCurrentList() {
+      const user = getCurrentUser();
+      if (!user) return null;
+      return user.lists.find(l => l.id === currentListId) || null;
+    }
 
-            const qtyText = document.createElement("span");
-            qtyText.className = "qty-text";
-            qtyText.textContent = (item.progress||0) + "/" + (item.qty||1);
-            li.appendChild(qtyText);
+    // --- Listen-Settings ---
+    function getCurrentListSettings() {
+      const list = getCurrentList();
+      if (!list) return { doneBehavior: "stay" };
+      if (!list.settings || typeof list.settings !== "object") list.settings = {};
+      if (!list.settings.doneBehavior) list.settings.doneBehavior = "stay"; // "stay" | "bottom"
+      return list.settings;
+    }
 
-            const actions = document.createElement("div");
-            actions.className = "actions";
+    // Reorder (stabil): un-fertig oben, fertig unten (nur wenn doneBehavior="bottom")
+    function applyCompletionBehavior(list) {
+      if (!list) return;
+      const settings = getCurrentListSettings();
+      if (settings.doneBehavior !== "bottom") return;
 
-            const editBtn = document.createElement("button");
-            editBtn.className = "btn btn-small btn-secondary";
-            editBtn.textContent = "Bearbeiten";
-            editBtn.addEventListener("click",(e)=>{
-              e.stopPropagation();
-              showItemEditor(item,(n,q)=>{
-                item.name = n;
-                item.qty = clampQty10(q);
-                if (item.progress > item.qty) item.progress = item.qty;
-                scheduleSave();
-                renderItems();
-              });
-            });
-            actions.appendChild(editBtn);
+      // stabile Reihenfolge: behalte Reihenfolge innerhalb der Gruppen bei
+      const withIndex = list.items.map((it, idx) => ({ it, idx }));
+      withIndex.sort((a, b) => {
+        const adone = (a.it.progress || 0) >= (a.it.qty || 1);
+        const bdone = (b.it.progress || 0) >= (b.it.qty || 1);
+        if (adone === bdone) return a.idx - b.idx;
+        return adone ? 1 : -1;
+      });
+      list.items = withIndex.map(x => x.it);
+    }
 
-            const delBtn = document.createElement("button");
-            delBtn.className = "btn btn-small btn-secondary";
-            delBtn.textContent = "Entfernen";
-            delBtn.addEventListener("click",(e)=>{
-              e.stopPropagation();
-              showConfirm(`Eintrag "${item.name}" entfernen?`, ()=>{
-                list.items.splice(idx,1);
-                scheduleSave();
-                renderItems();
-              });
-            });
-            actions.appendChild(delBtn);
+    // block scroll while dragging on touch devices (iPad)
+    function preventTouchScroll(e) {
+      if (draggingEl) e.preventDefault();
+    }
 
-            li.appendChild(actions);
-            ul.appendChild(li);
+    // Kleine ID-Hilfe (für Items, damit Auswahl stabil bleibt)
+    function makeId(prefix) {
+      return (prefix || 'id') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    }
+
+    // Benutzer laden
+    
+    // Benutzer (= Profile) laden
+    async function loadUsers() {
+      const select = document.getElementById('user-select');
+      if (!select) return;
+
+      // Route -> Auswahl (wenn direkt /packliste/<profile>/<list> geöffnet wurde)
+      const r = getRouteParts();
+      if (r.userId && profilesMeta?.some(p => p.id === r.userId)) {
+        currentUserId = r.userId;
+      }
+
+      // Meta ggf. nachladen (falls init offline war, später aber online)
+      if (!profilesMeta || profilesMeta.length === 0) {
+        try {
+          const metaRes = await refreshProfilesAndMaybeSelect();
+          if (metaRes.unauth) {
+            location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
             return;
           }
-
-          const nameSpan = document.createElement("span");
-          nameSpan.className = "item-name";
-          nameSpan.style.flex = "1";
-          nameSpan.textContent = item.name;
-          li.appendChild(nameSpan);
-
-          let sliderEl = null;
-          let qtyTextEl = null;
-
-          if ((item.qty||1) > 1){
-            const right = document.createElement("div");
-            right.className = "item-right";
-            right.style.display = "flex";
-            right.style.alignItems = "center";
-            right.style.gap = "10px";
-
-            sliderEl = document.createElement("input");
-            sliderEl.className = "item-range";
-            sliderEl.type = "range";
-            sliderEl.min = "0";
-            sliderEl.max = String(item.qty);
-            sliderEl.value = String(item.progress||0);
-                        setRangeGreen(sliderEl);
-
-            qtyTextEl = document.createElement("span");
-            qtyTextEl.className = "qty-text";
-            qtyTextEl.textContent = (item.progress||0) + "/" + (item.qty||1);
-
-            sliderEl.addEventListener("input", ()=>{
-              item.progress = parseInt(sliderEl.value,10) || 0;
-              if (item.progress > (item.qty||1)) item.progress = (item.qty||1);
-              qtyTextEl.textContent = item.progress + "/" + item.qty;
-              li.classList.toggle("item-done", isDone(item));
-              updateCompletion();
-              setRangeGreen(sliderEl);
-              setSync("work","Speichere…");
-            });
-
-            const commit = ()=>{
-              scheduleSave();
-              if (completedBehavior === "bottom") renderItems();
-            };
-            sliderEl.addEventListener("change", commit);
-            sliderEl.addEventListener("pointerup", commit);
-
-            right.appendChild(sliderEl);
-            right.appendChild(qtyTextEl);
-            li.appendChild(right);
-
-            sliderEl.addEventListener("click", (e)=> e.stopPropagation());
-            sliderEl.addEventListener("pointerdown", (e)=> e.stopPropagation());
-          }
-
-          const doToggleDone = ()=>{
-            const done = isDone(item);
-            item.progress = done ? 0 : (item.qty||1);
-            if (sliderEl){
-              sliderEl.value = String(item.progress);
-              setRangeGreen(sliderEl);
-            }
-            if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
-
-            scheduleSave();
-            if (completedBehavior === "bottom") renderItems();
-            else{
-              li.classList.toggle("item-done", isDone(item));
-              updateCompletion();
-            }
-          };
-
-          if (checkboxMode){
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.className = "item-check";
-            cb.checked = isDone(item);
-            cb.addEventListener("click",(e)=> e.stopPropagation());
-            cb.addEventListener("change", ()=>{
-              item.progress = cb.checked ? (item.qty||1) : 0;
-              if (sliderEl){
-                sliderEl.value = String(item.progress);
-                setRangeGreen(sliderEl);
-              }
-              if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty||1);
-              scheduleSave();
-              if (completedBehavior === "bottom") renderItems();
-              else{
-                li.classList.toggle("item-done", isDone(item));
-                updateCompletion();
-              }
-            });
-            li.insertBefore(cb, li.firstChild);
-          } else {
-            li.addEventListener("click", doToggleDone);
-          }
-
-          ul.appendChild(li);
-        });
+        } catch (_) {}
       }
 
-      function addItem(){
-        const list = getCurrentList();
-        if (!list) return;
-        const t = document.getElementById("new-item-text");
-        const q = document.getElementById("new-item-qty");
-        const name = (t.value||"").trim();
-        if (!name) return;
-        const qty = clampQty10(q.value);
-        list.items.push({ id: makeId("item"), name, qty, progress: 0 });
-        t.value = "";
-        q.value = "1";
-        document.getElementById("new-item-qty-label").textContent = "Menge: 1";
-        scheduleSave();
-        renderItems();
-      }
+      select.innerHTML = '';
 
-      // ===== Settings Modal =====
-      const listSettingsModal = document.getElementById("list-settings-modal");
-      const doneBottomToggle = document.getElementById("list-done-bottom-toggle");
-      const checkboxToggle = document.getElementById("list-checkbox-toggle");
-
-      function openListSettings(){
-        const list = getCurrentList();
-        if (!list) return;
-        const s = ensureListSettings(list);
-        doneBottomToggle.checked = !!s.doneBottom;
-        checkboxToggle.checked = !!s.checkbox;
-        listSettingsModal.classList.add("active");
-      }
-
-      // ===== AI =====
-      function normalizeItemName(name){
-        return String(name||"").trim().replace(/\s+/g," ").replace(/^[\-–—•·]+\s*/,"");
-      }
-      function addOrMergeItem(list, name, qty){
-        const n = normalizeItemName(name);
-        if (!n) return;
-        const q = clampQty10(qty || 1);
-        const existing = (list.items||[]).find(it => (it.name||"").trim().toLowerCase() === n.toLowerCase());
-        if (existing){
-          existing.qty = clampQty10((parseInt(existing.qty||1,10)||1) + q);
-          if (existing.progress > existing.qty) existing.progress = existing.qty;
+      if (!profilesMeta || profilesMeta.length === 0) {
+        // Offline-Fallback: lokale "users" anzeigen
+        const localUsers = (data && Array.isArray(data.users)) ? data.users : [];
+        if (localUsers.length === 0) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '— kein Profil —';
+          select.appendChild(opt);
+          select.disabled = true;
+          document.getElementById('lists-section').classList.add('hidden');
+          document.getElementById('list-edit-section').classList.add('hidden');
+          currentUserId = null;
           return;
         }
-        list.items.push({ id: makeId("item"), name:n, qty:q, progress:0 });
+        select.disabled = false;
+        localUsers.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.name;
+          select.appendChild(opt);
+        });
+        if (!currentUserId || !localUsers.some(u => u.id === currentUserId)) currentUserId = localUsers[0].id;
+        select.value = currentUserId;
+        loadLists();
+        return;
       }
-      function extractJsonArray(text){
-        if (!text) return null;
-        let s = String(text).trim();
-        s = s.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
-        const a = s.indexOf("[");
-        const b = s.lastIndexOf("]");
-        if (a===-1 || b===-1 || b<=a) return null;
-        try{ return JSON.parse(s.slice(a,b+1)); }catch(_){ return null; }
-      }
-      function openAiModal(){
-        document.getElementById("ai-modal")?.classList.add("active");
-        document.body.classList.add("modal-open");
-      }
-      function closeAiModal(){
-        document.getElementById("ai-modal")?.classList.remove("active");
-        document.body.classList.remove("modal-open");
-      }
-      document.getElementById("ai-modal")?.addEventListener("click", (e)=>{
-        if (e.target.id === "ai-modal") closeAiModal();
+
+      // Online: Profiles Meta rendern
+      select.disabled = false;
+      profilesMeta.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
       });
 
-      function renderAiSuggestions(suggestions){
-        const box = document.getElementById("ai-suggestions");
-        box.innerHTML = "";
+      if (!currentUserId || !profilesMeta.some(p => p.id === currentUserId)) {
+        currentUserId = profilesMeta[0].id;
+        currentListId = null;
+      }
+      select.value = currentUserId;
 
-        if (!Array.isArray(suggestions) || !suggestions.length){
-          const empty = document.createElement("div");
-          empty.className = "ai-empty";
-          empty.textContent = "Keine Vorschläge.";
-          box.appendChild(empty);
+      // aktuelles Profil laden (damit Listen/Items stimmen)
+      try {
+        const profRes = await loadCurrentProfileData();
+        if (profRes.unauth) {
+          location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
           return;
         }
+      } catch (_) {}
 
-        suggestions.forEach(s=>{
-          const name = normalizeItemName(s.name);
-          if (!name) return;
+      loadLists();
+    }
 
-          const row = document.createElement("div");
-          row.className = "ai-row";
 
-          const main = document.createElement("div");
-          main.className = "ai-main";
+    // Listen laden oder Editor anzeigen
+    function loadLists() {
+      const user = getCurrentUser();
+      if (!user) {
+        document.getElementById('lists-section').classList.add('hidden');
+        document.getElementById('list-edit-section').classList.add('hidden');
+        return;
+      }
+      if (currentListId) {
+        showListEditSection();
+        return;
+      }
+      // Listenübersicht anzeigen
+      document.getElementById('user-section').classList.remove('hidden');
+      document.getElementById('back-home-link').classList.remove('hidden');
+      document.getElementById('lists-section').classList.remove('hidden');
+      document.getElementById('list-edit-section').classList.add('hidden');
+      const ul = document.getElementById('lists-list');
+      ul.innerHTML = '';
+      user.lists.forEach(list => {
+        const li = document.createElement('li');
+        li.className = 'list-item';
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'item-name';
+        nameSpan.textContent = list.name;
+        li.appendChild(nameSpan);
+        // Klick auf den Namen öffnet die Listenbearbeitung
+        nameSpan.addEventListener('click', function() {
+          currentListId = list.id;
 
-          const title = document.createElement("div");
-          title.className = "ai-name";
-          title.textContent = name;
+          // URL: /packliste/<user>/<list>
+          setRoute(currentUserId, currentListId);
 
-          /* Erklärungstext („Vorschlag“) entfernt -> kein reason rendern */
-          main.appendChild(title);
-
-          const ctrl = document.createElement("div");
-          ctrl.className = "ai-ctrl";
-
-          const qty = document.createElement("input");
-          qty.type = "range";
-          qty.min = "1";
-          qty.max = "10";
-          qty.value = String(clampQty10(s.qty||1));
-          qty.className = "ai-qty";
-          setRangeGreen(qty);
-
-          const qtyLabel = document.createElement("span");
-          qtyLabel.className = "ai-qty-label";
-          qtyLabel.textContent = qty.value;
-          qty.addEventListener("input", ()=>{
-            qtyLabel.textContent = qty.value;
-            setRangeGreen(qty);
-          });
-
-          const ok = document.createElement("button");
-          ok.className = "icon-btn ok";
-          ok.textContent = "+";
-          ok.title = "Hinzufügen";
-
-          const no = document.createElement("button");
-          no.className = "icon-btn no";
-          no.textContent = "×";
-          no.title = "Nicht hinzufügen";
-
-          ok.addEventListener("click", ()=>{
-            const list = getCurrentList();
-            if (!list) return;
-            addOrMergeItem(list, name, qty.value);
-            scheduleSave();
-            renderItems();
-            row.remove();
-          });
-          no.addEventListener("click", ()=> row.remove());
-
-          ctrl.appendChild(qty);
-          ctrl.appendChild(qtyLabel);
-          ctrl.appendChild(ok);
-          ctrl.appendChild(no);
-
-          row.appendChild(main);
-          row.appendChild(ctrl);
-          box.appendChild(row);
+          showListEditSection();
         });
+        if (listsEditMode) {
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+
+          // Namen ändern (bleibt in der Übersicht)
+          const editBtn = document.createElement('button');
+          editBtn.textContent = 'Namen ändern';
+          editBtn.className = 'btn btn-small btn-secondary';
+          editBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPrompt('Neuer Name der Liste:', list.name, function(newName) {
+              if (!newName) return;
+              list.name = newName;
+              saveData();
+              loadLists();
+            });
+          });
+          actions.appendChild(editBtn);
+
+          // Löschen
+          const delBtn = document.createElement('button');
+          delBtn.textContent = 'Löschen';
+          delBtn.className = 'btn btn-small btn-secondary';
+          delBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showConfirm(`Liste "${list.name}" wirklich löschen?`, function() {
+              const user = getCurrentUser();
+              user.lists = user.lists.filter(l => l.id !== list.id);
+              saveData();
+              loadLists();
+            });
+          });
+          actions.appendChild(delBtn);
+
+          // Exportieren
+          const expBtn = document.createElement('button');
+          expBtn.textContent = 'Exportieren';
+          expBtn.className = 'btn btn-small btn-secondary';
+          expBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            exportList(list.id);
+          });
+          actions.appendChild(expBtn);
+
+          li.appendChild(actions);
+        }
+        ul.appendChild(li);
+      });
+    }
+
+    // Editor für eine Liste anzeigen
+    function showListEditSection() {
+      const list = getCurrentList();
+      if (!list) {
+        showListsSection();
+        return;
+      }
+      document.getElementById('user-section').classList.add('hidden');
+      // den Zurück-Link ausblenden, während wir eine Liste bearbeiten
+      const backLinkEl = document.getElementById('back-home-link');
+      backLinkEl.style.display = 'none';
+      document.getElementById('lists-section').classList.add('hidden');
+      document.getElementById('list-edit-section').classList.remove('hidden');
+      // Titel setzen
+      document.getElementById('current-list-title').textContent = list.name;
+      // Bearbeitungsmodus zurücksetzen
+      editMode = false;
+      const toggleBtn = document.getElementById('edit-mode-toggle');
+      if (toggleBtn) toggleBtn.textContent = 'Bearbeiten';
+      // Eingabebereich für neue Artikel ausblenden
+      const newSection = document.getElementById('new-item-section');
+      if (newSection) newSection.style.display = 'none';
+      renderItems();
+    }
+    function showListsSection() {
+      currentListId = null;
+      document.getElementById('list-edit-section').classList.add('hidden');
+      document.getElementById('user-section').classList.remove('hidden');
+      // Zurück-Link wieder einblenden, wenn Listenübersicht angezeigt wird
+      const backLinkEl2 = document.getElementById('back-home-link');
+      backLinkEl2.style.display = '';
+      loadLists();
+    }
+
+    // Artikel rendern
+function renderItems() {
+  const list = getCurrentList();
+  if (!list) return;
+
+  const s = ensureListSettings(list);
+  const completedBehavior = s.doneBottom ? "bottom" : "none";
+  const checkboxMode = !!s.checkbox;
+  document.body.classList.toggle("checkbox-mode", checkboxMode);
+  const isDone = (it) => (it.progress || 0) >= (it.qty || 1);
+
+  // Items normalisieren
+  list.items = (list.items || []).map((it) => {
+    if (typeof it === "string") return { id: makeId("item"), name: it, qty: 1, progress: 0 };
+    if (it && typeof it === "object") {
+      if (!it.id) it.id = makeId("item");
+      if (!it.name) it.name = "";
+      if (typeof it.qty !== "number" || it.qty < 1) it.qty = 1;
+      if (typeof it.progress !== "number" || it.progress < 0) it.progress = 0;
+      if (it.progress > it.qty) it.progress = it.qty;
+      return it;
+    }
+    return { id: makeId("item"), name: "", qty: 1, progress: 0 };
+  });
+
+  // ✅ Sortieren (nur im Fortschrittsmodus + nur wenn bottom)
+  if (!editMode && completedBehavior === "bottom") {
+    const before = list.items.slice();
+    const sorted = before.slice().sort((a, b) => (isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0));
+    const changed = sorted.some((it, i) => it.id !== before[i]?.id);
+    if (changed) {
+      list.items = sorted;
+      saveData(); // damit nach Reload gleich bleibt
+    }
+  }
+
+  const ul = document.getElementById("items-list");
+  ul.innerHTML = "";
+
+  updateCompletion();
+  updateBulkbar();
+
+  list.items.forEach((item, idx) => {
+    const li = document.createElement("li");
+    li.className = "list-item";
+    li.setAttribute("data-index", String(idx));
+    li.setAttribute("data-item-id", item.id);
+
+    if (isDone(item)) li.classList.add("item-done");
+
+    // =========================
+    // EDIT MODE (unverändert)
+    // =========================
+    if (editMode) {
+      if (selectedItemIds.has(item.id)) li.classList.add("selected");
+
+      const handle = document.createElement("span");
+      handle.className = "drag-handle";
+      handle.textContent = "☰";
+      li.appendChild(handle);
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "item-name";
+      nameSpan.style.flex = "1";
+      nameSpan.textContent = item.name;
+      li.appendChild(nameSpan);
+
+      if (editMode) {
+        const rename = document.createElement("button");
+        rename.className = "icon-btn";
+        rename.type = "button";
+        rename.title = "Name ändern";
+        rename.textContent = "🖌️";
+        rename.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openRenameModal(item.name, (v) => {
+            const n2 = normalizeItemName(v);
+            if (!n2) return;
+            item.name = n2;
+            saveData();
+            renderItems();
+          });
+          saveData();
+          renderItems();
+        });
+        li.appendChild(rename);
       }
 
-      async function aiPlanSuggestions(){
-        const list = getCurrentList();
-        if (!list) return;
+const qtyText = document.createElement("span");
+      qtyText.className = "qty-text";
+      qtyText.textContent = (item.progress || 0) + "/" + (item.qty || 1);
+      li.appendChild(qtyText);
 
-        const ta = document.getElementById("ai-item-text");
-        const btn = document.getElementById("ai-plan-btn");
-        const raw = (ta.value||"").trim();
-        if (!raw) return;
+      li.addEventListener("click", (e) => {
+        const t = e.target;
+        if (t && (t.classList?.contains("drag-handle") || t.tagName === "BUTTON")) return;
 
-        const old = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = "KI läuft...";
+        if (selectedItemIds.has(item.id)) {
+          selectedItemIds.delete(item.id);
+          li.classList.remove("selected");
+        } else {
+          selectedItemIds.add(item.id);
+          li.classList.add("selected");
+        }
+        updateBulkbar();
+      });
 
-        try{
-          const prompt =
-`Du bist eine Einkaufs-Assistentin für eine Einkaufsliste.
-Gib NUR ein JSON-Array zurück (ohne Markdown, ohne Erklärtext).
-Format: [{"name":"...","qty":1}]
-Regeln:
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Bearbeiten";
+      editBtn.className = "btn btn-small btn-secondary";
+      editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showItemEditor(item, (newName, newQty) => {
+          item.name = newName;
+          item.qty = newQty;
+          if (item.progress > item.qty) item.progress = item.qty;
+          saveData();
+          renderItems();
+        });
+      });
+      actions.appendChild(editBtn);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.textContent = "Entfernen";
+      removeBtn.className = "btn btn-small btn-secondary";
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showConfirm(`Eintrag "${item.name}" entfernen?`, () => {
+          const list2 = getCurrentList();
+          if (!list2) return;
+          list2.items.splice(idx, 1);
+          selectedItemIds.delete(item.id);
+          saveData();
+          renderItems();
+        });
+      });
+      actions.appendChild(removeBtn);
+
+      li.appendChild(actions);
+
+      handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startDragFromHandle(e, li);
+      });
+
+      ul.appendChild(li);
+      return;
+    }
+
+    // =========================
+    // PROGRESS MODE (NEU: Klick überall toggelt)
+    // =========================
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "item-name";
+    nameSpan.style.flex = "1";
+    nameSpan.textContent = item.name;
+    li.appendChild(nameSpan);
+
+    let sliderEl = null;
+    let qtyTextEl = null;
+
+    // qty > 1 => Slider rechts
+    if ((item.qty || 1) > 1) {
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+      right.style.gap = "10px";
+
+      sliderEl = document.createElement("input");
+      sliderEl.type = "range";
+      sliderEl.min = 0;
+      sliderEl.max = item.qty;
+      sliderEl.value = item.progress;
+      sliderEl.style.minWidth = "220px";
+
+      qtyTextEl = document.createElement("span");
+      qtyTextEl.className = "qty-text";
+      qtyTextEl.textContent = item.progress + "/" + item.qty;
+
+      // Smooth live
+      sliderEl.addEventListener("input", () => {
+        item.progress = parseInt(sliderEl.value, 10) || 0;
+        if (item.progress > (item.qty || 1)) item.progress = (item.qty || 1);
+
+        qtyTextEl.textContent = item.progress + "/" + item.qty;
+
+        if (isDone(item)) li.classList.add("item-done");
+        else li.classList.remove("item-done");
+
+        updateCompletion();
+      });
+
+      // Commit beim Loslassen
+      const commit = () => {
+        saveData();
+        if (completedBehavior === "bottom") renderItems();
+      };
+      sliderEl.addEventListener("change", commit);
+      sliderEl.addEventListener("pointerup", commit);
+
+      right.appendChild(sliderEl);
+      right.appendChild(qtyTextEl);
+      li.appendChild(right);
+
+      // Klick auf den Slider darf NICHT togglen
+      sliderEl.addEventListener("click", (e) => e.stopPropagation());
+      sliderEl.addEventListener("pointerdown", (e) => e.stopPropagation());
+    }
+
+    // Checkbox / Klick-Verhalten
+    const doToggleDone = () => {
+      const done = isDone(item);
+      item.progress = done ? 0 : (item.qty || 1);
+
+      // Slider/Text direkt mitsynchronisieren
+      if (sliderEl) sliderEl.value = item.progress;
+      if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty || 1);
+
+      saveData();
+
+      // sofort grün + sofort nach unten wenn aktiv
+      if (completedBehavior === "bottom") {
+        renderItems();
+      } else {
+        if (isDone(item)) li.classList.add("item-done");
+        else li.classList.remove("item-done");
+        updateCompletion();
+      }
+    };
+
+    if (checkboxMode) {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "item-check";
+      cb.checked = isDone(item);
+      cb.addEventListener("click", (e) => e.stopPropagation());
+      cb.addEventListener("change", () => {
+        // wenn checked -> fertig, sonst 0
+        item.progress = cb.checked ? (item.qty || 1) : 0;
+        if (sliderEl) sliderEl.value = item.progress;
+        if (qtyTextEl) qtyTextEl.textContent = item.progress + "/" + (item.qty || 1);
+        saveData();
+        if (completedBehavior === "bottom") renderItems();
+        else {
+          if (isDone(item)) li.classList.add("item-done");
+          else li.classList.remove("item-done");
+          updateCompletion();
+        }
+      });
+      li.insertBefore(cb, li.firstChild);
+        } else {
+      li.addEventListener("click", doToggleDone);
+    }
+
+    ul.appendChild(li);
+  });
+}
+
+    function toggleSelectItem(itemId, liEl) {
+      if (!editMode) return;
+      if (selectedItemIds.has(itemId)) {
+        selectedItemIds.delete(itemId);
+        liEl.classList.remove('selected');
+      } else {
+        selectedItemIds.add(itemId);
+        liEl.classList.add('selected');
+      }
+      updateBulkbar();
+    }
+
+    function updateBulkbar() {
+      const n = selectedItemIds.size;
+      const delBtn = document.getElementById('bulk-delete');
+      const dupBtn = document.getElementById('bulk-duplicate');
+      const shareBtn = document.getElementById('bulk-share');
+      const checkAllBtn = document.getElementById('check-all-btn');
+
+      // "Alle abhaken" nur im Fortschrittsmodus
+      if (checkAllBtn) checkAllBtn.style.display = editMode ? 'none' : 'inline-flex';
+
+      // Bulk-Buttons nur im Bearbeiten-Modus und nur bei Auswahl
+      const showBulk = editMode && n > 0;
+      if (delBtn) delBtn.style.display = showBulk ? 'inline-flex' : 'none';
+      if (dupBtn) dupBtn.style.display = showBulk ? 'inline-flex' : 'none';
+      if (shareBtn) shareBtn.style.display = showBulk ? 'inline-flex' : 'none';
+    }
+
+    // Drag & Drop (mit Animation) – startet nur über den Griff
+let dragStartScrollY = 0;
+
+function startDragFromHandle(e, li) {
+  if (!editMode) return;
+
+  e.preventDefault();
+  draggingEl = li;
+
+  document.body.classList.add("noselect");
+  document.body.style.overflow = "hidden"; // verhindert Scrollen beim Drag
+
+  dragStartScrollY = window.scrollY;
+
+  const rect = li.getBoundingClientRect();
+  dragOffsetY = e.clientY - rect.top;
+
+  placeholderEl = document.createElement("div");
+  placeholderEl.className = "drop-placeholder";
+  placeholderEl.style.height = rect.height + "px";
+
+  li.parentElement.insertBefore(placeholderEl, li.nextSibling);
+
+  li.classList.add("dragging");
+  li.style.pointerEvents = "none";
+  li.style.position = "fixed";
+  li.style.left = rect.left + "px";
+  li.style.top = rect.top + "px";
+  li.style.width = rect.width + "px";
+
+  window.addEventListener("pointermove", onDragMove, { passive: false });
+  window.addEventListener("pointerup", endDrag, { once: true });
+}
+
+function onDragMove(e) {
+  if (!draggingEl || !placeholderEl) return;
+  e.preventDefault();
+
+  const scrollDelta = window.scrollY - dragStartScrollY;
+  draggingEl.style.top = (e.clientY - dragOffsetY - scrollDelta) + "px";
+
+  const ul = document.getElementById("items-list");
+  const items = Array.from(ul.querySelectorAll(".list-item"))
+    .filter(el => el !== draggingEl);
+
+  let inserted = false;
+  for (const it of items) {
+    const r = it.getBoundingClientRect();
+    const midY = r.top + r.height / 2;
+    if (e.clientY < midY) {
+      ul.insertBefore(placeholderEl, it);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) ul.appendChild(placeholderEl);
+}
+
+function endDrag() {
+  if (!draggingEl || !placeholderEl) return;
+
+  window.removeEventListener("pointermove", onDragMove);
+
+  document.body.classList.remove("noselect");
+  document.body.style.overflow = "";
+
+  const ul = document.getElementById("items-list");
+  ul.insertBefore(draggingEl, placeholderEl);
+  placeholderEl.remove();
+
+  draggingEl.classList.remove("dragging");
+  draggingEl.style.pointerEvents = "";
+  draggingEl.style.position = "";
+  draggingEl.style.left = "";
+  draggingEl.style.top = "";
+  draggingEl.style.width = "";
+
+  // Reihenfolge in Daten übernehmen
+  const list = getCurrentList();
+  if (list) {
+    const byId = new Map(list.items.map(it => [it.id, it]));
+    const ordered = [];
+    ul.querySelectorAll(".list-item").forEach(el => {
+      const id = el.getAttribute("data-item-id");
+      if (byId.has(id)) ordered.push(byId.get(id));
+    });
+    if (ordered.length === list.items.length) {
+      list.items = ordered;
+      saveData();
+    }
+  }
+
+  draggingEl = null;
+  placeholderEl = null;
+  renderItems();
+}
+
+    // Artikel verschieben (nach oben oder unten)
+    function moveItem(index, direction) {
+      const list = getCurrentList();
+      if (!list) return;
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= list.items.length) return;
+      const items = list.items;
+      const tmp = items[index];
+      items[index] = items[newIndex];
+      items[newIndex] = tmp;
+      saveData();
+      // Element mit Highlight neu rendern
+      renderItems();
+      const ul = document.getElementById('items-list');
+      const movedItem = ul.children[newIndex];
+      if (movedItem) {
+        movedItem.classList.add('moved');
+        setTimeout(() => movedItem.classList.remove('moved'), 400);
+      }
+    }
+
+    // Berechnet und aktualisiert die prozentuale Fertigstellung der Liste
+    function updateCompletion() {
+      const list = getCurrentList();
+      const percEl = document.getElementById('completion-percentage');
+      const barEl = document.getElementById('completion-bar');
+      if (!list || !percEl) {
+        return;
+      }
+      const total = list.items.length;
+      if (total === 0) {
+        percEl.textContent = '0% geschafft';
+        if (barEl) barEl.style.width = '0%';
+        return;
+      }
+      let sum = 0;
+      list.items.forEach(function(item) {
+        const qty = item.qty || 1;
+        const progress = item.progress || 0;
+        sum += qty ? (progress / qty) : 1;
+      });
+      const percent = (sum / total) * 100;
+      const rounded = Math.round(percent);
+      percEl.textContent = rounded + '% geschafft';
+      if (barEl) barEl.style.width = Math.max(0, Math.min(100, percent)).toFixed(2) + '%';
+    }
+
+    // Artikel hinzufügen
+    function addItem() {
+      const list = getCurrentList();
+      if (!list) return;
+      const textInput = document.getElementById('new-item-text');
+      const qtyInput = document.getElementById('new-item-qty');
+      const name = textInput.value.trim();
+      if (!name) return;
+      const qty = parseInt(qtyInput.value);
+      // Neuen Artikel mit Anfangsfortschritt 0 hinzufügen
+      list.items.push({ id: makeId('item'), name: name, qty: qty, progress: 0 });
+      textInput.value = '';
+      qtyInput.value = '1';
+      document.getElementById('new-item-qty-label').textContent = 'Menge: 1';
+      saveData();
+      renderItems();
+    }
+
+    
+    // ---------- KI: Text -> Vorschläge (mit Vorschau) ----------
+    function normalizeItemName(name) {
+      return String(name || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/^[\-–—•·]+\s*/, "");
+    }
+
+    function addOrMergeItem(list, name, qty) {
+      const n = normalizeItemName(name);
+      if (!n) return;
+      const q = Math.max(1, parseInt(qty || 1, 10) || 1);
+
+      // Merge: wenn Name schon existiert -> qty erhöhen
+      const existing = (list.items || []).find(it => (it.name || "").trim().toLowerCase() === n.toLowerCase());
+      if (existing) {
+        existing.qty = Math.max(1, (parseInt(existing.qty || 1, 10) || 1) + q);
+        return;
+      }
+      list.items.push({ id: makeId('item'), name: n, qty: q, progress: 0 });
+    }
+
+    function extractJsonArray(text) {
+      if (!text) return null;
+      let s = String(text).trim();
+      s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      const a = s.indexOf("[");
+      const b = s.lastIndexOf("]");
+      if (a === -1 || b === -1 || b <= a) return null;
+      const jsonStr = s.slice(a, b + 1);
+      try { return JSON.parse(jsonStr); } catch { return null; }
+    }
+
+    function openAiModal() {
+      const m = document.getElementById("ai-modal");
+      if (m) m.classList.add("active");
+      document.body.classList.add("modal-open");
+    }
+    function closeAiModal() {
+      const m = document.getElementById("ai-modal");
+      if (m) m.classList.remove("active");
+      document.body.classList.remove("modal-open");
+    }
+
+    function renderAiSuggestions(suggestions) {
+      const box = document.getElementById("ai-suggestions");
+      if (!box) return;
+      box.innerHTML = "";
+
+      if (!Array.isArray(suggestions) || suggestions.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "ai-empty";
+        empty.textContent = "Keine Vorschläge erkannt.";
+        box.appendChild(empty);
+        return;
+      }
+
+      for (let i = 0; i < suggestions.length; i++) {
+        const s = suggestions[i] || {};
+        const name = normalizeItemName(s.name);
+        if (!name) continue;
+
+        const row = document.createElement("div");
+        row.className = "ai-row";
+        row.dataset.name = name;
+
+        const main = document.createElement("div");
+        main.className = "ai-main";
+        let curName = name;
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "ai-name-wrap";
+
+        const title = document.createElement("div");
+        title.className = "ai-name";
+        title.textContent = curName;
+
+        const renameBtn = document.createElement("button");
+        renameBtn.className = "icon-btn ai-rename-btn";
+        renameBtn.type = "button";
+        renameBtn.title = "Name ändern";
+        renameBtn.textContent = "🖌️";
+        renameBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openRenameModal(curName, (v) => {
+            const n2 = normalizeItemName(v);
+            if (!n2) return;
+            curName = n2;
+            input.value = curName;
+            saveData();
+            renderItems();
+          });
+          title.textContent = curName;
+          row.dataset.name = curName;
+        });
+
+        titleWrap.appendChild(title);
+        titleWrap.appendChild(renameBtn);
+
+        const reason = document.createElement("div");
+        reason.className = "ai-reason muted";
+        reason.textContent = normalizeItemName(s.reason || "Vorschlag");
+
+        main.appendChild(titleWrap);
+        main.appendChild(reason);
+
+        const ctrl = document.createElement("div");
+        ctrl.className = "ai-ctrl";
+
+        const qty = document.createElement("input");
+        qty.type = "range";
+        qty.min = "1";
+        qty.max = "30";
+        qty.value = String(Math.max(1, parseInt(s.qty || 1, 10) || 1));
+        qty.className = "ai-qty";
+
+        const qtyLabel = document.createElement("span");
+        qtyLabel.className = "ai-qty-label";
+        qtyLabel.textContent = qty.value;
+
+        qty.addEventListener("input", () => {
+          qtyLabel.textContent = qty.value;
+        });
+
+        const ok = document.createElement("button");
+        ok.className = "icon-btn ok";
+        ok.type = "button";
+        ok.title = "Hinzufügen";
+        ok.textContent = "+";
+
+        const no = document.createElement("button");
+        no.className = "icon-btn no";
+        no.type = "button";
+        no.title = "Nicht hinzufügen";
+        no.textContent = "×";
+
+        ok.addEventListener("click", () => {
+          const list = getCurrentList();
+          if (!list) return;
+          addOrMergeItem(list, curName, qty.value);
+          saveData();
+          renderItems();
+          row.remove();
+        });
+
+        no.addEventListener("click", () => {
+          row.remove();
+        });
+
+        ctrl.appendChild(qty);
+        ctrl.appendChild(qtyLabel);
+        ctrl.appendChild(ok);
+        ctrl.appendChild(no);
+
+        row.appendChild(main);
+        row.appendChild(ctrl);
+        box.appendChild(row);
+      }
+    }
+
+    async function aiPlanSuggestions() {
+      const list = getCurrentList();
+      if (!list) return;
+
+      const ta = document.getElementById("ai-item-text");
+      const btn = document.getElementById("ai-plan-btn");
+      const raw = (ta?.value || "").trim();
+      if (!raw) return;
+
+      const old = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "KI läuft...";
+
+      try {
+        const prompt =
+`Du bist eine Packlisten-Assistentin.
+Aufgabe: Erstelle Vorschläge für Packlisten-Artikel (inkl. plausibler Ergänzungen je nach Kontext).
+- Nutze den Text: Ziele (z.B. Strand), Personen (z.B. Kinder), Aktivitäten (z.B. Sand spielen).
 - Übernimm explizit genannte Dinge IMMER.
-- Ergänze sinnvolle Einkäufe passend zum Kontext, aber nicht zu viele.
-- qty immer 1 bis 10.
+- Ergänze sinnvolle Extras (aber nicht übertreiben; lieber 8-18 Vorschläge).
+- Mengen: wenn genannt (z.B. "3 Badehosen") -> qty=3; wenn Kinder erwähnt -> kindgerechte Mengen (z.B. 2 Kinder -> 2 Badehosen/Handtücher etc.).
+Antworte NUR als JSON-Array (ohne Markdown, ohne Erklärtext).
+Format: [{"name":"...","qty":1,"reason":"kurzer Grund"}]
 
 TEXT:
 ${raw}`;
 
-          const r = await fetch("/api/ai", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ prompt })
-          });
+        const r = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ prompt })
+        });
 
-          if (r.status === 401) redirectToLogin();
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data || data.ok !== true) {
+          alert("KI-Fehler: " + (data?.error || data?.message || r.status));
+          return;
+        }
 
-          const j = await r.json().catch(()=>null);
-          if (!r.ok || !j || j.ok !== true){
-            alert("KI-Fehler: " + (j?.error || j?.message || r.status));
-            return;
-          }
+        const arr = extractJsonArray(data.text);
+        if (!Array.isArray(arr)) {
+          alert("KI-Antwort nicht verstanden.");
+          return;
+        }
 
-          const arr = extractJsonArray(j.text);
-          if (!Array.isArray(arr)){
-            alert("KI-Antwort nicht verstanden.");
-            return;
-          }
-
-          const suggestions = arr.map(x=>({
+        const suggestions = arr
+          .map(x => ({
             name: normalizeItemName(x?.name ?? x),
-            qty: clampQty10(x?.qty ?? 1)
-          })).filter(x=>x.name);
+            qty: Math.max(1, parseInt(x?.qty ?? 1, 10) || 1),
+            reason: normalizeItemName(x?.reason || "")
+          }))
+          .filter(x => x.name);
 
-          renderAiSuggestions(suggestions);
-          openAiModal();
-        }catch(e){
-          alert("KI-Fehler: " + (e?.message || e));
-        }finally{
-          btn.disabled = false;
-          btn.textContent = old;
-        }
+        renderAiSuggestions(suggestions);
+        openAiModal();
+      } catch (e) {
+        alert("KI-Fehler: " + (e?.message || e));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
       }
+    }
 
-      // ===== Bind UI =====
-      function bindUI(){
-        // Listen
-        document.getElementById("add-list-btn").addEventListener("click", ()=>{
-          showPrompt("Name der neuen Einkaufsliste:", "", (name)=>{
-            if (!name) return;
-            data.lists.unshift({ id: makeId("list"), name, items: [], settings: { doneBottom:false, checkbox:false } });
-            scheduleSave();
+    // Listen exportieren und importieren
+    function exportList(listId) {
+      const user = getCurrentUser();
+      if (!user) return;
+      const list = user.lists.find(l => l.id === listId);
+      if (!list) return;
+      const dataStr = JSON.stringify({ name: list.name, items: list.items }, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${list.name.replace(/\s+/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+    function importList(listId) {
+      const user = getCurrentUser();
+      if (!user) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const imported = JSON.parse(reader.result);
+            const list = user.lists.find(l => l.id === listId);
+            if (!list) return;
+            if (Array.isArray(imported.items)) {
+              list.items = imported.items.map(function(it) {
+                if (typeof it === 'string') {
+                  return { name: it, qty: 1, progress: 0 };
+                }
+                if (it && typeof it === 'object') {
+                  return {
+                    name: it.name || '',
+                    qty: it.qty || 1,
+                    progress: typeof it.progress === 'number' ? Math.min(it.progress, it.qty || 1) : 0
+                  };
+                }
+                return { name: '', qty: 1, progress: 0 };
+              });
+            }
+            if (imported.name) {
+              list.name = imported.name;
+            }
+            saveData();
             loadLists();
-          });
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // --- Export/Import GANZE App (alle Benutzer) ---
+    function exportAll() {
+      const dataStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `packliste_backup.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+
+    function importAll(onDone) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const imported = JSON.parse(reader.result);
+            if (!imported || !Array.isArray(imported.users)) {
+              showConfirm('Ungültige JSON-Datei.', function() {});
+              return;
+            }
+            data = imported;
+            // Sicherheits-Normalisierung
+            data.users = data.users.map(u => ({
+              id: u.id || makeId('user'),
+              name: u.name || 'Benutzer',
+              lists: Array.isArray(u.lists) ? u.lists.map(l => ({
+                id: l.id || makeId('list'),
+                name: l.name || 'Liste',
+                items: Array.isArray(l.items) ? l.items : []
+              })) : []
+            }));
+            saveData();
+            currentUserId = data.users[0]?.id || null;
+            currentListId = null;
+            listsEditMode = false;
+            selectedItemIds.clear();
+            if (onDone) onDone();
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // Import als NEUE Liste beim aktuellen Benutzer
+    function importAsNewList() {
+      const user = getCurrentUser();
+      if (!user) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const imported = JSON.parse(reader.result);
+            const name = (imported && imported.name) ? String(imported.name) : 'Importierte Liste';
+            const items = Array.isArray(imported.items) ? imported.items : [];
+            user.lists.unshift({ id: makeId('list'), name, items });
+            saveData();
+            loadLists();
+          } catch (e) {
+            showConfirm('Ungültige JSON-Datei.', function() {});
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
+    // --- Bulk Aktionen (Bearbeiten-Modus) ---
+    function getSelectedIndices() {
+      const list = getCurrentList();
+      if (!list) return [];
+      const idToIndex = new Map();
+      list.items.forEach((it, i) => idToIndex.set(it.id, i));
+      return Array.from(selectedItemIds).map(id => idToIndex.get(id)).filter(i => typeof i === 'number').sort((a,b)=>a-b);
+    }
+
+    function bulkDeleteSelected() {
+      const list = getCurrentList();
+      if (!list) return;
+      const indices = getSelectedIndices();
+      if (indices.length === 0) return;
+      showConfirm(indices.length + ' Einträge wirklich löschen?', function() {
+        // von hinten löschen
+        indices.slice().reverse().forEach(i => list.items.splice(i, 1));
+        selectedItemIds.clear();
+        saveData();
+        renderItems();
+        updateBulkbar();
+      });
+    }
+
+    function bulkDuplicateSelected() {
+      const list = getCurrentList();
+      if (!list) return;
+      const indices = getSelectedIndices();
+      if (indices.length === 0) return;
+      // Duplikate direkt nach dem letzten ausgewählten einfügen
+      const clones = indices.map(i => {
+        const it = list.items[i];
+        return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
+      });
+      const insertAt = indices[indices.length - 1] + 1;
+      list.items.splice(insertAt, 0, ...clones);
+      saveData();
+      renderItems();
+      updateBulkbar();
+    }
+
+    function openAssignModal(action) {
+      if (selectedItemIds.size === 0) return;
+      copyAction = action || 'share';
+      const modal = document.getElementById('assign-modal');
+      const titleEl = document.getElementById('assign-title');
+      if (confirmBtn) confirmBtn.textContent = (copyAction === 'duplicate') ? 'Duplizieren' : 'Teilen';
+      const userSel = document.getElementById('assign-user');
+      const listSel = document.getElementById('assign-list');
+      userSel.innerHTML = '';
+      data.users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name;
+        userSel.appendChild(opt);
+      });
+      // default: anderer Benutzer, sonst aktueller
+      const firstOther = data.users.find(u => u.id !== currentUserId) || data.users[0];
+      userSel.value = (firstOther && firstOther.id) ? firstOther.id : currentUserId;
+      const fillLists = () => {
+        const u = data.users.find(x => x.id === userSel.value);
+        listSel.innerHTML = '';
+        (u?.lists || []).forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l.id;
+          opt.textContent = l.name;
+          listSel.appendChild(opt);
         });
+      };
+      userSel.onchange = fillLists;
+      fillLists();
+      modal.classList.add('active');
+    }
 
-        document.getElementById("lists-edit-toggle").addEventListener("click", function(){
-          listsEditMode = !listsEditMode;
-          this.textContent = listsEditMode ? "Fertig" : "Bearbeiten";
-          loadLists();
-        });
-
-        document.getElementById("back-to-lists-btn").addEventListener("click", showListsSection);
-
-        // Topbar "Zurück zu Listen"
-        const topBack = document.getElementById("top-back-link");
-        if (topBack){
-          topBack.addEventListener("click", (e)=>{
-            e.preventDefault();
-            showListsSection();
-          });
-        }
-
-        // editor mode
-        document.getElementById("edit-mode-toggle").addEventListener("click", function(){
-          editMode = !editMode;
-          this.textContent = editMode ? "Fertig" : "Bearbeiten";
-          document.getElementById("new-item-section").style.display = editMode ? "block" : "none";
-          renderItems();
-        });
-
-        const newQty = document.getElementById("new-item-qty");
-        newQty.addEventListener("input", function(){
-          // max 10 + Label
-          const v = clampQty10(this.value);
-          this.value = String(v);
-          document.getElementById("new-item-qty-label").textContent = "Menge: " + v;
-          setRangeGreen(this);
-        });
-        // initial
-        setRangeGreen(newQty);
-
-        document.getElementById("add-item-btn").addEventListener("click", addItem);
-
-        // check all
-        document.getElementById("check-all-btn").addEventListener("click", ()=>{
-          if (editMode) return;
-          const list = getCurrentList();
-          if (!list) return;
-          const total = (list.items||[]).length;
-          if (!total) return;
-          const allDone = list.items.every(it => (it.progress||0) >= (it.qty||1));
-          showConfirm(allDone ? "Alles wieder abwählen?" : "Alles abhaken?", ()=>{
-            list.items.forEach(it=>{
-              const qty = it.qty || 1;
-              it.progress = allDone ? 0 : qty;
-            });
-            scheduleSave();
-            renderItems();
-          });
-        });
-
-        // settings
-        document.getElementById("open-list-settings-btn").addEventListener("click", openListSettings);
-        document.getElementById("list-settings-cancel").addEventListener("click", ()=> listSettingsModal.classList.remove("active"));
-        document.getElementById("list-settings-x").addEventListener("click", ()=> listSettingsModal.classList.remove("active"));
-        document.getElementById("list-settings-save").addEventListener("click", ()=>{
-          const list = getCurrentList();
-          if (!list){ listSettingsModal.classList.remove("active"); return; }
-          const s = ensureListSettings(list);
-          s.doneBottom = !!doneBottomToggle.checked;
-          s.checkbox = !!checkboxToggle.checked;
-          scheduleSave();
-          renderItems();
-          listSettingsModal.classList.remove("active");
-        });
-
-        // AI
-        document.getElementById("taik-open").addEventListener("click", ()=>{
-          openAiModal();
-          setTimeout(()=> document.getElementById("ai-item-text")?.focus(), 0);
-        });
-        document.getElementById("ai-plan-btn").addEventListener("click", aiPlanSuggestions);
-        document.getElementById("ai-x").addEventListener("click", closeAiModal);
+    function confirmAssign() {
+      const modal = document.getElementById('assign-modal');
+      const targetUserId = document.getElementById('assign-user').value;
+      const targetListId = document.getElementById('assign-list').value;
+      const list = getCurrentList();
+      const targetUser = data.users.find(u => u.id === targetUserId);
+      const targetList = targetUser?.lists?.find(l => l.id === targetListId);
+      if (!list || !targetList) {
+        modal.classList.remove('active');
+        return;
       }
+      const indices = getSelectedIndices();
+      const copies = indices.map(i => {
+        const it = list.items[i];
+        return { id: makeId('item'), name: it.name, qty: it.qty, progress: it.progress };
+      });
+      targetList.items = targetList.items || [];
+      targetList.items.push(...copies);
+      saveData();
+      modal.classList.remove('active');
+      // Auswahl bleibt (User wollte: beim aktuellen Benutzer behalten)
+      renderItems();
+      updateBulkbar();
+    }
 
-      async function init(){
-        try{
-          setSync("work","Lade…");
-          data = await apiGet();
-          if (!data || !Array.isArray(data.lists)) data = { lists: [] };
-          setSync("ok","Geladen");
-        }catch(e){
-          console.error(e);
-          setSync("bad","Fehler");
-          data = { lists: [] };
-        }
-        bindUI();
-        loadLists();
+    // Kickstart
+    document.addEventListener('DOMContentLoaded', init);
+  })();
+
+    // Wenn der Browser per "Zurück" eine gecachte Seite zeigt -> sofort Auth prüfen
+    async function enforceAuth() {
+      try {
+        const r = await fetch("/api/me", { credentials: "include" });
+        if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+      } catch (_) {
+        location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
       }
+    }
 
-      document.addEventListener("DOMContentLoaded", init);
-    })();
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted) enforceAuth(); // BFCache
+    });
+
   </script>
+
+
+  <!-- KI Vorschau Popup -->
+  <div id="ai-modal" class="popup-overlay">
+    <div class="popup" style="max-width: 760px; width: min(760px, 92vw);">
+      <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
+<div class="ai-add" style="margin: 10px 0 6px;">
+        <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich gehe an den Strand mit 2 Kindern. Oder: Pack Zahnpasta und 3 Badehosen ein."></textarea>
+        <div class="ai-actions">
+          <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
+          <button id="ai-mic-btn" class="btn btn-small btn-secondary" type="button" title="Sprechen">🎙️</button>
+          <span id="ai-mic-status" class="muted" style="display:none;">Höre zu…</span>
+</div>
+      </div>
+
+
+      <div id="ai-suggestions" class="ai-list"></div>
+
+    </div>
+  </div>
+
+
+    <!-- Einstellungen Popup -->
+  <div id="settings-modal" class="popup-overlay">
+    <div class="popup">
+      <h3 style="margin:0 0 12px;">Einstellungen</h3>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="font-weight:800;">Darkmode</div>
+        <label class="switch" aria-label="Darkmode">
+          <input id="theme-toggle" type="checkbox">
+          <span class="slider-round"></span>
+        </label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button id="settings-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Rename Modal (kein alert/prompt) -->
+  <div id="rename-modal" class="popup-overlay" style="display:none;">
+    <div class="popup" style="max-width:520px; width:min(520px,92vw);">
+      <h3 style="margin:0 0 8px;">Name ändern</h3>
+      <input id="rename-input" type="text" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.20); color:rgba(255,255,255,0.92); outline:none;" />
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+        <button id="rename-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="rename-save" class="btn btn-small" type="button">Speichern</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
