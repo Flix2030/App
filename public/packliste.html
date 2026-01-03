@@ -657,8 +657,40 @@ h1 {
 }
 
 @media (max-width: 700px) {
-  .container { max-width: 560px; padding: 14px; }
-  h1 { font-size: 28px; }
+  /* Gesamtfläche: besser lesbar am Handy */
+  body { padding: 18px 12px 26px; font-size: 16px; }
+
+  .container { max-width: 100%; width: 100%; padding: 16px; }
+
+  h1 { font-size: 30px; }
+  h2 { font-size: 22px; }
+
+  .btn { padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; }
+  .btn-small { padding: 10px 14px; font-size: 0.9rem; }
+
+  /* Inputs/Dropdowns dürfen nicht “zu breit” sein */
+  input[type="text"], select { min-width: 0; width: 100%; }
+
+  /* Zeilen dürfen umbrechen, damit nichts überlappt */
+  .list-item { padding: 14px 14px; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* Slider soll am Handy immer passen (überschreibt inline minWidth) */
+  #items-list input[type="range"] { width: 100% !important; min-width: 0 !important; }
+
+  /* Text etwas größer */
+  .list-item .item-name { font-size: 1rem; }
+  .qty-text { font-size: 0.95rem; }
+
+  /* Toolbars am Handy untereinander, damit nix abgeschnitten wird */
+  .toolbar { gap: 10px; }
+  .toolbar .left, .toolbar .right { width: 100%; justify-content: flex-start; }
+  #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
+
+  /* User-Zeile: Buttons untereinander, wenn nötig */
+  #user-section > div { row-gap: 10px; }
+}
+
+h1 { font-size: 28px; }
   .btn { padding: 12px 14px; border-radius: 16px; }
   #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
   #user-section > div { row-gap: 8px; }
