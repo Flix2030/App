@@ -187,6 +187,12 @@ async function handleApi(req, env) {
     const url = new URL(req.url);
     const path = url.pathname;
 
+
+    // Debug: prüft ob das Secret im laufenden Worker ankommt
+    if (path === "/api/debug-groq" && req.method === "GET") {
+      return json({ ok: true, service: "app", hasGroq: !!env.Groq_API });
+    }
+
     // /home und /packliste ohne .html auf die echte Datei mappen
     if (path === "/home") {
       return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
@@ -458,6 +464,8 @@ async function handleApi(req, env) {
       const text = j?.choices?.[0]?.message?.content || "";
       return json({ ok: true, text });
     }
+
+
 
     // ===== Einkaufsliste API =====
     if (path.startsWith("/api/einkauf/")) {
