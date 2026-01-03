@@ -1,4 +1,4 @@
-// worker.js (vollständig)
+// worker.js (vollständig) — FIXED (Groq Debug + besseres Error-Logging + profileId fix)
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -53,7 +53,6 @@ async function sha256B64Url(inputStr) {
   return b64urlEncode(new Uint8Array(buf));
 }
 
-// Confirm-Token: HMAC über JSON-Payload (kurzlebig) – verhindert "aus Versehen" destruktive Saves
 async function makeConfirmToken(env, payloadObj) {
   if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
   const payloadStr = JSON.stringify(payloadObj);
@@ -105,7 +104,6 @@ function json(res, status = 200, extraHeaders = {}) {
   });
 }
 
-// Passwort: PBKDF2 (Worker-seitig), gespeichert als: pbkdf2$iter$saltB64$hashB64
 async function pbkdf2Hash(password, saltBytes, iterations = 150000) {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
@@ -133,17 +131,15 @@ async function makePassRecord(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iterations = 100000;
   const hash = await pbkdf2Hash(password, salt, iterations);
-  // Format: pbkdf2$ITER$SALT$HASH
   return `pbkdf2$${iterations}$${b64urlEncode(salt)}$${b64urlEncode(hash)}`;
 }
 
 async function verifyPass(password, record) {
   const parts = record.split("$");
-  // erwartet: ["pbkdf2", "100000", "<salt>", "<hash>"]
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
 
   const iter = parseInt(parts[1], 10);
-  if (!Number.isFinite(iter) || iter < 1 || iter > 100000) return false;
+  if (!Number.isFinite(iter) || iter < 1 || iter > 200000) return false;
 
   const salt = b64urlDecodeToBytes(parts[2]);
   const expected = b64urlDecodeToBytes(parts[3]);
@@ -152,11 +148,10 @@ async function verifyPass(password, record) {
   return timingSafeEq(got, expected);
 }
 
-// Cookie Token: header.payload.sig (HMAC SHA-256)
 async function makeToken(env, userId) {
   if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
   const header = b64urlEncode(encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
-  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30 Tage
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
   const payload = b64urlEncode(encoder.encode(JSON.stringify({ u: userId, exp })));
   const data = `${header}.${payload}`;
   const sig = b64urlEncode(await hmacSign(env.AUTH_SECRET, encoder.encode(data)));
@@ -182,26 +177,30 @@ async function readToken(env, req) {
   return payload.u;
 }
 
+async function safeReadJson(req) {
+  try { return await req.json(); } catch { return null; }
+}
+
+function pickProfileId(url, body) {
+  // minimal-fix: profileId aus Query oder Body
+  return (
+    url.searchParams.get("profileId") ||
+    url.searchParams.get("p") ||
+    (body && (body.profileId || body.profile_id)) ||
+    null
+  );
+}
+
 async function handleApi(req, env) {
   try {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    // /home und /packliste ohne .html auf die echte Datei mappen
-    if (path === "/home") {
-      return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
-    }
-    if (path === "/packliste") {
-      return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
-    }
-    if (path === "/vokabeln") {
-      return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
-    }
-    if (path === "/einkaufsliste") {
-      return env.ASSETS.fetch(new Request(url.origin + "/einkaufsliste.html", req));
-    }
+    if (path === "/home") return Response.redirect(new URL("/home.html", url.origin).toString(), 302);
+    if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
+    if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
+    if (path === "/einkaufsliste") return env.ASSETS.fetch(new Request(url.origin + "/einkaufsliste.html", req));
 
-    // Health / Debug
     if (path === "/api/health" && req.method === "GET") {
       return json({
         ok: true,
@@ -211,11 +210,10 @@ async function handleApi(req, env) {
       });
     }
 
-    // 1) Einmaliger Register-Endpoint: nur wenn noch KEIN User existiert
     if (path === "/api/register" && req.method === "POST") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
-      const body = await req.json().catch(() => null);
+      const body = await safeReadJson(req);
       if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
 
       const exists = await env.DB.prepare("SELECT COUNT(*) as c FROM users").first();
@@ -232,12 +230,11 @@ async function handleApi(req, env) {
       return json({ ok: true });
     }
 
-    // 2) Login
     if (path === "/api/login" && req.method === "POST") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
       if (!env.AUTH_SECRET) return json({ error: "AUTH_SECRET not set" }, 500);
 
-      const body = await req.json().catch(() => null);
+      const body = await safeReadJson(req);
       if (!body?.username || !body?.password) return json({ error: "missing" }, 400);
 
       const user = await env.DB.prepare(
@@ -264,7 +261,6 @@ async function handleApi(req, env) {
       );
     }
 
-    // 3) Logout
     if (path === "/api/logout" && req.method === "POST") {
       return json(
         { ok: true },
@@ -273,20 +269,20 @@ async function handleApi(req, env) {
       );
     }
 
-    // 4) Me
     if (path === "/api/me" && req.method === "GET") {
       const uid = await readToken(env, req);
       if (!uid) return json({ loggedIn: false }, 401);
       return json({ loggedIn: true, userId: uid });
     }
 
-    // 5) Daten GET/PUT (gesamter App-State als JSON)
+    // 5) Daten GET/PUT/DELETE (minimal-fix: profileId definieren, statt ReferenceError)
     if (path === "/api/data") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
+      // GET: erlaubt auch ohne profileId (alte Logik)
       if (req.method === "GET") {
         const row = await env.DB.prepare("SELECT json FROM user_data WHERE user_id = ?")
           .bind(uid)
@@ -294,37 +290,34 @@ async function handleApi(req, env) {
         return json({ ok: true, data: row?.json ? JSON.parse(row.json) : null });
       }
 
+      const body = await safeReadJson(req);
+      const profileId = pickProfileId(new URL(req.url), body);
+      if (!profileId) return json({ error: "profileId_required" }, 400);
+
       if (req.method === "PUT") {
-        const body = await req.json().catch(() => null);
         if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
 
         const name = String(body?.name || "").trim() || "Benutzer";
         const now = new Date().toISOString();
         const nowSec = Math.floor(Date.now() / 1000);
 
-        // Alte Version laden (für Safety-Checks)
         const existingRow = await env.DB.prepare(
           "SELECT json FROM profile_data WHERE owner_id = ? AND profile_id = ?"
         ).bind(uid, profileId).first();
 
         const oldData = existingRow?.json ? JSON.parse(existingRow.json) : null;
 
-        // Destruktive Änderungen erkennen (Listen/Items plötzlich weniger)
         const oldCounts = countItems(oldData);
         const newCounts = countItems(body);
 
         const listsDeleted = Math.max(0, (oldCounts.lists || 0) - (newCounts.lists || 0));
         const itemsDeleted = Math.max(0, (oldCounts.items || 0) - (newCounts.items || 0));
 
-        const destructive =
-          (listsDeleted >= 1) ||
-          (itemsDeleted >= 20);
+        const destructive = (listsDeleted >= 1) || (itemsDeleted >= 20);
 
-        // Force/Confirm prüfen
         const force = body?._force === true;
         const confirmToken = body?._confirm;
 
-        // Body ohne Force-Felder hashen, damit Token an GENAU dieses Update gebunden ist
         const bodyForHash = { ...body };
         delete bodyForHash._force;
         delete bodyForHash._confirm;
@@ -340,7 +333,7 @@ async function handleApi(req, env) {
             uid,
             profileId,
             bodyHash,
-            exp: nowSec + 60, // 60 Sekunden gültig
+            exp: nowSec + 60,
           });
 
           return json(
@@ -370,7 +363,6 @@ async function handleApi(req, env) {
           }
         }
 
-        // ensure meta exists + update name
         await env.DB.prepare(
           "INSERT INTO profiles (owner_id, profile_id, name, updated_at) VALUES (?, ?, ?, ?) " +
           "ON CONFLICT(owner_id, profile_id) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at"
@@ -385,7 +377,6 @@ async function handleApi(req, env) {
       }
 
       if (req.method === "DELETE") {
-        const url = new URL(req.url);
         const force = url.searchParams.get("force") === "1";
         const confirm = url.searchParams.get("confirm") || "";
         const nowSec = Math.floor(Date.now() / 1000);
@@ -428,14 +419,14 @@ async function handleApi(req, env) {
       return json({ error: "method" }, 405);
     }
 
-    // 6) AI (Groq)
+    // 6) AI (Groq) — FIX: text() lesen + parse + loggen
     if (path === "/api/ai" && req.method === "POST") {
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
       if (!env.Groq_API) return json({ error: "Groq_API_missing" }, 500);
 
-      const body = await req.json().catch(() => null);
+      const body = await safeReadJson(req);
       const prompt = String(body?.prompt || "").trim();
       if (!prompt) return json({ error: "prompt_required" }, 400);
 
@@ -452,10 +443,19 @@ async function handleApi(req, env) {
         }),
       });
 
-      const j = await r.json().catch(() => null);
-      if (!r.ok) return json({ error: "groq_error", status: r.status, details: j }, 502);
+      const raw = await r.text();
+      let parsed = null;
+      try { parsed = JSON.parse(raw); } catch {}
 
-      const text = j?.choices?.[0]?.message?.content || "";
+      if (!r.ok) {
+        console.log("GROQ_ERROR", r.status, raw.slice(0, 800));
+        return json(
+          { error: "groq_error", status: r.status, details: parsed ?? raw.slice(0, 800) },
+          502
+        );
+      }
+
+      const text = parsed?.choices?.[0]?.message?.content || "";
       return json({ ok: true, text });
     }
 
@@ -464,6 +464,15 @@ async function handleApi(req, env) {
       return json({ ok: true, service: "app", hasGroq: !!env.Groq_API });
     }
 
+    // Debug: Groq-Key/Endpoint testen (damit du 401/403/429 direkt siehst)
+    if (path === "/api/ai-debug" && req.method === "GET") {
+      const r = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { Authorization: `Bearer ${env.Groq_API}` }
+      });
+      const t = await r.text();
+      console.log("GROQ_MODELS_STATUS", r.status, t.slice(0, 400));
+      return json({ ok: r.ok, status: r.status, body: t.slice(0, 800) }, 200, { "Cache-Control": "no-store" });
+    }
 
     // ===== Einkaufsliste API =====
     if (path.startsWith("/api/einkauf/")) {
@@ -472,7 +481,6 @@ async function handleApi(req, env) {
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
-      // GET /api/einkauf/data
       if (path === "/api/einkauf/data" && req.method === "GET") {
         const row = await env.DB.prepare(
           "SELECT json FROM einkauf_data WHERE user_id = ?"
@@ -485,9 +493,8 @@ async function handleApi(req, env) {
         );
       }
 
-      // PUT /api/einkauf/data
       if (path === "/api/einkauf/data" && req.method === "PUT") {
-        const body = await req.json().catch(() => null);
+        const body = await safeReadJson(req);
         if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
 
         const now = new Date().toISOString();
@@ -505,6 +512,7 @@ async function handleApi(req, env) {
     return json({ error: "not_found", path }, 404);
 
   } catch (e) {
+    console.log("WORKER_CRASH", String(e?.message || e));
     return json(
       {
         error: "worker_crash",
@@ -522,7 +530,6 @@ export default {
       const url = new URL(req.url);
       const path = url.pathname;
 
-      // 0) Pretty-URLs: Ziel-Datei merken (NICHT returnen, sonst umgehst du das Gate)
       let assetPath = path;
 
       if (path === "/home") assetPath = "/home.html";
@@ -531,21 +538,17 @@ export default {
       if (path === "/settings") assetPath = "/settings.html";
       if (path === "/einkaufsliste") assetPath = "/einkaufsliste.html";
 
-      // SPA-Routen: URL darf bleiben, aber Datei ist fix
       if (path.startsWith("/packliste/")) assetPath = "/packliste.html";
       if (path.startsWith("/einkaufsliste/")) assetPath = "/einkaufsliste.html";
 
-      // 1) API darf NIE umgeleitet werden
       if (path.startsWith("/api/")) {
         return handleApi(req, env);
       }
 
-      // 2) Login ist die EINZIGE öffentliche Seite
       if (path === "/login") {
         return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
       }
 
-      // 3) Gate: alles andere nur, wenn eingeloggt
       const uid = await readToken(env, req);
       if (!uid) {
         const loginUrl = new URL("/login", url.origin);
@@ -553,7 +556,6 @@ export default {
         return Response.redirect(loginUrl.toString(), 302);
       }
 
-      // 4) Eingeloggt → normale Dateien ausliefern
       const res = await env.ASSETS.fetch(new Request(url.origin + assetPath, req));
       if (res.status === 404) {
         const target = new URL("/home", url.origin);
