@@ -649,40 +649,21 @@ h1 {
     }
 
   
-    /* === Geräte-Modus (Laptop / iPad / Handy) === */
-    .device-picker{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin: 6px 0 10px;
-    }
-    .device-btn{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.92);
-      cursor:pointer;
-      user-select:none;
-    }
-    .device-btn span{ font-weight: 700; }
-    .device-btn.active{
-      border-color: rgba(62,227,140,0.65);
-      box-shadow: 0 0 0 3px rgba(62,227,140,0.15) inset;
-      background: rgba(62,227,140,0.12);
-    }
+    /* === Responsive Layout (automatisch wie in Einkaufsliste) === */
+/* Standard = Desktop/Laptop */
 
-    body.device-laptop .container { max-width: 1100px; }
-    body.device-ipad   .container { max-width: 900px; }
-    body.device-phone  .container { max-width: 560px; padding: 14px; }
+@media (max-width: 1024px) {
+  .container { max-width: 900px; }
+}
 
-    body.device-phone  h1 { font-size: 28px; }
-    body.device-phone  .btn { padding: 12px 14px; border-radius: 16px; }
-    body.device-phone  #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
-    body.device-phone  #user-section > div { row-gap: 8px; }
+@media (max-width: 700px) {
+  .container { max-width: 560px; padding: 14px; }
+  h1 { font-size: 28px; }
+  .btn { padding: 12px 14px; border-radius: 16px; }
+  #lists-section .toolbar .left { flex-wrap: wrap; row-gap: 8px; }
+  #user-section > div { row-gap: 8px; }
+}
+
 
     /* FIX: Seite nicht abschneiden – Scroll erlauben */
     html, body{
@@ -1017,22 +998,7 @@ function saveData() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
-
       if (r.status === 401) return { unauth: true };
-
-      // Safety-Guard vom Worker: erst bestätigen, dann force-save
-      if (r.status === 409) {
-        const j = await r.json().catch(() => null);
-        if (j && j.needsConfirm && j.confirmToken) {
-          const msg = buildSafetyConfirmMessage(j);
-          const ok = await confirmAsync(msg);
-          if (!ok) return { unauth: false, canceled: true };
-
-          const forced = { ...body, _force: true, _confirm: j.confirmToken };
-          return apiSaveProfile(profileId, forced);
-        }
-      }
-
       if (!r.ok) throw new Error("apiSaveProfile failed: " + r.status);
       return { unauth: false };
     }
@@ -1042,24 +1008,7 @@ function saveData() {
         method: "DELETE",
         credentials: "include"
       });
-
       if (r.status === 401) return { unauth: true };
-
-      if (r.status === 409) {
-        const j = await r.json().catch(() => null);
-        if (j && j.needsConfirm && j.confirmToken) {
-          const msg = buildSafetyConfirmMessage(j);
-          const ok = await confirmAsync(msg);
-          if (!ok) return { unauth: false, canceled: true };
-
-          const url = "/api/profiles/" + encodeURIComponent(profileId) + "?force=1&confirm=" + encodeURIComponent(j.confirmToken);
-          const r2 = await fetch(url, { method: "DELETE", credentials: "include" });
-          if (r2.status === 401) return { unauth: true };
-          if (!r2.ok) throw new Error("apiDeleteProfile failed: " + r2.status);
-          return { unauth: false };
-        }
-      }
-
       if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
       return { unauth: false };
     }
@@ -1214,50 +1163,12 @@ async function init() {
   // UI-Events binden (nur einmal)
   bindUI();
   applyTheme();
-  autoDetectDeviceModeIfUnset();
-  applyDeviceMode();
   await loadUsers();
 }
 
 
 
-    // === Geräte-Modus (Laptop / iPad / Handy) ===
-    const DEVICE_KEY = "packliste_device_mode";
-
-    function autoDetectDeviceModeIfUnset() {
-      // Nur automatisch setzen, wenn der User noch nie gewählt hat
-      const existing = localStorage.getItem(DEVICE_KEY);
-      if (existing === "laptop" || existing === "ipad" || existing === "phone") return;
-
-      const w = Math.min(window.innerWidth || 9999, screen.width || 9999);
-
-      // simple & robust nach Breite
-      let mode = "laptop";
-      if (w <= 700) mode = "phone";
-      else if (w <= 1024) mode = "ipad";
-
-      localStorage.setItem(DEVICE_KEY, mode);
-    }
-
-    function getDeviceMode() {
-      const v = localStorage.getItem(DEVICE_KEY);
-      return (v === "ipad" || v === "phone" || v === "laptop") ? v : "laptop";
-    }
-    function setDeviceMode(mode) {
-      if (!["laptop","ipad","phone"].includes(mode)) return;
-      localStorage.setItem(DEVICE_KEY, mode);
-      applyDeviceMode();
-    }
-    function applyDeviceMode() {
-      const mode = getDeviceMode();
-      document.body.classList.remove("device-laptop","device-ipad","device-phone");
-      document.body.classList.add(`device-${mode}`);
-
-      // UI-Highlight in Settings
-      const btns = Array.from(document.querySelectorAll(".device-btn"));
-      btns.forEach(b => b.classList.toggle("active", b.dataset.device === mode));
-    }
-
+    
 function getCompletedBehavior() {
   // Werte: "none" | "bottom"
   return localStorage.getItem("packliste_completedBehavior") || "none";
@@ -1527,13 +1438,10 @@ function bindUI() {
       const settingsModal = document.getElementById("settings-modal");
       const openSettingsBtnHome = document.getElementById("open-settings-btn-home");
       const openSettingsBtnLists = document.getElementById("open-settings-btn-lists");
-      const deviceBtns = Array.from(document.querySelectorAll(".device-btn"));
       const settingsCloseBtn = document.getElementById("settings-close");
 
       function syncSettingsUI() {
         // Gerät-Buttons highlighten
-        applyDeviceMode();
-
         // Theme-Switch setzen
         const themeToggle = document.getElementById("theme-toggle");
         if (themeToggle) themeToggle.checked = (getTheme() === "dark");
@@ -1550,15 +1458,6 @@ function bindUI() {
       if (settingsCloseBtn) {
         settingsCloseBtn.addEventListener("click", () => {
           settingsModal.classList.remove("active");
-        });
-      }
-
-      // Gerät auswählen
-      if (deviceBtns && deviceBtns.length) {
-        deviceBtns.forEach(btn => {
-          btn.addEventListener("click", () => {
-            setDeviceMode(btn.dataset.device);
-          });
         });
       }
 
@@ -1609,26 +1508,6 @@ function bindUI() {
           onConfirm();
         }
       };
-    }
-
-    // Promise-basierte Bestätigung (für Worker-Safety-Checks)
-    function confirmAsync(message) {
-      return new Promise((resolve) => {
-        popupMessage.textContent = message;
-        overlay.classList.add("active");
-        popupCallback = function(ok) {
-          overlay.classList.remove("active");
-          resolve(!!ok);
-        };
-      });
-    }
-
-    function buildSafetyConfirmMessage(j) {
-      const parts = [];
-      if (j.reason) parts.push(j.reason);
-      if (typeof j.listsDeleted === "number" && j.listsDeleted > 0) parts.push(`Listen betroffen: ${j.listsDeleted}`);
-      if (typeof j.itemsDeleted === "number" && j.itemsDeleted > 0) parts.push(`Items betroffen: ${j.itemsDeleted}`);
-      return "⚠️ Sicherheitsabfrage\n" + parts.join(" • ");
     }
 
     function showItemEditor(item, onConfirm) {
@@ -2869,16 +2748,6 @@ ${raw}`;
   <div id="settings-modal" class="popup-overlay">
     <div class="popup">
       <h3 style="margin:0 0 12px;">Einstellungen</h3>
-
-      <h4 style="margin:0 0 8px;">Gerät</h4>
-      <div class="device-picker" role="radiogroup" aria-label="Gerät auswählen">
-        <button id="device-laptop" class="device-btn" type="button" data-device="laptop" aria-label="Laptop">💻 <span>Laptop</span></button>
-        <button id="device-ipad" class="device-btn" type="button" data-device="ipad" aria-label="iPad">📱 <span>iPad</span></button>
-        <button id="device-phone" class="device-btn" type="button" data-device="phone" aria-label="Handy">📲 <span>Handy</span></button>
-      </div>
-
-      <div class="divider" style="margin:14px 0 12px;"></div>
-
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
         <div style="font-weight:800;">Darkmode</div>
         <label class="switch" aria-label="Darkmode">
