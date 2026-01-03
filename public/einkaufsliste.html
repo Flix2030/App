@@ -590,7 +590,59 @@
       .ai-modal input[type="range"].ai-qty{ max-width: 200px; }
     }
 
-  </style>
+  
+
+    /* ===== FIX (KI): Auf Handy untereinander + Slider-Fill sichtbar ===== */
+    .ai-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .ai-main{ flex: 1 1 180px; min-width: 140px; }
+    .ai-name{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-weight:800;
+    }
+    .ai-ctrl{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex: 1 1 360px;
+      min-width: 240px;
+      justify-content:flex-end;
+      flex-wrap:wrap; /* nichts abschneiden */
+    }
+    .ai-qty{
+      flex: 1 1 auto;
+      min-width: 140px;
+      max-width: 240px;
+      /* falls irgendwo überschrieben: immer Gradient-Fill nutzen */
+      background: linear-gradient(to right,
+        var(--accent) 0 var(--p, 0%),
+        rgba(255,255,255,0.14) var(--p, 0%) 100%
+      );
+    }
+    .ai-qty-label{ min-width: 24px; text-align:right; font-weight:900; white-space:nowrap; }
+    .icon-btn{ flex: 0 0 auto; }
+
+    @media (max-width: 520px){
+      /* ✅ Untereinander wie bei Items/Einstellungen */
+      .ai-row{ display:block; }
+      .ai-main{ margin-bottom:10px; }
+      .ai-ctrl{
+        width:100%;
+        justify-content:flex-start;
+      }
+      .ai-qty{
+        flex: 1 1 100%;
+        max-width: 100%;
+      }
+      .ai-qty-label{ margin-left:auto; }
+    }
+</style>
 </head>
 
 <body>
