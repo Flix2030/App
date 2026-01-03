@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <title>Einkaufsliste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- responsive-fix v8: laptop single-row + mobile wrap + ai suggestions layout -->
-<style>
+  <style>
     :root {
       --bg0: #05080f;
       --bg1: #070c16;
@@ -353,7 +352,7 @@
     .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
 
     body.modal-open{ overflow:hidden; }
-    .ai-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; max-height: 52vh; overflow:auto; padding-right: 4px; overscroll-behavior: contain; }
+    .ai-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; max-height: min(60vh, 520px); overflow:auto; padding-right: 4px; overscroll-behavior: contain; }
     .ai-row{
       display:flex; gap:10px; align-items:center; justify-content: space-between;
       padding: 10px 12px;
@@ -364,8 +363,21 @@
     .ai-main{ flex:1; min-width:0; }
     .ai-name{ font-weight: 800; }
     .ai-ctrl{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
-    .ai-qty{ width: 120px; }
+    .ai-qty{ width: clamp(140px, 22vw, 220px); }
     .ai-qty-label{ min-width: 22px; text-align:right; color: rgba(255,255,255,0.82); font-variant-numeric: tabular-nums; }
+
+
+    /* KI-Vorschläge: responsive Layout
+       Laptop: 1 Zeile (Name | Slider | Zahl | + | ×)
+       Handy: 2 Zeilen (oben Name, unten Controls)
+    */
+    @media (max-width: 600px){
+      .ai-row{ flex-direction: column; align-items: stretch; gap: 10px; }
+      .ai-main{ width: 100%; }
+      .ai-ctrl{ width: 100%; }
+      .ai-qty{ width: 100%; flex: 1; }
+      .ai-name{ font-size: 18px; }
+    }
     .icon-btn{
       width: 34px; height: 34px;
       border-radius: 12px;
@@ -421,9 +433,9 @@
     body.in-list-editor #top-back-link{ display:inline-block !important; }
     body:not(.in-list-editor) #top-back-link{ display:none !important; }
 
-    /* List items: Laptop in einer Reihe, Handy darf umbrechen */
+    /* List items: dürfen umbrechen (Handy) */
     .list-item{
-      flex-wrap: nowrap;          /* ✅ Laptop: eine Reihe */
+      flex-wrap: wrap;
       justify-content: flex-start; /* statt space-between -> weniger "abgeschnitten" */
     }
     .item-name{
@@ -517,9 +529,6 @@
 
     /* Handy: noch etwas kompakter */
     @media (max-width: 520px){
-      .list-item{ flex-wrap: wrap; }
-      .actions{ flex-wrap: wrap; }
-
       .item-right{ min-width: 0; flex: 1 1 100%; margin-left: 0; }
       .item-range{ max-width: 200px; }
       #new-item-qty{ max-width: 200px; }
