@@ -18,16 +18,15 @@
       --shadow: 0 18px 60px rgba(0,0,0,0.55);
       --radius: 18px;
       --danger: #ff4d6d;
-      --rangeNeutral: rgba(255,255,255,0.55);
     }
 
+    /* Base */
     html, body{
       height: auto;
       min-height: 100vh;
-      overflow-y: auto;
       overflow-x: hidden;
+      overflow-y: auto;
     }
-
     body{
       margin: 0;
       font-family: "Segoe UI", Tahoma, sans-serif;
@@ -65,6 +64,7 @@
     h1{ margin:0; font-size: 2rem; letter-spacing: .2px; }
     h2{ margin: 18px 0 10px; font-size: 1.45rem; letter-spacing: .2px; }
 
+    /* Buttons / Links */
     .btn{
       background: linear-gradient(180deg, var(--accent), var(--accent2));
       color: #03130a;
@@ -111,7 +111,71 @@
     }
     .toolbar .left, .toolbar .right{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
 
+    /* Inputs */
+    input[type="text"]{
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 16px; /* no mobile zoom */
+      outline: none;
+      min-width: 220px;
+      box-sizing: border-box;
+    }
+    input[type="text"]::placeholder{ color: rgba(235,244,255,0.55); }
+
+    /* Unified Range (no double-defs) + real 0% fill via --p set in JS */
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      width: 100%;
+      height: 22px;                 /* keeps thumb vertically centered */
+      background: transparent;
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-runnable-track{
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(to right,
+        var(--accent) 0 var(--p, 0%),
+        rgba(255,255,255,0.14) var(--p, 0%) 100%
+      );
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      border: 0;
+      margin-top: -6px; /* (22-10)/2 */
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-track{
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(to right,
+        var(--accent) 0 var(--p, 0%),
+        rgba(255,255,255,0.14) var(--p, 0%) 100%
+      );
+      border: 0;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      border: 0;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+
     ul{ list-style:none; padding:0; margin:0; }
+
+    /* List items */
     .list-item{
       display:flex;
       justify-content: space-between;
@@ -124,26 +188,23 @@
       gap:12px;
       -webkit-user-select:none;
       user-select:none;
+      flex-wrap: wrap;
+      justify-content: flex-start;
     }
-    .item-name{ flex:1; cursor:pointer; }
-    .actions{ display:flex; gap:6px; }
-
-    /* Mobile: kein Zoom beim Tippen -> >=16px */
-    input[type="text"]{
-      padding: 12px 12px;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,0.25);
-      color: var(--text);
-      border-radius: 14px;
-      font-size: 16px;
-      outline: none;
-      min-width: 220px;
+    .item-name{
+      flex:1;
+      cursor:pointer;
+      min-width: 140px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    input[type="text"]::placeholder{ color: rgba(235,244,255,0.55); }
-
-    /* Slider: neutral bei 0, grün erst >0 (per class) */
-    input[type="range"]{ accent-color: var(--rangeNeutral); }
-    input[type="range"].range-active{ accent-color: var(--accent); }
+    .actions{
+      display:flex;
+      gap:6px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
 
     .hidden{ display:none; }
 
@@ -154,6 +215,7 @@
       gap: 12px;
       margin-top: 18px;
     }
+
     .progress-pill{
       display:inline-flex;
       align-items:center;
@@ -200,7 +262,7 @@
       padding: 12px;
     }
     .qty-label{ min-width:64px; text-align:right; color: rgba(235,244,255,0.75); font-weight: 800; }
-    .qty-text{ min-width:64px; text-align:right; color: rgba(235,244,255,0.78); font-weight: 800; letter-spacing: .2px; }
+    .qty-text{ min-width:56px; text-align:right; color: rgba(235,244,255,0.78); font-weight: 800; letter-spacing: .2px; white-space:nowrap; font-variant-numeric: tabular-nums; }
 
     #items-list .list-item.item-done{
       background: rgba(62,227,140,0.16) !important;
@@ -225,6 +287,21 @@
       cursor: pointer;
     }
 
+    .item-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex: 1 1 360px;
+      min-width: 240px;
+      margin-left: auto;
+    }
+    .item-range{
+      flex: 1 1 auto;
+      min-width: 140px;
+      max-width: 240px;
+    }
+
+    /* Modal / Popup overlay */
     .popup-overlay{
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.5);
@@ -234,23 +311,14 @@
       z-index: 1000;
       overscroll-behavior: contain;
     }
-    
-    /* ===== FIX: ai-modal muss wie echtes Overlay funktionieren (kein Side-Panel) ===== */
-    .ai-modal{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      overscroll-behavior: contain;
-    }
-    .ai-modal.active{ display:flex; }
-.popup-overlay.active{ display:flex; }
+    .popup-overlay.active{ display:flex; }
+
+    /* Scroll lock when modal open (background must NOT scroll) */
+    body.modal-open{ overflow:hidden; }
+    html.modal-open{ overflow:hidden; }
 
     .popup{
-      position: relative; /* für X */
+      position: relative;
       background: rgba(15, 20, 34, 0.92);
       border: 1px solid var(--border);
       backdrop-filter: blur(12px);
@@ -261,9 +329,9 @@
       min-width: 280px;
       max-height: 86vh;
       overflow: hidden;
+      box-sizing: border-box;
     }
 
-    /* X oben rechts */
     .popup-close{
       position:absolute;
       top:10px;
@@ -293,10 +361,11 @@
       background: rgba(0,0,0,0.25);
       color: var(--text);
       box-sizing: border-box;
-      font-size: 16px; /* kein Mobile-Zoom */
+      font-size: 16px;
     }
     .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; }
 
+    /* Switch */
     .switch{ position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
     .switch input{ opacity:0; width:0; height:0; }
     .slider-round{
@@ -325,6 +394,7 @@
       transform: translate(22px, -50%);
     }
 
+    /* taik */
     .ai-mini{ margin-top: 12px; display:flex; justify-content:flex-start; }
     .taik-btn{
       display:inline-flex; align-items:center; gap:10px;
@@ -337,7 +407,7 @@
 
     .ai-add textarea{
       width:100%;
-      resize: none;            /* nicht größer ziehen */
+      resize: none;
       min-height: 78px;
       padding: 10px 12px;
       border-radius: 12px;
@@ -346,41 +416,59 @@
       color: rgba(255,255,255,0.92);
       outline:none;
       box-sizing:border-box;
-      font-size: 16px;         /* kein Mobile-Zoom */
+      font-size: 16px;
     }
     .ai-actions{ margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-    .muted{ color: rgba(255,255,255,0.62); font-size: 12px; }
 
-    body.modal-open{ overflow:hidden; }
-    .ai-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; max-height: min(60vh, 520px); overflow:auto; padding-right: 4px; overscroll-behavior: contain; }
-    .ai-row{
-      display:flex; gap:10px; align-items:center; justify-content: space-between;
-      padding: 10px 12px;
+    /* AI modal content */
+    .ai-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:10px;
+      max-height: min(60vh, 520px);
+      overflow:auto;
+      padding-right: 4px;
+      overscroll-behavior: contain;
+    }
+
+    .ai-empty{
+      padding: 14px 12px;
       border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.70);
+      text-align:center;
+    }
+
+    /* AI row: laptop = one line (Name | Slider | qty | + | x) */
+    .ai-row{
       border: 1px solid rgba(255,255,255,0.10);
       background: rgba(255,255,255,0.04);
+      border-radius: 16px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr minmax(140px, 240px) 32px 42px 42px;
+      gap: 12px;
+      align-items: center;
     }
-    .ai-main{ flex:1; min-width:0; }
-    .ai-name{ font-weight: 800; }
-    .ai-ctrl{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
-    .ai-qty{ width: clamp(140px, 22vw, 220px); }
-    .ai-qty-label{ min-width: 22px; text-align:right; color: rgba(255,255,255,0.82); font-variant-numeric: tabular-nums; }
-
-
-    /* KI-Vorschläge: responsive Layout
-       Laptop: 1 Zeile (Name | Slider | Zahl | + | ×)
-       Handy: 2 Zeilen (oben Name, unten Controls)
-    */
-    @media (max-width: 600px){
-      .ai-row{ flex-direction: column; align-items: stretch; gap: 10px; }
-      .ai-main{ width: 100%; }
-      .ai-ctrl{ width: 100%; }
-      .ai-qty{ width: 100%; flex: 1; }
-      .ai-name{ font-size: 18px; }
+    .ai-name{
+      font-weight: 900;
+      font-size: 18px; /* not huge */
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
+    .ai-qty{ width: 100%; }
+    .ai-qty-label{
+      text-align:right;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space:nowrap;
+    }
+
     .icon-btn{
-      width: 34px; height: 34px;
-      border-radius: 12px;
+      width: 42px; height: 42px;
+      border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.06);
       color: rgba(255,255,255,0.92);
@@ -390,18 +478,44 @@
       cursor:pointer;
       transition: transform .08s ease, filter .12s ease;
       user-select:none;
+      padding: 0;
+      font-weight: 900;
     }
     .icon-btn:hover{ filter: brightness(1.08); transform: translateY(-1px); }
     .icon-btn.ok{ border-color: rgba(62,227,140,0.35); }
     .icon-btn.no{ border-color: rgba(255,77,109,0.35); }
-    .ai-empty{
-      padding: 14px 12px;
-      border-radius: 14px;
-      border: 1px dashed rgba(255,255,255,0.14);
-      color: rgba(255,255,255,0.70);
-      text-align:center;
+
+    /* AI row: mobile = two rows (Name full width, then Slider + qty + buttons) */
+    @media (max-width: 520px){
+      .item-right{ min-width: 0; flex: 1 1 100%; margin-left: 0; }
+      .item-range{ max-width: 200px; }
+      #new-item-qty{ max-width: 200px; }
+      .actions{ margin-left: 0; }
+
+      .ai-row{
+        grid-template-columns: 1fr 42px 42px;
+        grid-template-areas:
+          "name name name"
+          "slider qty  btn1"
+          "slider qty  btn2";
+        align-items: center;
+      }
+      .ai-name{ grid-area: name; font-size: 20px; }
+      .ai-qty{ grid-area: slider; min-width: 0; }
+      .ai-qty-label{ grid-area: qty; justify-self: end; min-width: 24px; }
+      .ai-row .icon-btn.ok{ grid-area: btn1; }
+      .ai-row .icon-btn.no{ grid-area: btn2; }
     }
 
+    /* Slider lengths (list + add row + AI) */
+    #new-item-qty{ width: auto; flex: 1 1 auto; min-width: 140px; max-width: 240px; }
+
+    /* Topbar button visibility in editor */
+    body.in-list-editor #top-home-link{ display:none !important; }
+    body.in-list-editor #top-back-link{ display:inline-block !important; }
+    body:not(.in-list-editor) #top-back-link{ display:none !important; }
+
+    /* Sync pill */
     .sync-pill{
       display:inline-flex;
       align-items:center;
@@ -424,367 +538,8 @@
     .dot.ok{ background: rgba(62,227,140,0.9); box-shadow: 0 0 14px rgba(62,227,140,0.55); }
     .dot.bad{ background: rgba(255,77,109,0.9); box-shadow: 0 0 14px rgba(255,77,109,0.55); }
     .dot.work{ background: rgba(255,255,255,0.75); box-shadow: 0 0 14px rgba(255,255,255,0.35); }
-  
 
-    /* ===== FIXES: Slider-Länge, echtes 0%-Fill, Mobile nichts abgeschnitten ===== */
-
-    /* In der Listenansicht (Editor) keinen Home-Button oben */
-    body.in-list-editor #top-home-link{ display:none !important; }
-    body.in-list-editor #top-back-link{ display:inline-block !important; }
-    body:not(.in-list-editor) #top-back-link{ display:none !important; }
-
-    /* List items: dürfen umbrechen (Handy) */
-    .list-item{
-      flex-wrap: wrap;
-      justify-content: flex-start; /* statt space-between -> weniger "abgeschnitten" */
-    }
-    .item-name{
-      min-width: 140px;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .actions{
-      flex-wrap: wrap; /* Bearbeiten/Entfernen darf umbrechen */
-      margin-left: auto;
-    }
-
-    /* Slider + Text als Block, damit rechts die 0/5 sichtbar bleibt */
-    .item-right{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex: 1 1 360px;
-      min-width: 240px;
-      margin-left: auto;
-    }
-    .item-range{
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ nicht zu lang */
-    }
-    .qty-text{
-      min-width: 56px;
-      text-align: right;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Add-row Slider (neuer Einkauf) */
-    #new-item-qty{
-      width: auto;
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ nicht zu lang */
-    }
-
-    /* AI Slider */
-    .ai-qty{
-      width: auto;
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ nicht zu lang */
-    }
-
-    /* ✅ Range: echtes 0%-Fill (kein "sieht aus wie 2") */
-    input[type="range"]{
-      -webkit-appearance:none;
-      appearance:none;
-      height: 10px;
-      border-radius: 999px;
-      outline:none;
-
-      /* Grün bis --p, danach neutral */
-      background: linear-gradient(to right,
-        var(--accent) 0 var(--p, 0%),
-        rgba(255,255,255,0.14) var(--p, 0%) 100%
-      );
-    }
-    input[type="range"]::-webkit-slider-thumb{
-      -webkit-appearance:none;
-      appearance:none;
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.92);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-      border: 0;
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-thumb{
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.92);
-      border: 0;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-track{
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.14);
-      border: 0;
-    }
-
-    /* Handy: noch etwas kompakter */
-    @media (max-width: 520px){
-      .item-right{ min-width: 0; flex: 1 1 100%; margin-left: 0; }
-      .item-range{ max-width: 200px; }
-      #new-item-qty{ max-width: 200px; }
-      .ai-qty{ max-width: 200px; }
-      .actions{ margin-left: 0; }
-    }
-
-  
-    /* ===== FIXES: KI-Modal (Vorschläge) Responsive + Slider/Buttons sauber ===== */
-    .ai-modal .ai-row{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap; /* ✅ nichts abgeschnitten */
-    }
-    .ai-modal .ai-name{
-      flex: 1 1 180px;
-      min-width: 140px;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-weight:800;
-    }
-    .ai-modal .ai-controls{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex: 1 1 340px;
-      min-width: 240px;
-      margin-left:auto;
-    }
-    .ai-modal input[type="range"].ai-qty{
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px; /* ✅ kurz */
-    }
-    .ai-modal .ai-count{
-      min-width: 34px;
-      text-align:right;
-      white-space:nowrap;
-      font-weight:900;
-      font-variant-numeric: tabular-nums;
-    }
-    .ai-modal .ai-btns{
-      display:flex;
-      gap:10px;
-      flex: 0 0 auto;
-    }
-    .ai-modal .ai-btns button{
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      padding: 0;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:900;
-    }
-
-    @media (max-width: 520px){
-      .ai-modal .ai-row{
-        display:grid;
-        grid-template-columns: 1fr auto;
-        grid-template-areas:
-          "name btns"
-          "controls controls";
-        gap:10px;
-      }
-      .ai-modal .ai-name{grid-area:name;}
-      .ai-modal .ai-btns{grid-area:btns; justify-self:end;}
-      .ai-modal .ai-controls{grid-area:controls; min-width:0; margin-left:0;}
-      .ai-modal input[type="range"].ai-qty{ max-width: 200px; }
-    }
-
-  
-
-    /* ===== FIX (KI): Auf Handy untereinander + Slider-Fill sichtbar ===== */
-    .ai-row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-    .ai-main{ flex: 1 1 180px; min-width: 140px; }
-    .ai-name{
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      font-weight:800;
-    }
-    .ai-ctrl{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex: 1 1 360px;
-      min-width: 240px;
-      justify-content:flex-end;
-      flex-wrap:wrap; /* nichts abschneiden */
-    }
-    .ai-qty{
-      flex: 1 1 auto;
-      min-width: 140px;
-      max-width: 240px;
-      /* falls irgendwo überschrieben: immer Gradient-Fill nutzen */
-      background: linear-gradient(to right,
-        var(--accent) 0 var(--p, 0%),
-        rgba(255,255,255,0.14) var(--p, 0%) 100%
-      );
-    }
-    .ai-qty-label{ min-width: 24px; text-align:right; font-weight:900; white-space:nowrap; }
-    .icon-btn{ flex: 0 0 auto; }
-
-    @media (max-width: 520px){
-      /* ✅ Untereinander wie bei Items/Einstellungen */
-      .ai-row{ display:block; }
-      .ai-main{ margin-bottom:10px; }
-      .ai-ctrl{
-        width:100%;
-        justify-content:flex-start;
-      }
-      .ai-qty{
-        flex: 1 1 100%;
-        max-width: 100%;
-      }
-      .ai-qty-label{ margin-left:auto; }
-    }
-
-
-    /* ===== FIX (KI) v5: Name oben, darunter Slider + rechts +/x, Fill garantiert grün ===== */
-    .ai-row{
-      display:flex;
-      flex-direction: column;          /* ✅ Name oben */
-      align-items: stretch;
-      gap:10px;
-    }
-    .ai-main{ flex: 0 0 auto; min-width: 0; }
-    .ai-name{
-      font-weight: 900;
-      font-size: 20px;
-      line-height: 1.15;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* Controls: Slider links, rechts Zahl + Buttons */
-    .ai-ctrl{
-      display:grid;
-      grid-template-columns: 1fr auto auto auto;  /* slider | zahl | + | x */
-      align-items:center;
-      gap:10px;
-      width:100%;
-    }
-    .ai-qty{
-      width: 100%;
-      min-width: 0;
-      max-width: none; /* ✅ darf volle Breite */
-    }
-    .ai-qty-label{
-      min-width: 26px;
-      text-align:right;
-      font-weight: 900;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-    .icon-btn{ width: 42px; height: 42px; border-radius: 14px; }
-
-    /* ✅ Fill-Gradient auch auf Track (iOS sicher) */
-    input[type="range"].ai-qty{
-      -webkit-appearance:none;
-      appearance:none;
-      height: 10px;
-      border-radius: 999px;
-      background: transparent; /* Track übernimmt */
-      outline:none;
-    }
-    input[type="range"].ai-qty::-webkit-slider-runnable-track{
-      height: 10px;
-      border-radius: 999px;
-      background: linear-gradient(to right,
-        var(--accent) 0 var(--p, 0%),
-        rgba(255,255,255,0.14) var(--p, 0%) 100%
-      );
-    }
-    input[type="range"].ai-qty::-moz-range-track{
-      height: 10px;
-      border-radius: 999px;
-      background: linear-gradient(to right,
-        var(--accent) 0 var(--p, 0%),
-        rgba(255,255,255,0.14) var(--p, 0%) 100%
-      );
-      border: 0;
-    }
-
-
-    /* ===== FIX (KI) v6: exakt wie "abhaken"-Karten (Name oben, Slider darunter) ===== */
-    .ai-row{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:12px;
-      padding:14px;
-      border-radius: 16px;
-    }
-    .ai-main{ margin:0; }
-    .ai-name{
-      font-weight:900;
-      font-size:22px;
-      line-height:1.15;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-
-    /* 2. Zeile: Slider | Zahl | + | x */
-    .ai-ctrl{
-      display:grid;
-      grid-template-columns: 1fr auto auto auto;
-      gap:12px;
-      align-items:center;
-      width:100%;
-    }
-
-    .ai-qty{
-      width:100%;
-      min-width:0;
-      max-width:none;
-    }
-
-    .ai-qty-label{
-      min-width: 26px;
-      text-align:right;
-      font-weight:900;
-      white-space:nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .icon-btn{
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      padding:0;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    /* iOS: Track mit Gradient-Fill */
-    input[type="range"].ai-qty::-webkit-slider-runnable-track{
-      height: 10px;
-      border-radius: 999px;
-      background: linear-gradient(to right,
-        var(--accent) 0 var(--p, 0%),
-        rgba(255,255,255,0.14) var(--p, 0%) 100%
-      );
-    }
-</style>
+  </style>
 </head>
 
 <body>
@@ -1450,10 +1205,12 @@
       function openAiModal(){
         document.getElementById("ai-modal")?.classList.add("active");
         document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
       }
       function closeAiModal(){
         document.getElementById("ai-modal")?.classList.remove("active");
         document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
       }
       document.getElementById("ai-modal")?.addEventListener("click", (e)=>{
         if (e.target.id === "ai-modal") closeAiModal();
