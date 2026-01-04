@@ -301,8 +301,6 @@ async function handleApi(req, env) {
 
     // Resolve Google Maps short links (maps.app.goo.gl) -> coordinates
     if (path === "/api/resolve-maps" && req.method === "GET") {
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauthorized" }, 401);
 
       const target = url.searchParams.get("url") || "";
       if (!target) return json({ ok: false, error: "missing_url" }, 400);
