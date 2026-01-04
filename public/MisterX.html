@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mr. X – Live Analyse</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Draw -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+  <!-- Turf (Geo: Polygon, Punkt-in-Polygon, etc.) -->
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <style>
+    :root{
+      --bg0:#05080f; --bg1:#070c16;
+      --panel:rgba(17,24,39,.72);
+      --panel2:rgba(20,28,46,.78);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --accent:#3ee38c; --accent2:#2fce7a;
+      --danger:#ff4d6d;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
+      --chip: rgba(255,255,255,0.06);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Segoe UI', Tahoma, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height:100vh;
+    }
+
+    .shell{
+      width:min(1200px, 100%);
+      margin:0 auto;
+      padding:18px 14px 28px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .title h1{margin:0; font-size:1.35rem; letter-spacing:.2px;}
+    .title .sub{color:var(--muted); font-size:.92rem}
+
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:800;
+      transition:transform .12s ease, filter .2s ease;
+      user-select:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      white-space:nowrap;
+    }
+    .btn:hover{filter:brightness(1.04)}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color:#03130a;
+      box-shadow:0 10px 24px rgba(62,227,140,0.14);
+    }
+    .btn.danger{
+      background: rgba(255,77,109,0.12);
+      border-color: rgba(255,77,109,0.28);
+      color:#ffd3db;
+    }
+    .btn.icon{
+      width:42px; justify-content:center; padding:10px 0;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.35fr .65fr;
+      gap:12px;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .cardHeader{
+      padding:12px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+    }
+    .cardHeader .h{
+      font-weight:900;
+      letter-spacing:.2px;
+    }
+    .cardHeader .hint{
+      color:var(--muted);
+      font-size:.9rem;
+    }
+
+    #map{
+      height: 70vh;
+      min-height: 440px;
+      width:100%;
+    }
+
+    .side{
+      display:flex;
+      flex-direction:column;
+      min-height: 70vh;
+    }
+
+    .sideBody{
+      padding:12px 14px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      flex:1;
+      min-width:180px;
+    }
+    .field label{
+      font-size:.82rem;
+      color:var(--muted);
+    }
+    .field input, .field select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      outline:none;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background:var(--chip);
+      color:var(--text);
+      font-weight:800;
+      font-size:.9rem;
+      user-select:none;
+    }
+    .chip small{color:var(--muted); font-weight:700}
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height: 210px;
+      overflow:auto;
+      padding-right:4px;
+    }
+
+    .ping{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+      border-radius:14px;
+      padding:10px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .ping .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      font-weight:900;
+    }
+    .ping .meta{
+      color:var(--muted);
+      font-size:.88rem;
+      line-height:1.25;
+      word-break:break-word;
+    }
+
+    .aiBox{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+      border-radius:14px;
+      padding:10px 12px;
+      white-space:pre-wrap;
+      line-height:1.35;
+      min-height: 170px;
+      max-height: 280px;
+      overflow:auto;
+    }
+    .aiBox.muted{color:var(--muted);}
+
+    .sep{
+      height:1px;
+      background:rgba(255,255,255,.08);
+      margin:2px 0;
+    }
+
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr; }
+      #map{height: 54vh; min-height: 360px;}
+      .side{min-height:auto;}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="title">
+        <h1>Mr. X – Standort‑Analyse</h1>
+        <div class="sub">Polygon = Spielfeld · Pings alle 5 Minuten · Vorschläge + Profil</div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/home">⬅️ Home</a>
+        <button class="btn danger" id="btnReset" title="Alles löschen">🧨 Reset</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- MAP -->
+      <div class="card">
+        <div class="cardHeader">
+          <div>
+            <div class="h">Karte</div>
+            <div class="hint">1) Spielfeld einzeichnen · 2) Ping setzen</div>
+          </div>
+          <div class="row">
+            <span class="chip" id="chipArea"><small>Spielfeld:</small> <span id="areaState">—</span></span>
+            <span class="chip"><small>Pings:</small> <span id="pingCount">0</span></span>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- SIDE -->
+      <div class="card side">
+        <div class="cardHeader">
+          <div>
+            <div class="h">Steuerung</div>
+            <div class="hint">MVP: Gehen (Radius) + KI‑Ranking</div>
+          </div>
+          <button class="btn icon" id="btnCloseTip" title="Hinweis ausblenden">✕</button>
+        </div>
+
+        <div class="sideBody" id="sideBody">
+          <div class="row">
+            <div class="field">
+              <label>Spielname (nur lokal)</label>
+              <input id="gameName" placeholder="z.B. Heidelberg Abendrunde">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Geh‑Tempo</label>
+              <select id="walkMode">
+                <option value="1.4">Normal (≈ 5 km/h)</option>
+                <option value="2.0">Schnell (≈ 7.2 km/h)</option>
+                <option value="2.8">Sprint (≈ 10 km/h)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Zeitraum pro Runde</label>
+              <select id="windowSec">
+                <option value="300">5 Minuten</option>
+                <option value="240">4 Minuten</option>
+                <option value="360">6 Minuten</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <button class="btn primary" id="btnGPS">📍 Ping via GPS</button>
+            <button class="btn" id="btnManual">🖱️ Ping per Klick</button>
+          </div>
+
+          <div class="sep"></div>
+
+          <div class="row" style="justify-content:space-between; align-items:flex-end">
+            <div style="display:flex; flex-direction:column; gap:2px">
+              <div style="font-weight:900">Pings</div>
+              <div style="color:var(--muted); font-size:.9rem">Neuester oben</div>
+            </div>
+            <button class="btn" id="btnAnalyze">🤖 Analysieren</button>
+          </div>
+
+          <div class="list" id="pingList"></div>
+
+          <div class="sep"></div>
+
+          <div style="font-weight:900">KI‑Analyse</div>
+          <div class="aiBox muted" id="aiOut">Noch keine Analyse. Zeichne ein Spielfeld und setze 1–2 Pings.</div>
+
+          <div class="sep"></div>
+
+          <div style="color:var(--muted); font-size:.9rem; line-height:1.35">
+            Tipp: Polygon zeichnen mit dem Zeichen‑Tool auf der Karte (oben links). Danach Pings setzen.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   AUTH (wie bei Home)
+========================= */
+async function enforceAuth() {
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+  } catch (_) {
+    location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+  }
+}
+window.addEventListener("pageshow", (e) => { if (e.persisted) enforceAuth(); });
+enforceAuth();
+
+/* =========================
+   STATE (localStorage MVP)
+========================= */
+const LS_KEY = "mrx_state_v1";
+function loadState(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if (!s) return { name:"", area:null, pings:[] };
+    if (!Array.isArray(s.pings)) s.pings = [];
+    return s;
+  }catch{ return { name:"", area:null, pings:[] }; }
+}
+function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+let state = loadState();
+
+/* =========================
+   UI refs
+========================= */
+const elAreaState = document.getElementById("areaState");
+const elPingCount = document.getElementById("pingCount");
+const elPingList  = document.getElementById("pingList");
+const elAiOut     = document.getElementById("aiOut");
+const elGameName  = document.getElementById("gameName");
+const elWalkMode  = document.getElementById("walkMode");
+const elWindowSec = document.getElementById("windowSec");
+const chipArea    = document.getElementById("chipArea");
+
+/* =========================
+   MAP
+========================= */
+const map = L.map("map", { zoomControl: true }).setView([49.013, 8.404], 13);
+
+// Tile layer (OSM)
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "© OpenStreetMap"
+}).addTo(map);
+
+const drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+const pingLayer = new L.LayerGroup().addTo(map);
+const candidateLayer = new L.LayerGroup().addTo(map);
+let reachableCircle = null;
+
+const drawControl = new L.Control.Draw({
+  draw: {
+    polyline: false,
+    rectangle: false,
+    circle: false,
+    circlemarker: false,
+    marker: false,
+    polygon: {
+      allowIntersection: false,
+      showArea: true
+    }
+  },
+  edit: {
+    featureGroup: drawnItems,
+    remove: true
+  }
+});
+map.addControl(drawControl);
+
+map.on(L.Draw.Event.CREATED, function (e) {
+  // Nur 1 Polygon im MVP: altes löschen
+  drawnItems.clearLayers();
+  const layer = e.layer;
+  drawnItems.addLayer(layer);
+
+  const geo = layer.toGeoJSON();
+  state.area = geo; // GeoJSON Polygon
+  saveState();
+  renderAll();
+});
+
+map.on("draw:edited", () => {
+  const layers = drawnItems.getLayers();
+  if (layers.length) {
+    state.area = layers[0].toGeoJSON();
+    saveState();
+    renderAll();
+  }
+});
+map.on("draw:deleted", () => {
+  state.area = null;
+  saveState();
+  renderAll();
+});
+
+/* =========================
+   HELPERS
+========================= */
+function fmt(n, d=5){
+  if (!Number.isFinite(n)) return "—";
+  return Number(n).toFixed(d);
+}
+
+function haversineMeters(a, b){
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const s = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+function bearingDeg(a, b){
+  const toRad = x => x * Math.PI / 180;
+  const toDeg = x => x * 180 / Math.PI;
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+  let brng = toDeg(Math.atan2(y, x));
+  brng = (brng + 360) % 360;
+  return brng;
+}
+
+// Destination point given start, bearing, distance
+function destPoint(a, brngDeg, distM){
+  const R = 6371000;
+  const toRad = x => x*Math.PI/180;
+  const toDeg = x => x*180/Math.PI;
+  const brng = toRad(brngDeg);
+  const lat1 = toRad(a.lat);
+  const lon1 = toRad(a.lng);
+  const dr = distM / R;
+
+  const lat2 = Math.asin(Math.sin(lat1)*Math.cos(dr) + Math.cos(lat1)*Math.sin(dr)*Math.cos(brng));
+  const lon2 = lon1 + Math.atan2(Math.sin(brng)*Math.sin(dr)*Math.cos(lat1), Math.cos(dr)-Math.sin(lat1)*Math.sin(lat2));
+  return { lat: toDeg(lat2), lng: ((toDeg(lon2)+540)%360)-180 };
+}
+
+function areaPolygon(){
+  if (!state.area) return null;
+  try{
+    // state.area ist Feature
+    const poly = state.area.type === "Feature" ? state.area : { type:"Feature", geometry: state.area, properties:{} };
+    return poly;
+  }catch{ return null; }
+}
+
+function pointInArea(lat, lng){
+  const poly = areaPolygon();
+  if (!poly) return true; // ohne Bereich: alles erlaubt
+  try{
+    return turf.booleanPointInPolygon(turf.point([lng, lat]), poly);
+  }catch{ return true; }
+}
+
+// Punkt ins Polygon "ziehen": Distanz schrittweise reduzieren bis inside
+function clampIntoArea(from, p){
+  if (pointInArea(p.lat, p.lng)) return p;
+  // reduziere Distanz in 10 Schritten
+  const brng = bearingDeg(from, p);
+  let dist = haversineMeters(from, p);
+  for (let i=0;i<12;i++){
+    dist *= 0.75;
+    const cand = destPoint(from, brng, dist);
+    if (pointInArea(cand.lat, cand.lng)) return cand;
+  }
+  // fallback: Original zurück (auch wenn outside)
+  return p;
+}
+
+function nowMs(){ return Date.now(); }
+function timeLabel(ms){
+  const d = new Date(ms);
+  return d.toLocaleString("de-DE", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+
+/* =========================
+   RENDER
+========================= */
+function renderAreaOnMap(){
+  drawnItems.clearLayers();
+  if (!state.area) return;
+
+  const layer = L.geoJSON(state.area);
+  layer.eachLayer(l => drawnItems.addLayer(l));
+  // Zoom to polygon
+  const b = layer.getBounds();
+  if (b.isValid()) map.fitBounds(b.pad(0.12));
+}
+
+function renderPingsOnMap(){
+  pingLayer.clearLayers();
+  const pings = [...state.pings].sort((a,b)=>b.t-a.t);
+  pings.forEach((p, idx) => {
+    const isLatest = idx === 0;
+    const m = L.circleMarker([p.lat, p.lng], {
+      radius: isLatest ? 9 : 7,
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.85
+    }).addTo(pingLayer);
+    m.bindPopup(`<b>${isLatest ? "Letzter Ping" : "Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?`<br>± ${Math.round(p.accuracy)}m`:``}`);
+  });
+}
+
+function renderPingList(){
+  const pings = [...state.pings].sort((a,b)=>b.t-a.t);
+  elPingList.innerHTML = "";
+  if (!pings.length){
+    elPingList.innerHTML = `<div class="ping"><div class="meta">Noch keine Pings.</div></div>`;
+    return;
+  }
+  pings.forEach((p, idx) => {
+    const div = document.createElement("div");
+    div.className = "ping";
+    div.innerHTML = `
+      <div class="top">
+        <span>${idx===0?"📌 Letzter Ping":"📍 Ping"}</span>
+        <button class="btn danger" style="padding:6px 10px; border-radius:12px" data-del="${p.t}">Löschen</button>
+      </div>
+      <div class="meta">${timeLabel(p.t)} · ${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?` · ± ${Math.round(p.accuracy)}m`:``}</div>
+    `;
+    elPingList.appendChild(div);
+  });
+
+  elPingList.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.addEventListener("click", () => {
+      const t = Number(btn.getAttribute("data-del"));
+      state.pings = state.pings.filter(x => x.t !== t);
+      saveState();
+      renderAll();
+    });
+  });
+}
+
+function renderChips(){
+  elPingCount.textContent = String(state.pings.length);
+  if (state.area) {
+    elAreaState.textContent = "gesetzt";
+    chipArea.style.borderColor = "rgba(62,227,140,0.35)";
+  } else {
+    elAreaState.textContent = "fehlt";
+    chipArea.style.borderColor = "rgba(255,255,255,0.10)";
+  }
+}
+
+function clearOverlays(){
+  candidateLayer.clearLayers();
+  if (reachableCircle) { map.removeLayer(reachableCircle); reachableCircle = null; }
+}
+
+function renderAll(){
+  elGameName.value = state.name || "";
+  renderChips();
+  renderAreaOnMap();
+  renderPingsOnMap();
+  renderPingList();
+  // reach + candidates aus letztem ping sofort zeichnen (wenn vorhanden)
+  drawPredictionOverlay();
+}
+
+function drawPredictionOverlay(){
+  clearOverlays();
+  const last = state.pings.length ? [...state.pings].sort((a,b)=>b.t-a.t)[0] : null;
+  if (!last) return;
+
+  const speed = Number(elWalkMode.value || "1.4");
+  const windowS = Number(elWindowSec.value || "300");
+  const radius = Math.max(30, speed * windowS); // meters
+
+  reachableCircle = L.circle([last.lat, last.lng], {
+    radius,
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 0.10
+  }).addTo(map);
+
+  const candidates = computeCandidates();
+  candidates.forEach((c, i) => {
+    const m = L.circleMarker([c.lat, c.lng], { radius: 7, weight: 2, fillOpacity: 0.85 }).addTo(candidateLayer);
+    m.bindTooltip(String(i+1), { permanent: true, direction: "center", className:"" });
+    m.bindPopup(`<b>Kandidat ${i+1}</b><br>${fmt(c.lat)} , ${fmt(c.lng)}<br><small>${c.note||""}</small>`);
+  });
+}
+
+/* =========================
+   PREDICTION / CANDIDATES
+========================= */
+function computeCandidates(){
+  const pings = [...state.pings].sort((a,b)=>a.t-b.t); // chronologisch
+  const last = pings[pings.length-1];
+  const prev = pings.length >= 2 ? pings[pings.length-2] : null;
+
+  const speed = Number(elWalkMode.value || "1.4");
+  const windowS = Number(elWindowSec.value || "300");
+  const distMax = Math.max(30, speed * windowS);
+
+  let baseBearing = 0;
+  let effSpeed = null;
+
+  if (prev){
+    baseBearing = bearingDeg(prev, last);
+    const d = haversineMeters(prev, last);
+    const dt = Math.max(1, (last.t - prev.t) / 1000);
+    effSpeed = d / dt;
+  } else {
+    baseBearing = 0;
+  }
+
+  // Winkel-Spread: mit 2 Pings enger, sonst breiter
+  const angles = prev ? [0, 25, -25, 55, -55, 180] : [0, 45, -45, 90, -90, 180];
+
+  // Distanz: wenn effSpeed bekannt, nutze 80–110% davon; sonst 85% vom Max
+  let dBase = prev && effSpeed ? Math.min(distMax, Math.max(60, effSpeed * windowS * 0.95)) : distMax * 0.85;
+
+  const out = [];
+  for (let i=0;i<angles.length;i++){
+    const brng = (baseBearing + angles[i] + 360) % 360;
+    let p = destPoint(last, brng, dBase);
+    p = clampIntoArea(last, p);
+    if (!pointInArea(p.lat, p.lng) && state.area) continue; // wenn polygon existiert und clamp fail -> skip
+    out.push({ ...p, note: prev ? `Richtung ${Math.round(brng)}°` : `Richtung ${Math.round(brng)}° (ohne Verlauf)` });
+  }
+
+  // Falls weniger als 6: kürzere Distanz ergänzen
+  let tries = 0;
+  while (out.length < 6 && tries < 12){
+    tries++;
+    dBase *= 0.78;
+    const brng = (baseBearing + (tries%2?35:-35) + 360) % 360;
+    let p = destPoint(last, brng, dBase);
+    p = clampIntoArea(last, p);
+    if (pointInArea(p.lat, p.lng)) out.push({ ...p, note:`Kurzstrecke ${Math.round(dBase)}m` });
+  }
+
+  return out.slice(0,6);
+}
+
+/* =========================
+   AI
+========================= */
+function buildAiPrompt(){
+  const poly = areaPolygon();
+  const pings = [...state.pings].sort((a,b)=>a.t-b.t);
+  const candidates = computeCandidates();
+
+  const last = pings[pings.length-1] || null;
+  const prev = pings.length>=2 ? pings[pings.length-2] : null;
+
+  let d=null, brng=null, dt=null, spd=null;
+  if (last && prev){
+    d = haversineMeters(prev, last);
+    dt = Math.max(1, (last.t - prev.t)/1000);
+    brng = bearingDeg(prev, last);
+    spd = d/dt;
+  }
+
+  const speedSet = Number(elWalkMode.value||"1.4");
+  const windowS = Number(elWindowSec.value||"300");
+
+  return [
+`Du bist ein Helfer für ein Live-Spiel "Mr. X".`,
+`Aufgabe: Bewerte die wahrscheinlichsten nächsten Positionen in den nächsten ${windowS/60} Minuten.`,
+`Du darfst NICHT "raten" ohne Bezug auf Daten. Nutze nur die Pings + Kandidaten + Spielfeld-Polygon.`,
+`Gib am Ende:`,
+`1) Top-6 Kandidaten in Reihenfolge (1..6) mit kurzer Begründung je Punkt.`,
+`2) Ein kurzes "Profil" (max 6 Bulletpoints): eher schnell/risiko/stealth, Richtungs-Tendenz, bleibt im Gebiet oder flieht Rand, etc.`,
+`3) Verfolger-Taktik (max 5 Bulletpoints): wie aufteilen, welche Routen blocken.`,
+``,
+`Daten:`,
+`- Spielname: ${state.name||"(ohne)"}`,
+`- Geh-Tempo gesetzt: ${speedSet} m/s`,
+`- Spielfeld-Polygon: ${poly ? JSON.stringify(poly.geometry) : "nicht gesetzt"}`,
+`- Pings (chronologisch): ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:p.accuracy||null})))}`,
+(prev && last ? `- Letzte Bewegung: Distanz≈${Math.round(d)}m, Zeit≈${Math.round(dt)}s, Geschwindigkeit≈${spd.toFixed(2)}m/s, Bearing≈${Math.round(brng)}°` : `- Letzte Bewegung: nur 1 Ping vorhanden`),
+`- Kandidatenpunkte (müssen gerankt werden): ${JSON.stringify(candidates.map((c,i)=>({k:i+1, lat:c.lat, lng:c.lng, note:c.note||""})))}`,
+``,
+`Wichtig: Wenn das Polygon fehlt, sag zuerst kurz "Polygon fehlt" und gib trotzdem Ranking basierend auf Bewegung.`,
+  ].join("\n");
+}
+
+async function runAi(){
+  if (!state.pings.length){
+    elAiOut.classList.add("muted");
+    elAiOut.textContent = "Keine Pings vorhanden.";
+    return;
+  }
+
+  elAiOut.classList.remove("muted");
+  elAiOut.textContent = "Analysiere…";
+
+  const prompt = buildAiPrompt();
+
+  try{
+    const r = await fetch("/api/ai", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      credentials:"include",
+      body: JSON.stringify({ prompt })
+    });
+    const j = await r.json().catch(()=>null);
+    if (!r.ok || !j){
+      elAiOut.textContent = "KI-Fehler: " + (j?.error ? JSON.stringify(j) : `HTTP ${r.status}`);
+      return;
+    }
+    elAiOut.textContent = j.text || "(leer)";
+  }catch(e){
+    elAiOut.textContent = "KI-Fehler: " + String(e?.message || e);
+  }
+}
+
+/* =========================
+   PING ACTIONS
+========================= */
+function addPing(lat, lng, accuracy){
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  // Wenn Polygon existiert: nur erlauben, wenn inside
+  if (state.area && !pointInArea(lat, lng)){
+    alert("Ping liegt außerhalb des Spielfelds (Polygon).");
+    return;
+  }
+
+  state.pings.push({
+    t: nowMs(),
+    lat: Number(lat),
+    lng: Number(lng),
+    accuracy: Number.isFinite(accuracy) ? Number(accuracy) : null
+  });
+
+  // Keep last 50 pings
+  state.pings = state.pings.sort((a,b)=>a.t-b.t).slice(-50);
+
+  saveState();
+  renderAll();
+}
+
+let manualMode = false;
+function setManualMode(on){
+  manualMode = !!on;
+  const btn = document.getElementById("btnManual");
+  btn.textContent = on ? "🖱️ Klick: aktiv (zum Beenden klicken)" : "🖱️ Ping per Klick";
+  btn.classList.toggle("primary", on);
+}
+
+map.on("click", (e) => {
+  if (!manualMode) return;
+  addPing(e.latlng.lat, e.latlng.lng, null);
+  setManualMode(false);
+});
+
+document.getElementById("btnGPS").addEventListener("click", () => {
+  if (!navigator.geolocation){
+    alert("GPS nicht verfügbar.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition((pos)=>{
+    addPing(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+  }, (err)=>{
+    alert("GPS Fehler: " + (err?.message || err));
+  }, { enableHighAccuracy:true, timeout:12000, maximumAge:0 });
+});
+
+document.getElementById("btnManual").addEventListener("click", () => {
+  setManualMode(!manualMode);
+});
+
+document.getElementById("btnAnalyze").addEventListener("click", () => {
+  drawPredictionOverlay();
+  runAi();
+});
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  const ok = confirm("Alles löschen? (Polygon + Pings + KI-Text)");
+  if (!ok) return;
+  state = { name:"", area:null, pings:[] };
+  saveState();
+  elAiOut.classList.add("muted");
+  elAiOut.textContent = "Noch keine Analyse. Zeichne ein Spielfeld und setze 1–2 Pings.";
+  clearOverlays();
+  renderAll();
+});
+
+document.getElementById("btnCloseTip").addEventListener("click", () => {
+  const body = document.getElementById("sideBody");
+  body.style.display = (body.style.display === "none") ? "" : "none";
+});
+
+/* Name sync */
+elGameName.addEventListener("input", () => {
+  state.name = elGameName.value || "";
+  saveState();
+});
+
+/* Re-render overlay on parameter change */
+[elWalkMode, elWindowSec].forEach(el => el.addEventListener("change", () => {
+  drawPredictionOverlay();
+}));
+
+/* Initial */
+renderAll();
+</script>
+</body>
+</html>
