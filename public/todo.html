@@ -572,6 +572,77 @@
         if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "save_failed");
       }
 
+
+      // ===== AI Helper (nutzt /api/ai) =====
+      async function callAI(prompt){
+        const r = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ prompt })
+        });
+        if (r.status === 401) redirectToLogin();
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "ai_failed");
+        return String(j.text || "");
+      }
+
+      function extractFirstJson(text){
+        // versucht das erste JSON-Objekt im Text zu finden
+        const s = String(text || "");
+        const a = s.indexOf("{");
+        const b = s.lastIndexOf("}");
+        if (a === -1 || b === -1 || b <= a) return null;
+        const cand = s.slice(a, b+1);
+        try { return JSON.parse(cand); } catch(e){ return null; }
+      }
+
+      async function aiParseTodo(raw){
+        const prompt =
+`Gib NUR gültiges JSON zurück. Keine Erklärung, kein Markdown.
+Du bekommst einen Text, der eine To-Do-Aufgabe beschreibt.
+Extrahiere: title, days, time, person.
+
+Regeln:
+- days ist ein Array aus diesen Keys: ["mo","di","mi","do","fr","sa","so"] (klein).
+- time ist "HH:MM" (24h) oder "" wenn keine Uhrzeit.
+- person ist String oder "".
+- title darf nicht leer sein.
+- Wenn Tage nicht eindeutig sind: days = [].
+
+Beispiele:
+Eingabe: "wäsche aufhängen; mo, fr; 13:00 Uhr; Mama"
+Ausgabe: {"title":"wäsche aufhängen","days":["mo","fr"],"time":"13:00","person":"Mama"}
+
+Eingabe: "saugen; 13:00; mo; mama"
+Ausgabe: {"title":"saugen","days":["mo"],"time":"13:00","person":"mama"}
+
+Eingabe: "müll rausbringen mo do papa"
+Ausgabe: {"title":"müll rausbringen","days":["mo","do"],"time":"","person":"papa"}
+
+Jetzt der Text:
+"${String(raw).replaceAll('"','\"')}"
+`;
+
+        const text = await callAI(prompt);
+        const obj = extractFirstJson(text);
+        if (!obj || typeof obj !== "object") return null;
+
+        const title = String(obj.title || "").trim();
+        const person = String(obj.person || "").trim();
+
+        const daySet = new Set(DAY_ORDER);
+        let days = Array.isArray(obj.days) ? obj.days.map(x=>String(x).toLowerCase().slice(0,2)) : [];
+        days = days.filter(x=>daySet.has(x));
+        days = Array.from(new Set(days)).sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b));
+
+        const time = normalizeTime(obj.time || ""); // optional
+
+        if (!title) return null;
+        return { title, days, time, person };
+      }
+
+
       let saveTimer = null;
       let saving = false;
       let saveQueued = false;
@@ -937,11 +1008,44 @@
         return { title, days, time, person };
       }
 
-      function createTaskFromQuick(){
+      async function createTaskFromQuick(){
         const inp = document.getElementById("quick-task-text");
-        const parsed = parseQuickLine(inp.value || "");
-        if (!parsed) return;
-        data.tasks.unshift({ id: makeId("task"), done:false, ...parsed });
+        const raw = (inp.value || "").trim();
+        if (!raw) return;
+
+        // 1) Erst lokal versuchen
+        let parsed = null;
+        try { parsed = parseQuickLine(raw); } catch(e){ parsed = null; }
+
+        // 2) Wenn das nicht klappt: KI
+        if (!parsed || !parsed.title || !Array.isArray(parsed.days) || parsed.days.length === 0){
+          try{
+            setSync("work","KI…");
+            parsed = await aiParseTodo(raw);
+          }catch(e){
+            console.error(e);
+            setSync("bad","KI Fehler");
+            parsed = null;
+          }
+        }
+
+        if (!parsed || !parsed.title || !parsed.days || !parsed.days.length){
+          // nichts verstanden
+          setSync("bad","Nicht erkannt");
+          return;
+        }
+
+        data.tasks.unshift({
+          id: makeId("task"),
+          done:false,
+          doneAt: null,
+          createdAt: new Date().toISOString(),
+          title: parsed.title,
+          days: parsed.days,
+          time: parsed.time || "",
+          person: parsed.person || ""
+        });
+
         inp.value = "";
         scheduleSave();
         render();
@@ -972,7 +1076,7 @@
         buildDays(document.getElementById("days-wrap"), ["mo","fr"]);
 
         document.getElementById("add-task-btn").addEventListener("click", createTaskFromFields);
-        document.getElementById("quick-add-btn").addEventListener("click", createTaskFromQuick);
+        document.getElementById("quick-add-btn").addEventListener("click", ()=>createTaskFromQuick());
 
         document.getElementById("quick-task-text").addEventListener("keydown", (e)=>{
           if (e.key === "Enter") createTaskFromQuick();
