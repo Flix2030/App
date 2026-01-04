@@ -233,7 +233,9 @@
       #map{height: 54vh; min-height: 360px;}
       .side{min-height:auto;}
     }
-  </style></head>
+  
+    body.modalLock{overflow:hidden; position:fixed; width:100%;}
+</style></head>
 <body>
   <div class="shell">
     <div class="topbar">
@@ -276,59 +278,13 @@
         <div class="sideBody" id="sideBody">
           <div class="row">
             <div class="field">
-              <label>Spielname (lokal)</label>
-              <input id="gameName" placeholder="z.B. Abendrunde">
+              <label>Spielfeld</label>
+              <select id="fieldOnlySelect"></select>
             </div>
+            <button class="btn" id="btnFieldNew" title="Neues Spielfeld zeichnen">➕ Neu</button>
           </div>
 
-          <div class="row">
-            <div class="field">
-              <label>Spielfeld-Vorlagen</label>
-              <select id="fieldSelect"></select>
-            </div>
-            <button class="btn" id="btnFieldInsert" title="Vorlage als aktuelles Spielfeld setzen">📥 Einfügen</button>
-            <button class="btn" id="btnFieldSave" title="Aktuelles Spielfeld als Vorlage speichern">💾 Speichern</button>
-            <button class="btn danger" id="btnFieldDelete" title="Ausgewählte Vorlage löschen">🗑️</button>
-          </div>
-
-
-          <div class="row">
-            <div class="field">
-              <label>Geh-Tempo</label>
-              <select id="walkMode">
-                <option value="1.4">Normal (≈ 5 km/h)</option>
-                <option value="2.0">Schnell (≈ 7.2 km/h)</option>
-                <option value="2.8">Sprint (≈ 10 km/h)</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Zeitraum pro Runde</label>
-              <select id="windowSec">
-                <option value="300">5 Minuten</option>
-                <option value="240">4 Minuten</option>
-                <option value="360">6 Minuten</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="notice ok" id="overviewBox">
-            <b>Übersicht:</b> Füge mindestens 2 Pings ein für Richtung/Geschwindigkeit.
-          </div>
-
-          <div class="row">
-            <button class="btn primary" id="btnInsert">➕ Ping einfügen</button>
-            <button class="btn" id="btnAnalyze">🤖 Analysieren</button>
-          </div>
-<div class="sep"></div>
-
-          <div class="row" style="justify-content:space-between; align-items:flex-end">
-            <div style="display:flex; flex-direction:column; gap:2px">
-              <div style="font-weight:900">Pings</div>
-              <div style="color:var(--muted); font-size:.9rem">Neuester oben · mit Stats</div>
-            </div>
-          </div>
-
-          <div class="list" id="pingList"></div>
+<div class="list" id="pingList"></div>
 
           <div class="sep"></div>
 
@@ -357,21 +313,9 @@
 
         <div class="field">
           <label>Ping Text / Link</label>
-          <textarea id="pasteText" rows="4" placeholder="Hier rein…"></textarea>
+          <textarea id="pasteText" rows="4" placeholder="Koordinaten oder Google-Maps-Link hier rein…"></textarea>
         </div>
-
-        <div class="row">
-          <div class="field">
-            <label>Zeit (optional)</label>
-            <input id="pasteTime" type="datetime-local">
-          </div>
-          <div class="field">
-            <label>Genauigkeit (optional, Meter)</label>
-            <input id="pasteAcc" type="number" min="0" step="1" placeholder="z.B. 15">
-          </div>
-        </div>
-
-        <div class="modalActions">
+<div class="modalActions">
           <button class="btn" id="btnPasteParse">✅ Übernehmen</button>
           <button class="btn danger" id="btnPasteCancel">Abbrechen</button>
         </div>
@@ -380,6 +324,7 @@
   </div>
 
 <script>
+
 /* =========================
    AUTH (wie bei Home)
 ========================= */
@@ -400,14 +345,25 @@ enforceAuth();
 const LS_KEY = "mrx_state_v2";
 const LS_FIELDS_KEY = "mrx_fields_v1";
 function loadState(){
+  const def = { area:null, pings:[], windowSec:300 };
   try{
-    const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-    if (!s) return { name:"", area:null, pings:[] };
-    if (!Array.isArray(s.pings)) s.pings = [];
-    return s;
-  }catch{ return { name:"", area:null, pings:[] }; }
+    const raw = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if (!raw) return def;
+    def.area = raw.area || null;
+    def.windowSec = Number(raw.windowSec || def.windowSec);
+    return def;
+  }catch{
+    return def;
+  }
 }
-function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function saveState(){
+  // Wir merken uns absichtlich NICHT die Pings (nur Spielfeld + Settings)
+  const slim = { area: state.area || null, windowSec: Number(state.windowSec || 300) };
+  localStorage.setItem(LS_KEY, JSON.stringify(slim));
+}
+
+
+let state = loadState();
 
 let fields = loadFields();
 
@@ -420,34 +376,58 @@ function loadFields(){
 function saveFields(){
   localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
 }
-function uid(){
+function makeId(){
   return "f_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
-function refreshFieldSelect(){
-  const sel = document.getElementById("fieldSelect");
+function refreshFieldOnlySelect(){
+  const sel = document.getElementById("fieldOnlySelect");
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = "";
+
   const opt0 = document.createElement("option");
   opt0.value = "";
-  opt0.textContent = "— Vorlage wählen —";
+  opt0.textContent = "— Spielfeld wählen —";
   sel.appendChild(opt0);
 
   fields
     .slice()
     .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
     .forEach(f=>{
-      const o=document.createElement("option");
-      o.value=f.id;
+      const o = document.createElement("option");
+      o.value = f.id;
       o.textContent = f.name || ("Spielfeld " + f.id.slice(-4));
       sel.appendChild(o);
     });
 
-  // restore selection if possible
   if (cur) sel.value = cur;
 }
+function applyFieldById(id){
+  const f = fields.find(x=>x.id===id);
+  if (!f) return false;
 
-let state = loadState();
+  state.area = f.area || null;
+  state.pings = [];
+
+  drawnItems.clearLayers();
+  if (state.area){
+    try{
+      const layer = L.geoJSON(state.area);
+      layer.eachLayer(l=>drawnItems.addLayer(l));
+    }catch{}
+  }
+
+  saveState();
+  renderAll(true);
+  return true;
+}
+function clearForNewField(){
+  state.area = null;
+  state.pings = [];
+  drawnItems.clearLayers();
+  saveState();
+  renderAll(true);
+}
 
 /* =========================
    UI refs
@@ -456,8 +436,6 @@ const elAreaState = document.getElementById("areaState");
 const elPingCount = document.getElementById("pingCount");
 const elPingList  = document.getElementById("pingList");
 const elAiOut     = document.getElementById("aiOut");
-const elGameName  = document.getElementById("gameName");
-const elWalkMode  = document.getElementById("walkMode");
 const elWindowSec = document.getElementById("windowSec");
 const chipArea    = document.getElementById("chipArea");
 const elOverview  = document.getElementById("overviewBox");
@@ -465,9 +443,6 @@ const elOverview  = document.getElementById("overviewBox");
 /* Modal refs */
 const modalBackdrop = document.getElementById("modalBackdrop");
 const pasteText = document.getElementById("pasteText");
-const pasteTime = document.getElementById("pasteTime");
-const pasteAcc  = document.getElementById("pasteAcc");
-
 /* =========================
    MAP
 ========================= */
@@ -498,19 +473,31 @@ map.on(L.Draw.Event.CREATED, function (e) {
   const layer = e.layer;
   drawnItems.addLayer(layer);
   state.area = layer.toGeoJSON();
+  state.pings = [];
   saveState();
   renderAll(true);
+  setTimeout(()=>{
+    const ok = confirm("Spielfeld als Vorlage speichern?");
+    if (!ok) return;
+    const name = (prompt("Name für das Spielfeld:", "Spielfeld") || "").trim();
+    if (!name) return;
+    fields.push({ id: makeId(), name, area: state.area, createdAt: Date.now() });
+    saveFields();
+    refreshFieldOnlySelect();
+  }, 0);
 });
 map.on("draw:edited", () => {
   const layers = drawnItems.getLayers();
   if (layers.length) {
     state.area = layers[0].toGeoJSON();
+    state.pings = [];
     saveState();
     renderAll(true);
   }
 });
 map.on("draw:deleted", () => {
   state.area = null;
+  state.pings = [];
   saveState();
   renderAll(true);
 });
@@ -617,7 +604,7 @@ function renderPingsOnMap(){
   pings.forEach((p,idx)=>{
     const isLatest=idx===0;
     const m=L.circleMarker([p.lat,p.lng], { radius:isLatest?9:7, weight:2, opacity:1, fillOpacity:0.85 }).addTo(pingLayer);
-    m.bindPopup(`<b>${isLatest?"Letzter Ping":"Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?`<br>± ${Math.round(p.accuracy)}m`:``}`);
+    m.bindPopup(`<b>${isLatest?"Letzter Ping":"Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}`);
   });
 }
 function renderPingList(){
@@ -659,7 +646,7 @@ function renderPingList(){
           <button class="btn small danger" data-del="${p.t}">Löschen</button>
         </span>
       </div>
-      <div class="meta">${timeLabel(p.t)} · ${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?` · ± ${Math.round(p.accuracy)}m`:``}</div>
+      <div class="meta">${timeLabel(p.t)} · ${fmt(p.lat)} , ${fmt(p.lng)}</div>
       <div class="stats">${statsHtml}</div>
     `;
     elPingList.appendChild(div);
@@ -698,7 +685,7 @@ function clearOverlays(){
   if (reachableCircle){ map.removeLayer(reachableCircle); reachableCircle=null; }
 }
 function renderAll(redrawOverlay=false){
-  elGameName.value=state.name||"";
+  null.value=""||"";
   renderChips();
   renderAreaOnMap();
   renderPingsOnMap();
@@ -715,7 +702,7 @@ function computeCandidates(){
   const last=pings[pings.length-1];
   const prev=pings.length>=2 ? pings[pings.length-2] : null;
 
-  const speedSet=Number(elWalkMode.value||"1.4");
+  const speedSet=1.4;
   const windowS=Number(elWindowSec.value||"300");
   const distMax=Math.max(30, speedSet*windowS);
 
@@ -753,7 +740,7 @@ function drawPredictionOverlay(){
   const last=state.pings.length ? [...state.pings].sort((a,b)=>b.t-a.t)[0] : null;
   if (!last) return;
 
-  const speedSet=Number(elWalkMode.value||"1.4");
+  const speedSet=1.4;
   const windowS=Number(elWindowSec.value||"300");
   const radius=Math.max(30, speedSet*windowS);
 
@@ -786,7 +773,7 @@ function buildAiPrompt(){
     spd=d/dt;
   }
 
-  const speedSet=Number(elWalkMode.value||"1.4");
+  const speedSet=1.4;
   const windowS=Number(elWindowSec.value||"300");
 
   return [
@@ -799,10 +786,10 @@ function buildAiPrompt(){
 `3) Verfolger-Taktik (max 5 Bulletpoints).`,
 ``,
 `Daten:`,
-`- Spielname: ${state.name||"(ohne)"}`,
+`- Spielname: ${""||"(ohne)"}`,
 `- Geh-Tempo gesetzt: ${speedSet} m/s`,
 `- Spielfeld-Polygon: ${poly ? JSON.stringify(poly.geometry) : "nicht gesetzt"}`,
-`- Pings: ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:p.accuracy||null})))}`,
+`- Pings: ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:undefined||null})))}`,
 (prev && last ? `- Letzte Bewegung: Distanz≈${Math.round(d)}m, Zeit≈${Math.round(dt)}s, Speed≈${spd.toFixed(2)}m/s, Bearing≈${Math.round(brng)}°` : `- Letzte Bewegung: nur 1 Ping`),
 `- Kandidaten (zu ranken): ${JSON.stringify(candidates.map((c,i)=>({k:i+1, lat:c.lat, lng:c.lng, note:c.note||""})))}`,
 ``,
@@ -841,7 +828,7 @@ async function runAi(){
 /* =========================
    PING ACTIONS
 ========================= */
-function addPing(lat,lng,accuracy,tOverrideMs){
+function addPing(lat, lng){
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
   if (state.area && !pointInArea(lat,lng)){
@@ -849,14 +836,8 @@ function addPing(lat,lng,accuracy,tOverrideMs){
     return;
   }
 
-  const t = Number.isFinite(tOverrideMs) ? tOverrideMs : nowMs();
-
-  state.pings.push({
-    t,
-    lat:Number(lat),
-    lng:Number(lng),
-    accuracy:Number.isFinite(accuracy) ? Number(accuracy) : null
-  });
+  const t = nowMs();
+  state.pings.push({ t, lat:Number(lat), lng:Number(lng) });
 
   // dedupe same timestamp (keep latest)
   const seen=new Set();
@@ -872,6 +853,7 @@ function addPing(lat,lng,accuracy,tOverrideMs){
   renderAll(true);
 }
 
+
 let manualMode=false;
 
 
@@ -880,94 +862,55 @@ document.getElementById("btnAnalyze").addEventListener("click", ()=>{
   runAi();
 });
 
-
-/* =========================
-   SPIELFELD-VORLAGEN
-========================= */
-function bindFieldUI(){
-  const sel = document.getElementById("fieldSelect");
-  const btnSave = document.getElementById("btnFieldSave");
-  const btnInsert = document.getElementById("btnFieldInsert");
-  const btnDelete = document.getElementById("btnFieldDelete");
-  if (!sel || !btnSave || !btnInsert || !btnDelete) return;
-
-  refreshFieldSelect();
-
-  btnSave.addEventListener("click", ()=>{
-    if (!state.area){
-      alert("Kein Spielfeld (Polygon) gesetzt. Zeichne zuerst eins in die Karte.");
-      return;
-    }
-    const defName = (state.name||"").trim() || "Spielfeld";
-    const name = (prompt("Name für dieses Spielfeld:", defName) || "").trim();
-    if (!name) return;
-
-    fields.push({
-      id: uid(),
-      name,
-      area: state.area,
-      createdAt: Date.now()
-    });
-    saveFields();
-    refreshFieldSelect();
-    alert("Spielfeld gespeichert ✅");
-  });
-
-  btnInsert.addEventListener("click", ()=>{
-    const id = sel.value || "";
-    if (!id){ alert("Bitte erst eine Vorlage auswählen."); return; }
-    const f = fields.find(x=>x.id===id);
-    if (!f){ alert("Vorlage nicht gefunden."); return; }
-    state.area = f.area;
-    saveState();
-    renderAll(true);
-    alert("Spielfeld eingefügt ✅");
-  });
-
-  btnDelete.addEventListener("click", ()=>{
-    const id = sel.value || "";
-    if (!id){ alert("Bitte erst eine Vorlage auswählen."); return; }
-    const f = fields.find(x=>x.id===id);
-    if (!f) return;
-    const ok = confirm(`Vorlage "${f.name}" löschen?`);
-    if (!ok) return;
-    fields = fields.filter(x=>x.id!==id);
-    saveFields();
-    refreshFieldSelect();
-  });
+let _scrollY = 0;
+function lockScroll(){
+  _scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.body.classList.add("modalLock");
+  document.body.style.top = `-${_scrollY}px`;
 }
-/* =========================
-   IMPORT / PASTE PARSER
-========================= */
+function unlockScroll(){
+  document.body.classList.remove("modalLock");
+  const top = document.body.style.top;
+  document.body.style.top = "";
+  const y = top ? -parseInt(top, 10) : _scrollY;
+  window.scrollTo(0, y || 0);
+}
+
 function openModal(){
   pasteText.value="";
-  pasteAcc.value="";
-  pasteTime.value="";
   modalBackdrop.classList.add("show");
+  lockScroll();
   setTimeout(()=>pasteText.focus(), 0);
 }
 function closeModal(){
   modalBackdrop.classList.remove("show");
+  unlockScroll();
 }
 
 document.getElementById("btnInsert").addEventListener("click", openModal);
 document.getElementById("btnModalClose").addEventListener("click", closeModal);
 document.getElementById("btnPasteCancel").addEventListener("click", closeModal);
+modalBackdrop.addEventListener("touchmove", (e)=>{ if (modalBackdrop.classList.contains("show")) e.preventDefault(); }, { passive:false });
 modalBackdrop.addEventListener("click", (e)=>{ if (e.target===modalBackdrop) closeModal(); });
 
 function parseLatLngFromText(text){
-  const t = (text||"").trim();
-  if (!t) return null;
+  const t0 = String(text||"").trim();
+  if (!t0) return null;
 
-  // 1) Google Maps style: @lat,lng
+  const t = t0.replace(/;/g, ",").replace(/\s+/g, " ");
+
   let m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
   if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
 
-  // 2) plain "lat, lng" or "lat lng"
-  m = t.match(/(-?\d{1,3}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
+  m = t.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
   if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
 
-  // 3) "lat: x lng: y"
+  m = t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+
+  m = t.match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
+  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+
   m = t.match(/lat[^0-9-]*(-?\d+(?:\.\d+)?)[^0-9-]+lng[^0-9-]*(-?\d+(?:\.\d+)?)/i);
   if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
 
@@ -999,13 +942,6 @@ async function resolveLatLng(text){
 }
 
 
-function parseTimeMs(){
-  const v = (pasteTime.value||"").trim();
-  if (!v) return null;
-  const d = new Date(v);
-  const ms = d.getTime();
-  return Number.isFinite(ms) ? ms : null;
-}
 
 document.getElementById("btnPasteParse").addEventListener("click", async ()=>{
   const text = pasteText.value || "";
@@ -1016,9 +952,7 @@ document.getElementById("btnPasteParse").addEventListener("click", async ()=>{
     return;
   }
 
-  const acc = (pasteAcc.value==="" ? null : Number(pasteAcc.value));
-  const tms = parseTimeMs();
-  addPing(ll.lat, ll.lng, acc, tms);
+  addPing(ll.lat, ll.lng);
 
   // direkt auf den Ping springen
   map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 16), { animate:true });
@@ -1041,6 +975,24 @@ document.getElementById("btnReset").addEventListener("click", ()=>{
   renderAll(true);
 });
 
+// Spielfeld Auswahl / Neu
+refreshFieldOnlySelect();
+const fieldSel = document.getElementById("fieldOnlySelect");
+const btnFieldNew = document.getElementById("btnFieldNew");
+if (fieldSel){
+  fieldSel.addEventListener("change", ()=>{
+    const id = fieldSel.value || "";
+    if (id) applyFieldById(id);
+  });
+}
+if (btnFieldNew){
+  btnFieldNew.addEventListener("click", ()=>{
+    clearForNewField();
+    alert("Jetzt Spielfeld einzeichnen (Polygon).");
+  });
+}
+
+
 let collapsed=false;
 document.getElementById("btnCollapse").addEventListener("click", ()=>{
   collapsed=!collapsed;
@@ -1049,17 +1001,16 @@ document.getElementById("btnCollapse").addEventListener("click", ()=>{
 });
 
 /* Name sync */
-elGameName.addEventListener("input", ()=>{
-  state.name = elGameName.value || "";
-  saveState();
-});
+null.addEventListener("input", ()=>{
+  });
 
 /* Overlay update on param change */
-[elWalkMode, elWindowSec].forEach(el => el.addEventListener("change", ()=> drawPredictionOverlay()));
+[({value:'1.4'}), elWindowSec].forEach(el => el.addEventListener("change", ()=> drawPredictionOverlay()));
 
 /* Initial */
 renderAll(true);
-bindFieldUI();
+
+
 </script>
 </body>
 </html>
