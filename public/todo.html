@@ -509,6 +509,23 @@
       .create-buttons .btn{ flex: 1 1 auto; }
     }
 
+  
+    /* Person-Modal Header: Plus darf nicht mit X überlappen */
+    #person-modal .popup{ position: relative; }
+    #person-modal .modal-header{ padding-right: 54px; }
+    #person-modal #person-add{
+      margin-left: auto;
+      margin-right: 10px;
+      min-width: 44px;
+      height: 38px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+    }
+    #person-modal .popup-close{ top: 12px; right: 12px; }
+
   </style>
 </head>
 
@@ -798,7 +815,20 @@
         if (!data.settings || typeof data.settings !== "object") data.settings = {};
         if (typeof data.settings.doneBottom !== "boolean") data.settings.doneBottom = false;
         if (typeof data.settings.checkbox !== "boolean") data.settings.checkbox = false;
-        if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"];
+        
+        if (!Array.isArray(data.settings.users)) {
+          // Migration: alte "people" -> users (PIN wird beim ersten Verwenden gesetzt)
+          const old = Array.isArray(data.settings.people) ? data.settings.people : [];
+          data.settings.users = (old.length ? old : ["Mama","Papa"]).map(n=>({ name: String(n), salt: "", pinHash: "" }));
+        }
+        if (typeof data.settings.activeUser !== "string") data.settings.activeUser = "";
+
+        // normalize: falls users noch Strings sind
+        data.settings.users = (data.settings.users || []).map(u=>{
+          if (typeof u === "string") return { name: u, salt:"", pinHash:"" };
+          return { name: String(u.name||""), salt: String(u.salt||""), pinHash: String(u.pinHash||"") };
+        }).filter(u=>u.name);
+if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"];
       }
 
       // ===== Popup =====
@@ -960,6 +990,42 @@
       const peopleListEl = document.getElementById("people-list");
 
       function openPerson(){
+        ensureSettings();
+        const users = data.settings.users || [];
+
+        if (!users.length){
+          promptText("Ersten Benutzer anlegen:", "z.B. Mama", (name)=>{
+            const n = name.trim();
+            if (!n) return;
+
+            const u = { name: n, salt: "", pinHash: "" };
+            data.settings.users = [u];
+            scheduleSave();
+
+            promptPin(`PIN festlegen für "${n}"`, (pin1)=>{
+              promptPin("PIN wiederholen", async (pin2)=>{
+                if (pin1 !== pin2){
+                  setSync("bad","PIN falsch");
+                  return;
+                }
+                const salt = randomSalt();
+                const hash = await sha256Hex(salt + ":" + pin1);
+                u.salt = salt;
+                u.pinHash = hash;
+                draft.person = n;
+                data.settings.activeUser = n;
+                scheduleSave();
+                personModal.classList.add("active");
+                document.body.classList.add("modal-open");
+                document.documentElement.classList.add("modal-open");
+                renderPeopleList();
+                updateDraftUI();
+              });
+            });
+          });
+          return;
+        }
+
         renderPeopleList();
         personModal.classList.add("active");
         document.body.classList.add("modal-open");
@@ -973,28 +1039,85 @@
 
       function renderPeopleList(){
         ensureSettings();
-        const people = data.settings.people || [];
+        const users = data.settings.users || [];
         peopleListEl.innerHTML = "";
 
-        people.forEach(name=>{
+        users.forEach(u=>{
+          const name = String(u.name || "").trim();
+          if (!name) return;
+
           const chip = document.createElement("div");
           chip.className = "person-chip" + (draft.person === name ? " on" : "");
           chip.innerHTML = `<span>${escapeHtml(name)}</span><span class="x" title="Entfernen">✕</span>`;
 
-          // select
-          chip.addEventListener("click", (e)=>{
+          chip.addEventListener("click", async (e)=>{
             const isX = (e.target && e.target.classList && e.target.classList.contains("x"));
             if (isX){
               e.stopPropagation();
               showConfirm(`Benutzer "${name}" löschen?`, ()=>{
-                data.settings.people = (data.settings.people || []).filter(p=>p!==name);
+                data.settings.users = (data.settings.users || []).filter(x=>String(x.name) !== name);
                 if (draft.person === name) draft.person = "";
+                if (data.settings.activeUser === name) data.settings.activeUser = "";
                 scheduleSave();
                 renderPeopleList();
                 updateDraftUI();
               });
               return;
             }
+
+            const user = (data.settings.users || []).find(x=>String(x.name) === name);
+            if (!user) return;
+
+            // bereits ausgewählt -> abwählen
+            if (draft.person === name){
+              draft.person = "";
+              data.settings.activeUser = "";
+              scheduleSave();
+              renderPeopleList();
+              updateDraftUI();
+              return;
+            }
+
+            // kein PIN gesetzt -> jetzt festlegen
+            if (!user.pinHash || !user.salt){
+              promptPin(`PIN festlegen für "${name}"`, (pin1)=>{
+                promptPin("PIN wiederholen", async (pin2)=>{
+                  if (pin1 !== pin2){
+                    setSync("bad","PIN falsch");
+                    return;
+                  }
+                  const salt = randomSalt();
+                  const hash = await sha256Hex(salt + ":" + pin1);
+                  user.salt = salt;
+                  user.pinHash = hash;
+                  draft.person = name;
+                  data.settings.activeUser = name;
+                  scheduleSave();
+                  renderPeopleList();
+                  updateDraftUI();
+                });
+              });
+              return;
+            }
+
+            // PIN abfragen
+            promptPin(`PIN für "${name}"`, async (pin)=>{
+              const hash = await sha256Hex(user.salt + ":" + pin);
+              if (hash !== user.pinHash){
+                setSync("bad","PIN falsch");
+                return;
+              }
+              draft.person = name;
+              data.settings.activeUser = name;
+              scheduleSave();
+              renderPeopleList();
+              updateDraftUI();
+            });
+          });
+
+          peopleListEl.appendChild(chip);
+        });
+      }
             draft.person = (draft.person === name) ? "" : name;
             renderPeopleList();
           });
@@ -1003,7 +1126,53 @@
         });
       }
 
-      function promptText(msg, placeholder, onOk){
+      
+      async function sha256Hex(str){
+        const enc = new TextEncoder();
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
+        const arr = Array.from(new Uint8Array(buf));
+        return arr.map(b=>b.toString(16).padStart(2,"0")).join("");
+      }
+      function randomSalt(){
+        const a = new Uint8Array(16);
+        crypto.getRandomValues(a);
+        return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join("");
+      }
+
+      function promptPin(msg, onOk){
+        popupMessage.textContent = msg;
+        popupTitle.classList.add("hidden");
+        popupTime.classList.add("hidden");
+        popupPerson.classList.add("hidden");
+        popupDaysWrap.classList.add("hidden");
+
+        const popupPin = document.getElementById("popup-input-pin");
+        popupPin.classList.remove("hidden");
+        popupPin.value = "";
+        popupPin.placeholder = "PIN (z.B. 1234)";
+
+        const popupNoTimeBtn = document.getElementById("popup-no-time-btn");
+        if (popupNoTimeBtn) popupNoTimeBtn.classList.add("hidden");
+
+        openOverlay();
+        popupCallback = (ok)=>{
+          if (!ok){
+            popupPin.classList.add("hidden");
+            closeOverlay();
+            popupCallback=null;
+            return;
+          }
+          const v = (popupPin.value || "").trim();
+          if (!v) return;
+          if (!/^\d{4,10}$/.test(v)) return;
+          popupPin.classList.add("hidden");
+          closeOverlay();
+          popupCallback=null;
+          onOk(v);
+        };
+      }
+
+function promptText(msg, placeholder, onOk){
         popupMessage.textContent = msg;
         popupTitle.classList.remove("hidden");
         popupTime.classList.add("hidden");
@@ -1376,11 +1545,26 @@
             ensureSettings();
             const n = name.trim();
             if (!n) return;
-            if (!data.settings.people.includes(n)) data.settings.people.unshift(n);
-            draft.person = n;
+            if ((data.settings.users || []).some(u=>String(u.name)===n)) return;
+
+            const u = { name: n, salt: "", pinHash: "" };
+            data.settings.users = [u, ...(data.settings.users || [])];
             scheduleSave();
-            renderPeopleList();
-            updateDraftUI();
+
+            promptPin(`PIN festlegen für "${n}"`, (pin1)=>{
+              promptPin("PIN wiederholen", async (pin2)=>{
+                if (pin1 !== pin2){ setSync("bad","PIN falsch"); return; }
+                const salt = randomSalt();
+                const hash = await sha256Hex(salt + ":" + pin1);
+                u.salt = salt;
+                u.pinHash = hash;
+                draft.person = n;
+                data.settings.activeUser = n;
+                scheduleSave();
+                renderPeopleList();
+                updateDraftUI();
+              });
+            });
           });
         });
         personModal.addEventListener("click", (e)=>{ if (e.target === personModal) closePerson(); });
