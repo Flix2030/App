@@ -679,10 +679,17 @@
       <h3 style="margin:0 0 6px;">KI-Vorschläge</h3>
       <div class="ai-add" style="margin: 10px 0 6px;">
         <textarea id="ai-item-text" rows="3" placeholder="Schreib z.B.: Ich will Pasta, Tomatensoße, Käse, 2x Milch und Snacks kaufen."></textarea>
-        <div class="ai-actions">
-          <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">Vorschläge erstellen</button>
-          <!-- Erklärungstext entfernt -->
-        </div>
+          <div class="ai-actions">
+            <button id="ai-plan-btn" class="btn btn-small btn-secondary" type="button">
+              Vorschläge erstellen
+            </button>
+
+            <button id="dictate-btn" class="btn btn-small btn-secondary" type="button">
+              🎙️ Diktieren
+            </button>
+
+            <span id="dictate-status" style="opacity:.75;font-weight:800;"></span>
+          </div>
       </div>
       <div id="ai-suggestions" class="ai-list"></div>
     </div>
@@ -1473,6 +1480,73 @@ ${raw}`;
 
       document.addEventListener("DOMContentLoaded", init);
     })();
+
+    // ===== Diktierfunktion (Web Speech API) =====
+    (function(){
+      const btn = document.getElementById("dictate-btn");
+      const statusEl = document.getElementById("dictate-status");
+
+      // Ziel-Input: hier einstellen, wohin diktiert werden soll:
+      // Option A: KI-Textfeld
+      const target = document.getElementById("ai-item-text");
+      // Option B: neuer Einkauf (statt KI) -> dann obige Zeile auskommentieren und diese nutzen:
+      // const target = document.getElementById("new-item-text");
+
+      if (!btn || !target) return;
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition){
+        btn.disabled = true;
+        btn.textContent = "🎙️ Nicht unterstützt";
+        if (statusEl) statusEl.textContent = "Browser unterstützt kein Diktieren.";
+        return;
+      }
+
+      const rec = new SpeechRecognition();
+      rec.lang = "de-DE";
+      rec.continuous = true;      // weiter zuhören
+      rec.interimResults = true;  // live Text anzeigen
+
+      let listening = false;
+      let finalText = "";
+
+      function setUI(on){
+        listening = on;
+        btn.textContent = on ? "⏹️ Stop" : "🎙️ Diktieren";
+        if (statusEl) statusEl.textContent = on ? "Höre zu…" : "";
+      }
+
+      btn.addEventListener("click", ()=>{
+        if (!listening){
+          finalText = target.value ? (target.value.trim() + " ") : "";
+          try{ rec.start(); setUI(true); }catch(_){}
+        } else {
+          try{ rec.stop(); }catch(_){}
+          setUI(false);
+        }
+      });
+
+      rec.onresult = (e)=>{
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++){
+          const t = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalText += t + " ";
+          else interim += t;
+        }
+        target.value = (finalText + interim).trim();
+      };
+
+      rec.onerror = (e)=>{
+        if (statusEl) statusEl.textContent = "Fehler: " + (e.error || "unknown");
+        setUI(false);
+      };
+
+      rec.onend = ()=>{
+        // Wenn der Browser von selbst stoppt
+        setUI(false);
+      };
+    })();
+
   </script>
 </body>
 </html>
