@@ -395,6 +395,120 @@
       .actions{ margin-left: 0; }
       .task-title{ font-size: 1.15rem; }
     }
+  
+    /* Create bar like sketch */
+    .create-wrap{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px;
+    }
+    .create-title{
+      flex: 1 1 420px;
+      min-width: 240px;
+    }
+    .create-buttons{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap: wrap;
+    }
+    .create-buttons .btn{ margin:0; }
+    .pill-row{
+      display:flex;
+      gap:8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .modal-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin: 0 0 12px;
+    }
+    .modal-title{
+      font-size: 1.1rem;
+      font-weight: 900;
+      margin:0;
+    }
+    .people-list{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin: 10px 0 6px;
+    }
+    .person-chip{
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-weight: 900;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+    }
+    .person-chip.on{
+      border-color: rgba(62,227,140,0.35);
+      background: rgba(62,227,140,0.16);
+    }
+    .person-chip .x{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,77,109,0.12);
+      color: rgba(255,255,255,0.92);
+      font-weight: 900;
+      line-height: 1;
+    }
+    .time-mode{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .mode-btn{
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.88);
+      font-weight: 900;
+      cursor:pointer;
+      user-select:none;
+    }
+    .mode-btn.on{
+      border-color: rgba(62,227,140,0.35);
+      background: rgba(62,227,140,0.16);
+    }
+    .time-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    .time-grid .label{
+      font-weight: 900;
+      color: rgba(255,255,255,0.82);
+    }
+
+    @media (max-width: 640px){
+      .create-wrap{ gap:10px; }
+      .create-buttons{ width: 100%; justify-content: space-between; }
+      .create-title{ flex: 1 1 100%; min-width: 0; }
+      .create-buttons .btn{ flex: 1 1 auto; }
+    }
+
   </style>
 </head>
 
@@ -434,15 +548,19 @@
       </div>
     </div>
 
-    <!-- Add / Quick add -->
+    <!-- Add -->
     <div id="new-task-section" style="margin-top:10px;">
-<div class="add-row">
-        <input type="text" id="new-task-text" placeholder="Neue Aufgabe" style="flex: 2 1 320px;" />
-        <div class="days" id="days-wrap" style="flex: 1 1 260px;"></div>
-        <input type="time" id="new-task-time" value="13:00" style="min-width: 140px;" />
-        <input type="text" id="new-task-person" placeholder="Person (z.B. Mama)" style="flex: 1 1 180px; min-width: 160px;" />
-        <button id="add-task-btn" class="btn btn-small">Erstellen</button>
+      <div class="create-wrap">
+        <input type="text" id="new-task-title" class="create-title" placeholder="Objekt (z.B. saugen)" />
+        <div class="create-buttons">
+          <button id="open-days" class="btn btn-small btn-secondary" type="button">Tage</button>
+          <button id="open-time" class="btn btn-small btn-secondary" type="button">Zeit</button>
+          <button id="open-person" class="btn btn-small btn-secondary" type="button">Benutzer</button>
+          <button id="add-task-btn" class="btn btn-small" type="button">Erstellen</button>
+        </div>
       </div>
+
+      <div class="pill-row" id="draft-preview" aria-live="polite"></div>
     </div>
 
     <ul id="tasks-list" style="margin-top: 14px;"></ul>
@@ -480,6 +598,78 @@
     </div>
   </div>
 
+  
+  <!-- Tage -->
+  <div id="days-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="days-x" aria-label="Schließen">✕</button>
+      <div class="modal-header">
+        <h3 class="modal-title">Tage</h3>
+      </div>
+      <div class="days" id="days-picker"></div>
+      <div class="popup-buttons" style="margin-top:14px;">
+        <button id="days-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="days-ok" class="btn btn-small" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zeit -->
+  <div id="time-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="time-x" aria-label="Schließen">✕</button>
+      <div class="modal-header">
+        <h3 class="modal-title">Zeit</h3>
+      </div>
+
+      <div class="time-mode">
+        <button class="mode-btn" id="mode-at" type="button">Um</button>
+        <button class="mode-btn" id="mode-range" type="button">Von/Bis</button>
+        <button class="mode-btn" id="mode-none" type="button">Keine Zeit</button>
+      </div>
+
+      <div id="time-at-wrap">
+        <div class="time-grid">
+          <div class="label">Um</div>
+          <input type="time" id="time-at" />
+        </div>
+      </div>
+
+      <div id="time-range-wrap" class="hidden">
+        <div class="time-grid">
+          <div class="label">Von</div>
+          <input type="time" id="time-from" />
+          <div class="label">Bis</div>
+          <input type="time" id="time-to" />
+        </div>
+      </div>
+
+      <div class="popup-buttons" style="margin-top:14px;">
+        <button id="time-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="time-ok" class="btn btn-small" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benutzer -->
+  <div id="person-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="person-x" aria-label="Schließen">✕</button>
+      <div class="modal-header">
+        <h3 class="modal-title">Benutzer</h3>
+        <button id="person-add" class="btn btn-small btn-secondary" type="button">+</button>
+      </div>
+
+      <div class="people-list" id="people-list"></div>
+
+      <div class="popup-buttons" style="margin-top:14px;">
+        <button id="person-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="person-ok" class="btn btn-small" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Popup (Prompt/Confirm/Edit) -->
   <div id="popup-overlay" class="popup-overlay">
     <div class="popup">
@@ -512,6 +702,9 @@
 
       let data = { tasks: [], settings: { doneBottom:false, checkbox:false } };
       let editMode = false;
+
+      // Draft (Create)
+      let draft = { title:"", days:[], timeMode:"at", time:"13:00", from:"", to:"", person:"" };
 
       // sync UI
       const syncDot = document.getElementById("sync-dot");
@@ -606,6 +799,7 @@
         if (!data.settings || typeof data.settings !== "object") data.settings = {};
         if (typeof data.settings.doneBottom !== "boolean") data.settings.doneBottom = false;
         if (typeof data.settings.checkbox !== "boolean") data.settings.checkbox = false;
+        if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"];
       }
 
       // ===== Popup =====
@@ -677,6 +871,161 @@
           .filter(x=>x.checked)
           .map(x=>x.dataset.day)
           .filter(Boolean);
+      }
+
+
+      // ===== Draft UI + Modals =====
+      const draftPreview = document.getElementById("draft-preview");
+
+      function updateDraftUI(){
+        // buttons label
+        const bDays = document.getElementById("open-days");
+        const bTime = document.getElementById("open-time");
+        const bPerson = document.getElementById("open-person");
+
+        const dayText = draft.days && draft.days.length ? fmtDays(draft.days) : "Tage";
+        bDays.textContent = dayText || "Tage";
+
+        let timeText = "Zeit";
+        if (draft.timeMode === "none") timeText = "Keine Zeit";
+        if (draft.timeMode === "at" && normalizeTime(draft.time)) timeText = normalizeTime(draft.time) + " Uhr";
+        if (draft.timeMode === "range" && normalizeTime(draft.from) && normalizeTime(draft.to)) timeText = normalizeTime(draft.from) + "–" + normalizeTime(draft.to);
+        bTime.textContent = timeText;
+
+        bPerson.textContent = draft.person ? draft.person : "Benutzer";
+
+        // preview pills
+        if (!draftPreview) return;
+        const pills = [];
+        if (draft.days && draft.days.length) pills.push(`<span class="tag">${escapeHtml(fmtDays(draft.days))}</span>`);
+        if (draft.timeMode === "range" && draft.from && draft.to) pills.push(`<span class="tag">${escapeHtml(draft.from)}–${escapeHtml(draft.to)} Uhr</span>`);
+        else if (draft.timeMode === "at" && draft.time) pills.push(`<span class="tag">${escapeHtml(normalizeTime(draft.time))} Uhr</span>`);
+        else if (draft.timeMode === "none") pills.push(`<span class="tag warn">ohne Zeit</span>`);
+        if (draft.person) pills.push(`<span class="tag">${escapeHtml(draft.person)}</span>`);
+        draftPreview.innerHTML = pills.join("");
+      }
+
+      // --- Days modal
+      const daysModal = document.getElementById("days-modal");
+      const daysPicker = document.getElementById("days-picker");
+      function openDays(){
+        buildDays(daysPicker, draft.days || []);
+        daysModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeDays(){
+        daysModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      // --- Time modal
+      const timeModal = document.getElementById("time-modal");
+      const modeAtBtn = document.getElementById("mode-at");
+      const modeRangeBtn = document.getElementById("mode-range");
+      const modeNoneBtn = document.getElementById("mode-none");
+      const timeAtWrap = document.getElementById("time-at-wrap");
+      const timeRangeWrap = document.getElementById("time-range-wrap");
+      const timeAt = document.getElementById("time-at");
+      const timeFrom = document.getElementById("time-from");
+      const timeTo = document.getElementById("time-to");
+
+      function setTimeMode(mode){
+        draft.timeMode = mode;
+        modeAtBtn.classList.toggle("on", mode === "at");
+        modeRangeBtn.classList.toggle("on", mode === "range");
+        modeNoneBtn.classList.toggle("on", mode === "none");
+        timeAtWrap.classList.toggle("hidden", mode !== "at");
+        timeRangeWrap.classList.toggle("hidden", mode !== "range");
+      }
+
+      function openTime(){
+        // init fields
+        timeAt.value = normalizeTime(draft.time) || "13:00";
+        timeFrom.value = normalizeTime(draft.from) || "09:00";
+        timeTo.value = normalizeTime(draft.to) || "10:00";
+        setTimeMode(draft.timeMode || "at");
+
+        timeModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeTime(){
+        timeModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      // --- Person modal
+      const personModal = document.getElementById("person-modal");
+      const peopleListEl = document.getElementById("people-list");
+
+      function openPerson(){
+        renderPeopleList();
+        personModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closePerson(){
+        personModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      function renderPeopleList(){
+        ensureSettings();
+        const people = data.settings.people || [];
+        peopleListEl.innerHTML = "";
+
+        people.forEach(name=>{
+          const chip = document.createElement("div");
+          chip.className = "person-chip" + (draft.person === name ? " on" : "");
+          chip.innerHTML = `<span>${escapeHtml(name)}</span><span class="x" title="Entfernen">✕</span>`;
+
+          // select
+          chip.addEventListener("click", (e)=>{
+            const isX = (e.target && e.target.classList && e.target.classList.contains("x"));
+            if (isX){
+              e.stopPropagation();
+              showConfirm(`Benutzer "${name}" löschen?`, ()=>{
+                data.settings.people = (data.settings.people || []).filter(p=>p!==name);
+                if (draft.person === name) draft.person = "";
+                scheduleSave();
+                renderPeopleList();
+                updateDraftUI();
+              });
+              return;
+            }
+            draft.person = (draft.person === name) ? "" : name;
+            renderPeopleList();
+          });
+
+          peopleListEl.appendChild(chip);
+        });
+      }
+
+      function promptText(msg, placeholder, onOk){
+        popupMessage.textContent = msg;
+        popupTitle.classList.remove("hidden");
+        popupTime.classList.add("hidden");
+        popupPerson.classList.add("hidden");
+        popupDaysWrap.classList.add("hidden");
+        const popupNoTimeBtn = document.getElementById("popup-no-time-btn");
+        if (popupNoTimeBtn) popupNoTimeBtn.classList.add("hidden");
+
+        popupTitle.value = "";
+        popupTitle.placeholder = placeholder || "";
+
+        openOverlay();
+        popupCallback = (ok)=>{
+          if (!ok){ closeOverlay(); popupCallback=null; return; }
+          const v = (popupTitle.value || "").trim();
+          if (!v) return;
+          closeOverlay();
+          popupCallback=null;
+          onOk(v);
+        };
       }
 
       function showTaskEditor(task, onOk){
@@ -900,25 +1249,52 @@
       }
 
       // ===== Create task =====
-      function createTaskFromFields(){
-        const title = (document.getElementById("new-task-text").value || "").trim();
-        const time = normalizeTime(document.getElementById("new-task-time").value);
-        const person = (document.getElementById("new-task-person").value || "").trim();
-        const days = readDays(document.getElementById("days-wrap"));
+      function createTaskFromDraft(){
+        const title = (draft.title || "").trim();
+        const days = Array.isArray(draft.days) ? draft.days.slice() : [];
 
-        if (!title || !time || !days.length) return;
+        const person = (draft.person || "").trim();
+        const timeMode = draft.timeMode || "none";
+        const time = normalizeTime(draft.time || "");
+        const from = normalizeTime(draft.from || "");
+        const to = normalizeTime(draft.to || "");
+
+        // Pflicht: Titel + Tage
+        if (!title || !days.length) return;
+
+        // mindestens Zeit ODER Person
+        const hasTime = (timeMode === "at" && !!time) || (timeMode === "range" && !!from && !!to);
+        if (!hasTime && !person) return;
 
         data.tasks.unshift({
           id: makeId("task"),
-          title, time, person, days,
-          done: false
+          title,
+          days,
+          timeMode: hasTime ? timeMode : "none",
+          time: (timeMode === "at") ? time : "",
+          from: (timeMode === "range") ? from : "",
+          to: (timeMode === "range") ? to : "",
+          person,
+          done: false,
+          doneAt: null,
+          createdAt: new Date().toISOString()
         });
 
-        document.getElementById("new-task-text").value = "";
-        document.getElementById("new-task-person").value = "";
+        // reset draft minimal
+        draft.title = "";
+        draft.days = [];
+        draft.timeMode = "at";
+        draft.time = "13:00";
+        draft.from = "";
+        draft.to = "";
+        draft.person = "";
+
+        document.getElementById("new-task-title").value = "";
+        updateDraftUI();
         scheduleSave();
         render();
-      }
+      });
+}
 function createTaskFromQuick(){
         const inp = document.getElementById("quick-task-text");
         const parsed = parseQuickLine(inp.value || "");
@@ -950,20 +1326,81 @@ function createTaskFromQuick(){
 
       // ===== Bind UI =====
       function bindUI(){
-        // days chips in create row
-        buildDays(document.getElementById("days-wrap"), ["mo","fr"]);
+        // Create (Objekt + Picker)
+        document.getElementById("add-task-btn").addEventListener("click", createTaskFromDraft);
 
-        document.getElementById("add-task-btn").addEventListener("click", createTaskFromFields);
-});
-
-        document.getElementById("new-task-person").addEventListener("keydown", (e)=>{
-          if (e.key === "Enter") createTaskFromFields();
-        });
-        document.getElementById("new-task-text").addEventListener("keydown", (e)=>{
-          if (e.key === "Enter") createTaskFromFields();
+        document.getElementById("new-task-title").addEventListener("keydown", (e)=>{
+          if (e.key === "Enter") createTaskFromDraft();
         });
 
-        document.getElementById("edit-mode-toggle").addEventListener("click", function(){
+        document.getElementById("new-task-title").addEventListener("input", (e)=>{
+          draft.title = e.target.value || "";
+        });
+
+        // Open modals
+        document.getElementById("open-days").addEventListener("click", openDays);
+        document.getElementById("open-time").addEventListener("click", openTime);
+        document.getElementById("open-person").addEventListener("click", openPerson);
+
+        // Days modal
+        document.getElementById("days-x").addEventListener("click", closeDays);
+        document.getElementById("days-cancel").addEventListener("click", closeDays);
+        document.getElementById("days-ok").addEventListener("click", ()=>{
+          draft.days = readDays(daysPicker);
+          closeDays();
+          updateDraftUI();
+        });
+        daysModal.addEventListener("click", (e)=>{ if (e.target === daysModal) closeDays(); });
+
+        // Time modal
+        document.getElementById("time-x").addEventListener("click", closeTime);
+        document.getElementById("time-cancel").addEventListener("click", closeTime);
+        modeAtBtn.addEventListener("click", ()=> setTimeMode("at"));
+        modeRangeBtn.addEventListener("click", ()=> setTimeMode("range"));
+        modeNoneBtn.addEventListener("click", ()=> setTimeMode("none"));
+        document.getElementById("time-ok").addEventListener("click", ()=>{
+          const mode = draft.timeMode || "at";
+          if (mode === "at"){
+            draft.time = normalizeTime(timeAt.value) || "";
+            draft.from = ""; draft.to = "";
+          } else if (mode === "range"){
+            draft.from = normalizeTime(timeFrom.value) || "";
+            draft.to = normalizeTime(timeTo.value) || "";
+            draft.time = "";
+          } else {
+            draft.time = ""; draft.from = ""; draft.to = "";
+          }
+          closeTime();
+          updateDraftUI();
+        });
+        timeModal.addEventListener("click", (e)=>{ if (e.target === timeModal) closeTime(); });
+
+        // Person modal
+        document.getElementById("person-x").addEventListener("click", closePerson);
+        document.getElementById("person-cancel").addEventListener("click", closePerson);
+        document.getElementById("person-ok").addEventListener("click", ()=>{
+          closePerson();
+          updateDraftUI();
+          scheduleSave();
+        });
+        document.getElementById("person-add").addEventListener("click", ()=>{
+          promptText("Neuen Benutzer hinzufügen:", "z.B. Mama", (name)=>{
+            ensureSettings();
+            const n = name.trim();
+            if (!n) return;
+            if (!data.settings.people.includes(n)) data.settings.people.unshift(n);
+            draft.person = n;
+            scheduleSave();
+            renderPeopleList();
+            updateDraftUI();
+          });
+        });
+        personModal.addEventListener("click", (e)=>{ if (e.target === personModal) closePerson(); });
+
+        // initial UI
+        updateDraftUI();
+
+document.getElementById("edit-mode-toggle").addEventListener("click", function(){
           editMode = !editMode;
           this.textContent = editMode ? "Fertig" : "Bearbeiten";
           render();
@@ -1012,6 +1449,7 @@ function createTaskFromQuick(){
           }
         });
       }
+
 
       async function init(){
         try{
