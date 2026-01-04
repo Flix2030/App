@@ -2,917 +2,1723 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mr. X – Live Analyse</title>
+  <title>To-Do</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Leaflet Draw -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
-  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-
-  <!-- Turf -->
-  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+  <!-- iPhone/PWA nicer -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#070c16" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <style>
-    :root{
-      --bg0:#05080f; --bg1:#070c16;
-      --panel:rgba(17,24,39,.72);
-      --panel2:rgba(20,28,46,.78);
-      --border:rgba(255,255,255,.10);
-      --text:rgba(255,255,255,.92);
-      --muted:rgba(255,255,255,.62);
-      --accent:#3ee38c; --accent2:#2fce7a;
-      --danger:#ff4d6d;
-      --shadow:0 18px 60px rgba(0,0,0,.55);
-      --radius:18px;
-      --chip: rgba(255,255,255,0.06);
-      --ok: rgba(62,227,140,0.14);
-      --warn: rgba(255,210,77,0.12);
+    :root {
+      --bg0: #05080f;
+      --bg1: #070c16;
+      --panel: rgba(17, 24, 39, 0.72);
+      --panel2: rgba(20, 28, 46, 0.78);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.62);
+      --accent: #3ee38c;
+      --accent2: #2fce7a;
+      --shadow: 0 18px 60px rgba(0,0,0,0.55);
+      --radius: 18px;
+      --danger: #ff4d6d;
+      --warn: #ffd369;
     }
-    *{box-sizing:border-box}
+
+    /* Base */
+    html, body{
+      height: auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      color-scheme: dark;
+    }
     body{
-      margin:0;
-      font-family:'Segoe UI', Tahoma, sans-serif;
-      color:var(--text);
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
       background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
                   radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
                   linear-gradient(180deg, var(--bg0), var(--bg1));
-      min-height:100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 28px);
+      box-sizing: border-box;
     }
-    .shell{width:min(1200px, 100%); margin:0 auto; padding:18px 14px 28px;}
-    .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;}
-    .title{display:flex; flex-direction:column; gap:2px;}
-    .title h1{margin:0; font-size:1.35rem; letter-spacing:.2px;}
-    .title .sub{color:var(--muted); font-size:.92rem}
-    .actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;}
 
+    /* safe-area dark bar */
+    body::before{
+      content:"";
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: env(safe-area-inset-top);
+      background: #070c16;
+      z-index: 999999;
+      pointer-events:none;
+    }
+
+    .container{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 26px 26px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    h1{ margin:0; font-size: 2rem; letter-spacing: .2px; }
+    h2{ margin: 18px 0 10px; font-size: 1.45rem; letter-spacing: .2px; }
+
+    /* Buttons / Links */
     .btn{
-      appearance:none;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:800;
-      transition:transform .12s ease, filter .2s ease;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: #03130a;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin: 4px;
+      transition: transform 0.15s ease, filter 0.2s ease;
+      box-shadow: 0 10px 24px rgba(62,227,140,0.14);
+      user-select: none;
+    }
+    .btn:hover{ filter: brightness(1.03); }
+    .btn:active{ transform: translateY(1px); }
+    .btn-small{ padding: 6px 12px; font-size: .85rem; margin:0; }
+    .btn-secondary{
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+    .btn-secondary:hover{ filter: brightness(1.06); }
+
+    .back-link{
+      display:inline-block;
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      text-decoration:none;
       user-select:none;
+      white-space: nowrap;
+    }
+
+    .toolbar{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap:12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .toolbar .left, .toolbar .right{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+
+    /* Inputs */
+    input[type="text"], input[type="time"]{
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      border-radius: 14px;
+      font-size: 16px; /* no mobile zoom */
+      outline: none;
+      min-width: 220px;
+      box-sizing: border-box;
+    }
+    input[type="text"]::placeholder{ color: rgba(235,244,255,0.55); }
+
+    ul{ list-style:none; padding:0; margin:0; }
+
+    /* List items */
+    .task-item{
+      display:flex;
+      align-items:center;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      gap:12px;
+      -webkit-user-select:none;
+      user-select:none;
+      flex-wrap: wrap;
+    }
+    .task-item.task-done{
+      background: rgba(62,227,140,0.16) !important;
+      border-color: rgba(62,227,140,0.65) !important;
+      box-shadow: 0 0 0 3px rgba(62,227,140,0.10);
+    }
+
+    .task-check{
+      width: 22px;
+      height: 22px;
+      accent-color: var(--accent);
+      cursor:pointer;
+      flex: 0 0 auto;
+    }
+
+    .task-main{
+      flex: 1 1 320px;
+      min-width: 220px;
+      display:flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .task-title{
+      font-weight: 900;
+      font-size: 1.05rem;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .task-meta{
+      display:flex;
+      gap:8px;
+      flex-wrap: wrap;
+      color: rgba(255,255,255,0.82);
+      font-weight: 800;
+      font-size: 0.86rem;
+    }
+    .tag{
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .tag.warn{
+      border-color: rgba(255,211,105,0.24);
+      background: rgba(255,211,105,0.10);
+      color: rgba(255,255,255,0.92);
+    }
+
+    .actions{
+      display:flex;
+      gap:6px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+
+    .hidden{ display:none; }
+
+    .progress-pill{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      white-space:nowrap;
-      text-decoration:none;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(62,227,140,0.25);
+      background: rgba(62,227,140,0.10);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      box-shadow: 0 10px 30px rgba(62,227,140,0.08);
     }
-    .btn:hover{filter:brightness(1.04)}
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color:#03130a;
-      box-shadow:0 10px 24px rgba(62,227,140,0.14);
-      border-color: rgba(62,227,140,.22);
+    .progress-dot{
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 16px rgba(62,227,140,0.65);
     }
-    .btn.danger{
-      background: rgba(255,77,109,0.12);
-      border-color: rgba(255,77,109,0.28);
-      color:#ffd3db;
-    }
-    .btn.icon{width:42px; justify-content:center; padding:10px 0;}
-    .btn.small{padding:7px 10px; border-radius:12px; font-weight:900;}
-
-    .grid{display:grid; grid-template-columns: 1.35fr .65fr; gap:12px;}
-    .card{
-      background:var(--panel);
-      border:1px solid var(--border);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
+    .progress-bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
       overflow:hidden;
+      margin: 12px 0 10px;
     }
-    .cardHeader{
-      padding:12px 14px;
+    .progress-bar > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent), rgba(62,227,140,0.35));
+      border-radius: 999px;
+      transition: width 220ms ease;
+    }
+
+    .add-row{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .days{
+      display:flex;
+      gap:8px;
+      flex-wrap: wrap;
+      align-items:center;
+    }
+    .day-chip{
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.88);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-weight: 900;
+      cursor:pointer;
+      user-select:none;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      font-size: 0.9rem;
+    }
+    .day-chip.on{
+      border-color: rgba(62,227,140,0.35);
+      background: rgba(62,227,140,0.16);
+    }
+    .day-chip input{ display:none; }
+
+    /* Modal / Popup overlay */
+    .popup-overlay{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 1000;
+      overscroll-behavior: contain;
+    }
+    .popup-overlay.active{ display:flex; }
+
+    /* Scroll lock when modal open (background must NOT scroll) */
+    body.modal-open{ overflow:hidden; }
+    html.modal-open{ overflow:hidden; }
+
+    .popup{
+      position: relative;
+      background: rgba(15, 20, 34, 0.92);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 20px 22px;
+      border-radius: 16px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+      min-width: 300px;
+      max-width: min(720px, 92vw);
+      max-height: 86vh;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .popup-close{
+      position:absolute;
+      top:10px;
+      right:12px;
+      width:36px;
+      height:36px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      user-select:none;
+    }
+    .popup-close:hover{ filter: brightness(1.08); }
+
+    .popup p{ margin:0 0 10px; color: var(--text); font-weight: 900; }
+    .popup input[type="text"], .popup input[type="time"]{
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      box-sizing: border-box;
+      font-size: 16px;
+      min-width: 0;
+    }
+    .popup-buttons{ text-align:right; display:flex; justify-content:flex-end; gap:8px; flex-wrap: wrap; }
+
+    /* Switch */
+    .switch{ position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
+    .switch input{ opacity:0; width:0; height:0; }
+    .slider-round{
+      position:absolute; cursor:pointer; inset:0;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.18);
+      transition: .2s;
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18);
+    }
+    .slider-round:before{
+      position:absolute; content:"";
+      height:22px; width:22px;
+      left:4px; top:50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.92);
+      transition: .2s;
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+    .switch input:checked + .slider-round{
+      background: rgba(62,227,140,0.22);
+      border-color: rgba(62,227,140,0.55);
+    }
+    .switch input:checked + .slider-round:before{
+      transform: translate(22px, -50%);
+    }
+
+    @media (max-width: 520px){
+      input[type="text"], input[type="time"]{ min-width: 0; width: 100%; }
+      .add-row{ gap:10px; }
+      .actions{ margin-left: 0; }
+      .task-title{ font-size: 1.15rem; }
+    }
+  
+    /* Create bar like sketch */
+    .create-wrap{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px;
+    }
+    .create-title{
+      flex: 1 1 420px;
+      min-width: 240px;
+    }
+    .create-buttons{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap: wrap;
+    }
+    .create-buttons .btn{ margin:0; }
+    .pill-row{
+      display:flex;
+      gap:8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .modal-header{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+      margin: 0 0 12px;
     }
-    .cardHeader .h{font-weight:900; letter-spacing:.2px;}
-    .cardHeader .hint{color:var(--muted); font-size:.9rem;}
-    #map{height: 70vh; min-height: 440px; width:100%;}
-    .side{display:flex; flex-direction:column; min-height: 70vh;}
-    .sideBody{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
-
-    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
-    .field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:180px;}
-    .field label{font-size:.82rem; color:var(--muted);}
-    .field input, .field select, .field textarea{
-      width:100%;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      outline:none;
-      resize: vertical;
+    .modal-title{
+      font-size: 1.1rem;
+      font-weight: 900;
+      margin:0;
     }
-    .chip{
+    .people-list{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin: 10px 0 6px;
+    }
+    .person-chip{
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-weight: 900;
+      cursor:pointer;
       display:inline-flex;
       align-items:center;
       gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:var(--chip);
-      color:var(--text);
-      font-weight:800;
-      font-size:.9rem;
       user-select:none;
     }
-    .chip small{color:var(--muted); font-weight:700}
-
-    .list{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      max-height: 210px;
-      overflow:auto;
-      padding-right:4px;
+    .person-chip.on{
+      border-color: rgba(62,227,140,0.35);
+      background: rgba(62,227,140,0.16);
     }
-    .ping{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.05);
-      border-radius:14px;
-      padding:10px 12px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
-    .ping .top{display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:900;}
-    .ping .meta{color:var(--muted); font-size:.88rem; line-height:1.25; word-break:break-word;}
-    .ping .stats{
-      display:flex; flex-wrap:wrap; gap:6px;
-      font-size:.88rem;
-      color:rgba(255,255,255,.80);
-    }
-    .tag{
-      display:inline-flex; gap:6px; align-items:center;
-      padding:5px 8px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-    }
-
-    .aiBox{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.05);
-      border-radius:14px;
-      padding:10px 12px;
-      white-space:pre-wrap;
-      line-height:1.35;
-      min-height: 170px;
-      max-height: 280px;
-      overflow:auto;
-    }
-    .aiBox.muted{color:var(--muted);}
-    .sep{height:1px; background:rgba(255,255,255,.08); margin:2px 0;}
-    .notice{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-      border-radius:14px;
-      padding:10px 12px;
-      color:var(--muted);
-      line-height:1.35;
-      font-size:.9rem;
-    }
-    .notice.ok{background:var(--ok); color:rgba(255,255,255,.88); border-color:rgba(62,227,140,.20);}
-    .notice.warn{background:var(--warn); color:rgba(255,255,255,.88); border-color:rgba(255,210,77,.18);}
-
-    /* Modal */
-    .modalBackdrop{
-      position:fixed; inset:0;
-      background: rgba(0,0,0,.55);
-      display:none;
+    .person-chip .x{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display:inline-flex;
       align-items:center;
       justify-content:center;
-      padding:14px;
-      z-index:9999;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,77,109,0.12);
+      color: rgba(255,255,255,0.92);
+      font-weight: 900;
+      line-height: 1;
     }
-    .modalBackdrop.show{display:flex;}
-    .modal{
-      width:min(560px, 100%);
-      background: rgba(10,14,26,.96);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:18px;
-      box-shadow:0 24px 80px rgba(0,0,0,.65);
-      overflow:hidden;
+    .time-mode{
+      display:flex;
+      gap:10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
     }
-    .modalHead{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      padding:12px 14px;
-      border-bottom:1px solid rgba(255,255,255,.10);
+    .mode-btn{
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.88);
+      font-weight: 900;
+      cursor:pointer;
+      user-select:none;
     }
-    .modalHead .h{font-weight:900;}
-    .modalBody{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
-    .modalActions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+    .mode-btn.on{
+      border-color: rgba(62,227,140,0.35);
+      background: rgba(62,227,140,0.16);
+    }
+    .time-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    .time-grid .label{
+      font-weight: 900;
+      color: rgba(255,255,255,0.82);
+    }
 
-    @media (max-width: 980px){
-      .grid{grid-template-columns: 1fr;}
-      #map{height: 54vh; min-height: 360px;}
-      .side{min-height:auto;}
+    @media (max-width: 640px){
+      .create-wrap{ gap:10px; }
+      .create-buttons{ width: 100%; justify-content: space-between; }
+      .create-title{ flex: 1 1 100%; min-width: 0; }
+      .create-buttons .btn{ flex: 1 1 auto; }
     }
+
+  
+    /* Person-Modal Header: Plus darf nicht mit X überlappen */
+    #user-modal .popup{ position: relative; }
+    #user-modal .modal-header{ padding-right: 54px; }
+    #user-modal #user-add{
+      margin-left: auto;
+      margin-right: 10px;
+      min-width: 44px;
+      height: 38px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+    }
+    #user-modal .popup-close{ top: 12px; right: 12px; }
+
   </style>
 </head>
+
 <body>
-  <div class="shell">
+  <div class="container">
     <div class="topbar">
-      <div class="title">
-        <h1>Mr. X – Standort-Analyse</h1>
-        <div class="sub">Polygon = Spielfeld · Pings importieren/eingeben · Übersicht + KI</div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <h1>To-Do</h1>
+        <div class="sync-pill" id="sync-pill" title="Cloud Sync">
+          <span class="progress-dot" id="sync-dot" style="width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,0.35);box-shadow:0 0 12px rgba(255,255,255,0.12);"></span>
+          <span id="sync-text" style="color:rgba(255,255,255,0.80);font-weight:900;font-size:12px;">Lade…</span>
+        </div>
       </div>
-      <div class="actions">
-        <a class="btn" href="/home">⬅️ Home</a>
-        <button class="btn danger" id="btnReset" title="Alles löschen">🧨 Reset</button>
+      <a class="back-link" id="top-home-link" href="/home">&#x2B05; Home</a>
+    </div>
+
+    <div class="toolbar">
+      <div class="left">
+        <h2 style="margin:0;">Aufgaben</h2>
+        <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
+      </div>
+      <div class="right">
+        <button id="open-user-menu" class="btn btn-small btn-secondary">👤 Benutzer: <span id="active-user-label">–</span></button>
+        <button id="open-settings-btn" class="btn btn-small btn-secondary">⚙️ Einstellungen</button>
       </div>
     </div>
 
-    <div class="grid">
-      <!-- MAP -->
-      <div class="card">
-        <div class="cardHeader">
-          <div>
-            <div class="h">Karte</div>
-            <div class="hint">1) Spielfeld einzeichnen · 2) Ping einfügen</div>
-          </div>
-          <div class="row">
-            <span class="chip" id="chipArea"><small>Spielfeld:</small> <span id="areaState">—</span></span>
-            <span class="chip"><small>Pings:</small> <span id="pingCount">0</span></span>
-          </div>
-        </div>
-        <div id="map"></div>
+    <div class="progress-bar"><div id="completion-bar"></div></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom: 10px;">
+      <div class="progress-pill">
+        <span class="progress-dot"></span>
+        <span id="completion-percentage">0/0 erledigt</span>
       </div>
 
-      <!-- SIDE -->
-      <div class="card side">
-        <div class="cardHeader">
-          <div>
-            <div class="h">Übersicht</div>
-            <div class="hint">Du kannst Pings reinschreiben</div>
-          </div>
-          <button class="btn icon" id="btnCollapse" title="Ein-/Ausklappen">▾</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="check-all-btn" class="btn btn-small btn-secondary">Alle abhaken</button>
+        <button id="clear-all-btn" class="btn btn-small btn-secondary" style="border-color: rgba(255,77,109,0.25); background: rgba(255,77,109,0.10);">Alles löschen</button>
+      </div>
+    </div>
+
+    <!-- Add -->
+    <div id="new-task-section" style="margin-top:10px;">
+      <div class="create-wrap">
+        <input type="text" id="new-task-title" class="create-title" placeholder="Objekt (z.B. saugen)" />
+        <div class="create-buttons">
+          <button id="open-days" class="btn btn-small btn-secondary" type="button">Tage</button>
+          <button id="open-time" class="btn btn-small btn-secondary" type="button">Zeit</button>
+          <button id="open-person" class="btn btn-small btn-secondary" type="button">Benutzer</button>
+          <button id="add-task-btn" class="btn btn-small" type="button">Erstellen</button>
+        </div>
+      </div>
+
+      <div class="pill-row" id="draft-preview" aria-live="polite"></div>
+    </div>
+
+    <ul id="tasks-list" style="margin-top: 14px;"></ul>
+  </div>
+
+  <!-- Einstellungen -->
+  <div id="settings-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="settings-x" aria-label="Schließen">✕</button>
+
+      <h3 style="margin:0 0 12px;">Einstellungen</h3>
+
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font-weight:900;">Fertige nach unten</div>
+          <label class="switch" aria-label="Fertige nach unten">
+            <input id="done-bottom-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
         </div>
 
-        <div class="sideBody" id="sideBody">
-          <div class="row">
-            <div class="field">
-              <label>Spielname (lokal)</label>
-              <input id="gameName" placeholder="z.B. Abendrunde">
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label>Geh-Tempo</label>
-              <select id="walkMode">
-                <option value="1.4">Normal (≈ 5 km/h)</option>
-                <option value="2.0">Schnell (≈ 7.2 km/h)</option>
-                <option value="2.8">Sprint (≈ 10 km/h)</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Zeitraum pro Runde</label>
-              <select id="windowSec">
-                <option value="300">5 Minuten</option>
-                <option value="240">4 Minuten</option>
-                <option value="360">6 Minuten</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="notice ok" id="overviewBox">
-            <b>Übersicht:</b> Füge mindestens 2 Pings ein für Richtung/Geschwindigkeit.
-          </div>
-
-          <div class="row">
-            <button class="btn primary" id="btnInsert">➕ Ping einfügen</button>
-            <button class="btn" id="btnAnalyze">🤖 Analysieren</button>
-          </div>
-<div class="sep"></div>
-
-          <div class="row" style="justify-content:space-between; align-items:flex-end">
-            <div style="display:flex; flex-direction:column; gap:2px">
-              <div style="font-weight:900">Pings</div>
-              <div style="color:var(--muted); font-size:.9rem">Neuester oben · mit Stats</div>
-            </div>
-          </div>
-
-          <div class="list" id="pingList"></div>
-
-          <div class="sep"></div>
-
-          <div style="font-weight:900">KI-Analyse</div>
-          <div class="aiBox muted" id="aiOut">Noch keine Analyse. Zeichne ein Spielfeld und füge 1–2 Pings ein.</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font-weight:900;">Abhaken mit Kästchen</div>
+          <label class="switch" aria-label="Abhaken mit Kästchen">
+            <input id="checkbox-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
         </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button id="settings-close" class="btn btn-small btn-secondary" type="button">Schließen</button>
+        <button id="settings-save" class="btn btn-small" type="button">Speichern</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Paste / Manual Entry -->
-  <div class="modalBackdrop" id="modalBackdrop">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modalHead">
-        <div class="h" id="modalTitle">Ping einfügen</div>
-        <button class="btn icon" id="btnModalClose" title="Schließen">✕</button>
+  
+  <!-- Tage -->
+  <div id="days-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="days-x" aria-label="Schließen">✕</button>
+      <div class="modal-header">
+        <h3 class="modal-title">Tage</h3>
       </div>
-      <div class="modalBody">
-        <div class="notice">
-          Du kannst hier alles reinwerfen:<br>
-          • <b>lat,lng</b> (z.B. <code>49.0123, 8.4045</code>)<br>
-          • Google Maps Link (enthält oft <code>@lat,lng</code>)<br>
-          • WhatsApp Text mit Koordinaten<br><br>
-          Optional: Zeit (wenn du’s weißt). Wenn leer → jetzt.
-        </div>
-
-        <div class="field">
-          <label>Ping Text / Link</label>
-          <textarea id="pasteText" rows="4" placeholder="Hier rein…"></textarea>
-        </div>
-
-        <div class="row">
-          <div class="field">
-            <label>Zeit (optional)</label>
-            <input id="pasteTime" type="datetime-local">
-          </div>
-          <div class="field">
-            <label>Genauigkeit (optional, Meter)</label>
-            <input id="pasteAcc" type="number" min="0" step="1" placeholder="z.B. 15">
-          </div>
-        </div>
-
-        <div class="modalActions">
-          <button class="btn" id="btnPasteParse">✅ Übernehmen</button>
-          <button class="btn danger" id="btnPasteCancel">Abbrechen</button>
-        </div>
+      <div class="days" id="days-picker"></div>
+      <div class="popup-buttons" style="margin-top:14px;">
+        <button id="days-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="days-ok" class="btn btn-small" type="button">OK</button>
       </div>
     </div>
   </div>
 
-<script>
-/* =========================
-   AUTH (wie bei Home)
-========================= */
-async function enforceAuth() {
-  try {
-    const r = await fetch("/api/me", { credentials: "include" });
-    if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-  } catch (_) {
-    location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-  }
-}
-window.addEventListener("pageshow", (e) => { if (e.persisted) enforceAuth(); });
-enforceAuth();
-
-/* =========================
-   STATE (localStorage MVP)
-========================= */
-const LS_KEY = "mrx_state_v2";
-function loadState(){
-  try{
-    const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-    if (!s) return { name:"", area:null, pings:[] };
-    if (!Array.isArray(s.pings)) s.pings = [];
-    return s;
-  }catch{ return { name:"", area:null, pings:[] }; }
-}
-function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-let state = loadState();
-
-/* =========================
-   UI refs
-========================= */
-const elAreaState = document.getElementById("areaState");
-const elPingCount = document.getElementById("pingCount");
-const elPingList  = document.getElementById("pingList");
-const elAiOut     = document.getElementById("aiOut");
-const elGameName  = document.getElementById("gameName");
-const elWalkMode  = document.getElementById("walkMode");
-const elWindowSec = document.getElementById("windowSec");
-const chipArea    = document.getElementById("chipArea");
-const elOverview  = document.getElementById("overviewBox");
-
-/* Modal refs */
-const modalBackdrop = document.getElementById("modalBackdrop");
-const pasteText = document.getElementById("pasteText");
-const pasteTime = document.getElementById("pasteTime");
-const pasteAcc  = document.getElementById("pasteAcc");
-
-/* =========================
-   MAP
-========================= */
-const map = L.map("map", { zoomControl: true }).setView([49.013, 8.404], 13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "© OpenStreetMap"
-}).addTo(map);
-
-const drawnItems = new L.FeatureGroup();
-map.addLayer(drawnItems);
-
-const pingLayer = new L.LayerGroup().addTo(map);
-const candidateLayer = new L.LayerGroup().addTo(map);
-let reachableCircle = null;
-
-const drawControl = new L.Control.Draw({
-  draw: {
-    polyline:false, rectangle:false, circle:false, circlemarker:false, marker:false,
-    polygon:{ allowIntersection:false, showArea:true }
-  },
-  edit:{ featureGroup: drawnItems, remove:true }
-});
-map.addControl(drawControl);
-
-map.on(L.Draw.Event.CREATED, function (e) {
-  drawnItems.clearLayers();
-  const layer = e.layer;
-  drawnItems.addLayer(layer);
-  state.area = layer.toGeoJSON();
-  saveState();
-  renderAll(true);
-});
-map.on("draw:edited", () => {
-  const layers = drawnItems.getLayers();
-  if (layers.length) {
-    state.area = layers[0].toGeoJSON();
-    saveState();
-    renderAll(true);
-  }
-});
-map.on("draw:deleted", () => {
-  state.area = null;
-  saveState();
-  renderAll(true);
-});
-
-/* =========================
-   HELPERS
-========================= */
-function fmt(n, d=5){ if (!Number.isFinite(n)) return "—"; return Number(n).toFixed(d); }
-function nowMs(){ return Date.now(); }
-function timeLabel(ms){
-  const d = new Date(ms);
-  return d.toLocaleString("de-DE", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
-}
-function haversineMeters(a, b){
-  const R=6371000, toRad=x=>x*Math.PI/180;
-  const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
-  const lat1=toRad(a.lat), lat2=toRad(b.lat);
-  const s=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
-}
-function bearingDeg(a, b){
-  const toRad=x=>x*Math.PI/180, toDeg=x=>x*180/Math.PI;
-  const lat1=toRad(a.lat), lat2=toRad(b.lat);
-  const dLng=toRad(b.lng-a.lng);
-  const y=Math.sin(dLng)*Math.cos(lat2);
-  const x=Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
-  return (toDeg(Math.atan2(y,x))+360)%360;
-}
-function destPoint(a, brngDeg, distM){
-  const R=6371000, toRad=x=>x*Math.PI/180, toDeg=x=>x*180/Math.PI;
-  const brng=toRad(brngDeg);
-  const lat1=toRad(a.lat), lon1=toRad(a.lng);
-  const dr=distM/R;
-  const lat2=Math.asin(Math.sin(lat1)*Math.cos(dr) + Math.cos(lat1)*Math.sin(dr)*Math.cos(brng));
-  const lon2=lon1 + Math.atan2(Math.sin(brng)*Math.sin(dr)*Math.cos(lat1), Math.cos(dr)-Math.sin(lat1)*Math.sin(lat2));
-  return { lat: toDeg(lat2), lng: ((toDeg(lon2)+540)%360)-180 };
-}
-function areaPolygon(){
-  if (!state.area) return null;
-  try{
-    return state.area.type==="Feature" ? state.area : { type:"Feature", geometry: state.area, properties:{} };
-  }catch{ return null; }
-}
-function pointInArea(lat,lng){
-  const poly=areaPolygon();
-  if (!poly) return true;
-  try{ return turf.booleanPointInPolygon(turf.point([lng,lat]), poly); }catch{ return true; }
-}
-function clampIntoArea(from,p){
-  if (pointInArea(p.lat,p.lng)) return p;
-  const brng=bearingDeg(from,p);
-  let dist=haversineMeters(from,p);
-  for (let i=0;i<12;i++){
-    dist*=0.75;
-    const cand=destPoint(from, brng, dist);
-    if (pointInArea(cand.lat,cand.lng)) return cand;
-  }
-  return p;
-}
-
-/* =========================
-   OVERVIEW (Stats)
-========================= */
-function computeOverview(){
-  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
-  if (pings.length===0){
-    return { text:"Übersicht: Noch keine Pings.", cls:"ok" };
-  }
-  if (pings.length===1){
-    return { text:"Übersicht: 1 Ping vorhanden. Setze/importiere einen zweiten für Richtung & Tempo.", cls:"ok" };
-  }
-  const last=pings[pings.length-1], prev=pings[pings.length-2];
-  const d=haversineMeters(prev,last);
-  const dt=Math.max(1, (last.t-prev.t)/1000);
-  const spd=d/dt;
-  const br=bearingDeg(prev,last);
-
-  const windowS=Number(elWindowSec.value||"300");
-  const predictDist=spd*windowS;
-
-  let warn="";
-  if (dt < 60) warn=" (Achtung: sehr kurzer Zeitabstand)";
-  if (dt > 900) warn=" (Achtung: großer Zeitabstand)";
-  return {
-    text:`Übersicht: Letzte Strecke ≈ ${Math.round(d)}m in ≈ ${Math.round(dt)}s → ≈ ${spd.toFixed(2)} m/s · Richtung ≈ ${Math.round(br)}° · In ${windowS/60}min bei gleichem Tempo ≈ ${Math.round(predictDist)}m.${warn}`,
-    cls: warn ? "warn" : "ok"
-  };
-}
-
-/* =========================
-   RENDER
-========================= */
-function renderAreaOnMap(){
-  drawnItems.clearLayers();
-  if (!state.area) return;
-  const layer=L.geoJSON(state.area);
-  layer.eachLayer(l => drawnItems.addLayer(l));
-  const b=layer.getBounds();
-  if (b.isValid()) map.fitBounds(b.pad(0.12));
-}
-function renderPingsOnMap(){
-  pingLayer.clearLayers();
-  const pings=[...state.pings].sort((a,b)=>b.t-a.t);
-  pings.forEach((p,idx)=>{
-    const isLatest=idx===0;
-    const m=L.circleMarker([p.lat,p.lng], { radius:isLatest?9:7, weight:2, opacity:1, fillOpacity:0.85 }).addTo(pingLayer);
-    m.bindPopup(`<b>${isLatest?"Letzter Ping":"Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?`<br>± ${Math.round(p.accuracy)}m`:``}`);
-  });
-}
-function renderPingList(){
-  const pings=[...state.pings].sort((a,b)=>b.t-a.t);
-  elPingList.innerHTML="";
-  if (!pings.length){
-    elPingList.innerHTML=`<div class="ping"><div class="meta">Noch keine Pings.</div></div>`;
-    return;
-  }
-  // For stats per row: compare to next (older) ping
-  const chron=[...state.pings].sort((a,b)=>a.t-b.t);
-  const idxByT=new Map(chron.map((p,i)=>[p.t,i]));
-
-  pings.forEach((p,idx)=>{
-    const div=document.createElement("div");
-    div.className="ping";
-
-    const iChron=idxByT.get(p.t);
-    let statsHtml=`<span class="tag">📌 <b>Ping</b></span>`;
-    if (iChron!=null && iChron>0){
-      const prev=chron[iChron-1];
-      const d=haversineMeters(prev,p);
-      const dt=Math.max(1,(p.t-prev.t)/1000);
-      const spd=d/dt;
-      const br=bearingDeg(prev,p);
-      statsHtml += ` <span class="tag">📏 ${Math.round(d)}m</span>`;
-      statsHtml += ` <span class="tag">⏱️ ${Math.round(dt)}s</span>`;
-      statsHtml += ` <span class="tag">🏃 ${spd.toFixed(2)} m/s</span>`;
-      statsHtml += ` <span class="tag">🧭 ${Math.round(br)}°</span>`;
-    } else {
-      statsHtml += ` <span class="tag">— erster Ping</span>`;
-    }
-
-    div.innerHTML=`
-      <div class="top">
-        <span>${idx===0?"📌 Letzter Ping":"📍 Ping"}</span>
-        <span class="row" style="gap:6px">
-          <button class="btn small" data-zoom="${p.t}">🔎</button>
-          <button class="btn small danger" data-del="${p.t}">Löschen</button>
-        </span>
+  <!-- Zeit -->
+  <div id="time-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="time-x" aria-label="Schließen">✕</button>
+      <div class="modal-header">
+        <h3 class="modal-title">Zeit</h3>
       </div>
-      <div class="meta">${timeLabel(p.t)} · ${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?` · ± ${Math.round(p.accuracy)}m`:``}</div>
-      <div class="stats">${statsHtml}</div>
-    `;
-    elPingList.appendChild(div);
-  });
 
-  elPingList.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const t=Number(btn.getAttribute("data-del"));
-      state.pings=state.pings.filter(x=>x.t!==t);
-      saveState();
-      renderAll(true);
-    });
-  });
-  elPingList.querySelectorAll("[data-zoom]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const t=Number(btn.getAttribute("data-zoom"));
-      const p=state.pings.find(x=>x.t===t);
-      if (!p) return;
-      map.setView([p.lat,p.lng], Math.max(map.getZoom(), 16), { animate:true });
-    });
-  });
-}
-function renderChips(){
-  elPingCount.textContent=String(state.pings.length);
-  if (state.area){ elAreaState.textContent="gesetzt"; chipArea.style.borderColor="rgba(62,227,140,0.35)"; }
-  else { elAreaState.textContent="fehlt"; chipArea.style.borderColor="rgba(255,255,255,0.10)"; }
-}
-function renderOverview(){
-  const o=computeOverview();
-  elOverview.classList.remove("ok","warn");
-  elOverview.classList.add(o.cls);
-  elOverview.innerHTML = `<b>Übersicht:</b> ${o.text.replace(/^Übersicht:\s*/,"")}`;
-}
-function clearOverlays(){
-  candidateLayer.clearLayers();
-  if (reachableCircle){ map.removeLayer(reachableCircle); reachableCircle=null; }
-}
-function renderAll(redrawOverlay=false){
-  elGameName.value=state.name||"";
-  renderChips();
-  renderAreaOnMap();
-  renderPingsOnMap();
-  renderPingList();
-  renderOverview();
-  if (redrawOverlay) drawPredictionOverlay();
-}
+      <div class="time-mode">
+        <button class="mode-btn" id="mode-at" type="button">Um</button>
+        <button class="mode-btn" id="mode-range" type="button">Von/Bis</button>
+        <button class="mode-btn" id="mode-none" type="button">Keine Zeit</button>
+      </div>
 
-/* =========================
-   CANDIDATES / OVERLAY
-========================= */
-function computeCandidates(){
-  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
-  const last=pings[pings.length-1];
-  const prev=pings.length>=2 ? pings[pings.length-2] : null;
+      <div id="time-at-wrap">
+        <div class="time-grid">
+          <div class="label">Um</div>
+          <input type="time" id="time-at" />
+        </div>
+      </div>
 
-  const speedSet=Number(elWalkMode.value||"1.4");
-  const windowS=Number(elWindowSec.value||"300");
-  const distMax=Math.max(30, speedSet*windowS);
+      <div id="time-range-wrap" class="hidden">
+        <div class="time-grid">
+          <div class="label">Von</div>
+          <input type="time" id="time-from" />
+          <div class="label">Bis</div>
+          <input type="time" id="time-to" />
+        </div>
+      </div>
 
-  let baseBearing=0;
-  let effSpeed=null;
-  if (prev){
-    baseBearing=bearingDeg(prev,last);
-    const d=haversineMeters(prev,last);
-    const dt=Math.max(1,(last.t-prev.t)/1000);
-    effSpeed=d/dt;
-  }
-  const angles = prev ? [0, 25, -25, 55, -55, 180] : [0, 45, -45, 90, -90, 180];
-  let dBase = prev && effSpeed ? Math.min(distMax, Math.max(60, effSpeed * windowS * 0.95)) : distMax * 0.85;
+      <div class="popup-buttons" style="margin-top:14px;">
+        <button id="time-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="time-ok" class="btn btn-small" type="button">OK</button>
+      </div>
+    </div>
+  </div>
 
-  const out=[];
-  for (let i=0;i<angles.length;i++){
-    const brng=(baseBearing+angles[i]+360)%360;
-    let p=destPoint(last, brng, dBase);
-    p=clampIntoArea(last,p);
-    if (!pointInArea(p.lat,p.lng) && state.area) continue;
-    out.push({ ...p, note: prev ? `Richtung ${Math.round(brng)}°` : `Richtung ${Math.round(brng)}° (ohne Verlauf)` });
-  }
-  let tries=0;
-  while(out.length<6 && tries<12){
-    tries++; dBase*=0.78;
-    const brng=(baseBearing + (tries%2?35:-35) + 360)%360;
-    let p=destPoint(last, brng, dBase);
-    p=clampIntoArea(last,p);
-    if (pointInArea(p.lat,p.lng)) out.push({ ...p, note:`Kurzstrecke ${Math.round(dBase)}m` });
-  }
-  return out.slice(0,6);
-}
-function drawPredictionOverlay(){
-  clearOverlays();
-  const last=state.pings.length ? [...state.pings].sort((a,b)=>b.t-a.t)[0] : null;
-  if (!last) return;
+  <!-- Benutzer -->
+  <div id="user-modal" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="user-x" aria-label="Schließen">✕</button>
+      <div class="modal-header">
+        <h3 class="modal-title">Benutzer</h3>
+        <button id="user-add" class="btn btn-small btn-secondary" type="button">+</button>
+      </div>
 
-  const speedSet=Number(elWalkMode.value||"1.4");
-  const windowS=Number(elWindowSec.value||"300");
-  const radius=Math.max(30, speedSet*windowS);
+      <div class="people-list" id="user-list"></div>
 
-  reachableCircle=L.circle([last.lat,last.lng], { radius, weight:2, opacity:1, fillOpacity:0.10 }).addTo(map);
+      <div class="popup-buttons" style="margin-top:14px;">
+        <button id="user-cancel" class="btn btn-small btn-secondary" type="button">Abbrechen</button>
+        <button id="user-ok" class="btn btn-small" type="button">OK</button>
+      </div>
+    </div>
+  </div>
 
-  const candidates=computeCandidates();
-  candidates.forEach((c,i)=>{
-    const m=L.circleMarker([c.lat,c.lng], { radius:7, weight:2, fillOpacity:0.85 }).addTo(candidateLayer);
-    m.bindTooltip(String(i+1), { permanent:true, direction:"center" });
-    m.bindPopup(`<b>Kandidat ${i+1}</b><br>${fmt(c.lat)} , ${fmt(c.lng)}<br><small>${c.note||""}</small>`);
-  });
-}
+  <!-- Popup (Prompt/Confirm/Edit) -->
+  <div id="popup-overlay" class="popup-overlay">
+    <div class="popup">
+      <button class="popup-close" type="button" id="popup-x" aria-label="Schließen">✕</button>
 
-/* =========================
-   AI
-========================= */
-function buildAiPrompt(){
-  const poly=areaPolygon();
-  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
-  const candidates=computeCandidates();
+      <p id="popup-message"></p>
 
-  const last=pings[pings.length-1]||null;
-  const prev=pings.length>=2 ? pings[pings.length-2] : null;
+      <input type="text" id="popup-input-title" class="hidden" placeholder="Aufgabe" />
+      <div id="popup-days" class="days hidden" style="margin: 6px 0 10px;"></div>
+      <input type="time" id="popup-input-time" class="hidden" />
+      <input type="text" id="popup-input-person" class="hidden" placeholder="Person" />
 
-  let d=null, brng=null, dt=null, spd=null;
-  if (last && prev){
-    d=haversineMeters(prev,last);
-    dt=Math.max(1,(last.t-prev.t)/1000);
-    brng=bearingDeg(prev,last);
-    spd=d/dt;
-  }
+      <div class="popup-buttons">
+        <button id="popup-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
+        <button id="popup-confirm" class="btn btn-small">OK</button>
+      </div>
+    </div>
+  </div>
 
-  const speedSet=Number(elWalkMode.value||"1.4");
-  const windowS=Number(elWindowSec.value||"300");
+  <script>
+    (function(){
+      // ===== Cloud Storage (0 localStorage for data) =====
+      // HINWEIS: Frontend erwartet im Worker diese Endpoints:
+      //   GET/PUT /api/todo/data  (auth via cookies wie bei deiner Einkaufsliste)
+      // Wenn du (noch) keinen Endpoint hast, kannst du unten "USE_LOCAL_FALLBACK" aktivieren.
 
-  return [
-`Du bist ein Helfer für ein Live-Spiel "Mr. X".`,
-`Aufgabe: Bewerte die wahrscheinlichsten nächsten Positionen in den nächsten ${windowS/60} Minuten.`,
-`Nutze nur Pings + Kandidaten + Spielfeld-Polygon. Keine Fantasie-Orte.`,
-`Gib am Ende:`,
-`1) Top-6 Kandidaten (1..6) mit 1 Satz Begründung je Punkt.`,
-`2) Profil (max 6 Bulletpoints).`,
-`3) Verfolger-Taktik (max 5 Bulletpoints).`,
-``,
-`Daten:`,
-`- Spielname: ${state.name||"(ohne)"}`,
-`- Geh-Tempo gesetzt: ${speedSet} m/s`,
-`- Spielfeld-Polygon: ${poly ? JSON.stringify(poly.geometry) : "nicht gesetzt"}`,
-`- Pings: ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:p.accuracy||null})))}`,
-(prev && last ? `- Letzte Bewegung: Distanz≈${Math.round(d)}m, Zeit≈${Math.round(dt)}s, Speed≈${spd.toFixed(2)}m/s, Bearing≈${Math.round(brng)}°` : `- Letzte Bewegung: nur 1 Ping`),
-`- Kandidaten (zu ranken): ${JSON.stringify(candidates.map((c,i)=>({k:i+1, lat:c.lat, lng:c.lng, note:c.note||""})))}`,
-``,
-`Wichtig: Wenn Polygon fehlt, sag kurz "Polygon fehlt".`,
-  ].join("\n");
-}
+      const USE_LOCAL_FALLBACK = false; // <- auf true, wenn du erstmal ohne Backend testen willst
 
-async function runAi(){
-  if (!state.pings.length){
-    elAiOut.classList.add("muted");
-    elAiOut.textContent="Keine Pings vorhanden.";
-    return;
-  }
-  elAiOut.classList.remove("muted");
-  elAiOut.textContent="Analysiere…";
-  const prompt=buildAiPrompt();
+      const LS_FALLBACK_KEY = "todoData_fallback_v1";
 
-  try{
-    const r=await fetch("/api/ai", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      credentials:"include",
-      body: JSON.stringify({ prompt })
-    });
-    const j=await r.json().catch(()=>null);
-    if (!r.ok || !j){
-      elAiOut.textContent="KI-Fehler: " + (j?.error ? JSON.stringify(j) : `HTTP ${r.status}`);
-      return;
-    }
-    elAiOut.textContent = j.text || "(leer)";
-  }catch(e){
-    elAiOut.textContent="KI-Fehler: " + String(e?.message || e);
-  }
-}
+      
 
-/* =========================
-   PING ACTIONS
-========================= */
-function addPing(lat,lng,accuracy,tOverrideMs){
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      async function fetchWithTimeout(url, options={}, timeoutMs=8000){
+        const ctrl = new AbortController();
+        const id = setTimeout(()=> ctrl.abort(), timeoutMs);
+        try{
+          const r = await fetch(url, { ...options, signal: ctrl.signal });
+          return r;
+        }finally{
+          clearTimeout(id);
+        }
+      }
+let data = { tasks: [], settings: { doneBottom:false, checkbox:false, users: [], activeUser: "" } };
+      let editMode = false;
 
-  if (state.area && !pointInArea(lat,lng)){
-    alert("Ping liegt außerhalb des Spielfelds (Polygon).");
-    return;
-  }
+      // Draft (Create)
+      let draft = { title:"", days:[], timeMode:"at", time:"13:00", from:"", to:"", person:"" };
 
-  const t = Number.isFinite(tOverrideMs) ? tOverrideMs : nowMs();
+      // sync UI
+      const syncDot = document.getElementById("sync-dot");
+      const syncText = document.getElementById("sync-text");
+      function setSync(state, text){
+        // state: ok | bad | work
+        if (!syncDot) return;
+        syncDot.style.background = state === "ok" ? "rgba(62,227,140,0.9)"
+                           : state === "bad" ? "rgba(255,77,109,0.9)"
+                           : "rgba(255,255,255,0.75)";
+        syncDot.style.boxShadow = state === "ok" ? "0 0 14px rgba(62,227,140,0.55)"
+                           : state === "bad" ? "0 0 14px rgba(255,77,109,0.55)"
+                           : "0 0 14px rgba(255,255,255,0.35)";
+        if (syncText) syncText.textContent = text;
+      }
 
-  state.pings.push({
-    t,
-    lat:Number(lat),
-    lng:Number(lng),
-    accuracy:Number.isFinite(accuracy) ? Number(accuracy) : null
-  });
+      function redirectToLogin(){
+        const rt = location.pathname + location.search + location.hash;
+        location.href = "/login?returnTo=" + encodeURIComponent(rt);
+      }
 
-  // dedupe same timestamp (keep latest)
-  const seen=new Set();
-  state.pings = state.pings
-    .sort((a,b)=>a.t-b.t)
-    .filter(p=>{
-      if (seen.has(p.t)) return false;
-      seen.add(p.t); return true;
-    })
-    .slice(-80);
+      async function apiGet(){
+        if (USE_LOCAL_FALLBACK){
+          try{
+            const raw = localStorage.getItem(LS_FALLBACK_KEY);
+            return raw ? JSON.parse(raw) : { tasks: [], settings: { doneBottom:false, checkbox:false } };
+          }catch(e){
+            return { tasks: [], settings: { doneBottom:false, checkbox:false } };
+          }
+        }
 
-  saveState();
-  renderAll(true);
-}
+        const r = await fetchWithTimeout("/api/todo/data", { credentials: "include" }, 8000);
+        if (r.status === 401) redirectToLogin();
+        const j = await r.json().catch(()=>null);
+        if (!j || j.ok !== true) throw new Error(j?.error || "load_failed");
+        return j.data || { tasks: [], settings: { doneBottom:false, checkbox:false } };
+      }
 
-let manualMode=false;
+      async function apiPut(obj){
+        if (USE_LOCAL_FALLBACK){
+          localStorage.setItem(LS_FALLBACK_KEY, JSON.stringify(obj));
+          return;
+        }
 
-});
+        const r = await fetchWithTimeout("/api/todo/data", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(obj)
+        }, 8000);
+        if (r.status === 401) redirectToLogin();
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "save_failed");
+      }
 
-document.getElementById("btnAnalyze").addEventListener("click", ()=>{
-  drawPredictionOverlay();
-  runAi();
-});
+      let saveTimer = null;
+      let saving = false;
+      let saveQueued = false;
 
-/* =========================
-   IMPORT / PASTE PARSER
-========================= */
-function openModal(){
-  pasteText.value="";
-  pasteAcc.value="";
-  pasteTime.value="";
-  modalBackdrop.classList.add("show");
-  setTimeout(()=>pasteText.focus(), 0);
-}
-function closeModal(){
-  modalBackdrop.classList.remove("show");
-}
+      function scheduleSave(){
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(()=> saveNow().catch(()=>{}), 250);
+        setSync("work", "Speichere…");
+      }
 
-document.getElementById("btnInsert").addEventListener("click", openModal);
-document.getElementById("btnModalClose").addEventListener("click", closeModal);
-document.getElementById("btnPasteCancel").addEventListener("click", closeModal);
-modalBackdrop.addEventListener("click", (e)=>{ if (e.target===modalBackdrop) closeModal(); });
+      async function saveNow(){
+        if (saving){
+          saveQueued = true;
+          return;
+        }
+        saving = true;
+        try{
+          await apiPut(data);
+          setSync("ok", "Gespeichert");
+        }catch(e){
+          setSync("bad", "Fehler");
+          console.error(e);
+        }finally{
+          saving = false;
+          if (saveQueued){
+            saveQueued = false;
+            scheduleSave();
+          }
+        }
+      }
 
-function parseLatLngFromText(text){
-  const t = (text||"").trim();
-  if (!t) return null;
+      function makeId(prefix){
+        return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+      }
 
-  // 1) Google Maps style: @lat,lng
-  let m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
-  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+      function ensureSettings(){
+        if (!data.settings || typeof data.settings !== "object") data.settings = {};
+        if (typeof data.settings.doneBottom !== "boolean") data.settings.doneBottom = false;
+        if (typeof data.settings.checkbox !== "boolean") data.settings.checkbox = false;
+        
+        if (!Array.isArray(data.settings.users)) {
+          // Migration: alte "people" -> users (PIN wird beim ersten Verwenden gesetzt)
+          const old = Array.isArray(data.settings.people) ? data.settings.people : [];
+          data.settings.users = (old.length ? old : ["Mama","Papa"]).map(n=>({ name: String(n), salt: "", pinHash: "" }));
+        }
+        if (typeof data.settings.activeUser !== "string") data.settings.activeUser = "";
+              updateActiveUserUI();
 
-  // 2) plain "lat, lng" or "lat lng"
-  m = t.match(/(-?\d{1,3}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
-  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+        // normalize: falls users noch Strings sind
+        data.settings.users = (data.settings.users || []).map(u=>{
+          if (typeof u === "string") return { name: u, salt:"", pinHash:"" };
+          return { name: String(u.name||""), salt: String(u.salt||""), pinHash: String(u.pinHash||"") };
+        }).filter(u=>u.name);
+if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"];
+      }
 
-  // 3) "lat: x lng: y"
-  m = t.match(/lat[^0-9-]*(-?\d+(?:\.\d+)?)[^0-9-]+lng[^0-9-]*(-?\d+(?:\.\d+)?)/i);
-  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+      // ===== Popup =====
+      const overlay = document.getElementById("popup-overlay");
+      const popupMessage = document.getElementById("popup-message");
+      const popupTitle = document.getElementById("popup-input-title");
+      const popupTime = document.getElementById("popup-input-time");
+      const popupPerson = document.getElementById("popup-input-person");
+      const popupDaysWrap = document.getElementById("popup-days");
+      let popupCallback = null;
 
-  return null;
-}
+      document.getElementById("popup-confirm").addEventListener("click", ()=> popupCallback && popupCallback(true));
+      document.getElementById("popup-cancel").addEventListener("click", ()=> popupCallback && popupCallback(false));
+      document.getElementById("popup-x").addEventListener("click", ()=> popupCallback && popupCallback(false));
 
-function parseTimeMs(){
-  const v = (pasteTime.value||"").trim();
-  if (!v) return null;
-  const d = new Date(v);
-  const ms = d.getTime();
-  return Number.isFinite(ms) ? ms : null;
-}
+      function openOverlay(){
+        overlay.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeOverlay(){
+        overlay.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
 
-document.getElementById("btnPasteParse").addEventListener("click", ()=>{
-  const text = pasteText.value || "";
-  const ll = parseLatLngFromText(text);
-  if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)){
-    alert("Konnte keine Koordinaten finden. Bitte z.B. '49.0123, 8.4045' oder einen Maps-Link einfügen.");
-    return;
-  }
-  const acc = (pasteAcc.value==="" ? null : Number(pasteAcc.value));
-  const tms = parseTimeMs();
-  addPing(ll.lat, ll.lng, acc, tms);
-  closeModal();
-});
+      function showConfirm(msg, onOk){
+        popupMessage.textContent = msg;
 
-/* =========================
-   RESET / COLLAPSE
-========================= */
-document.getElementById("btnReset").addEventListener("click", ()=>{
-  const ok = confirm("Alles löschen? (Polygon + Pings + KI-Text)");
-  if (!ok) return;
-  state = { name:"", area:null, pings:[] };
-  saveState();
-  elAiOut.classList.add("muted");
-  elAiOut.textContent="Noch keine Analyse. Zeichne ein Spielfeld und füge 1–2 Pings ein.";
-  clearOverlays();
-  renderAll(true);
-});
+        popupTitle.classList.add("hidden");
+        popupTime.classList.add("hidden");
+        popupPerson.classList.add("hidden");
+        popupDaysWrap.classList.add("hidden");
 
-let collapsed=false;
-document.getElementById("btnCollapse").addEventListener("click", ()=>{
-  collapsed=!collapsed;
-  document.getElementById("sideBody").style.display = collapsed ? "none" : "";
-  document.getElementById("btnCollapse").textContent = collapsed ? "▸" : "▾";
-});
+        openOverlay();
+        popupCallback = (ok)=>{
+          closeOverlay();
+          if (ok) onOk();
+          popupCallback = null;
+        };
+      }
 
-/* Name sync */
-elGameName.addEventListener("input", ()=>{
-  state.name = elGameName.value || "";
-  saveState();
-});
+      function buildDays(container, selected){
+        const days = [
+          { key:"mo", label:"Mo" },
+          { key:"di", label:"Di" },
+          { key:"mi", label:"Mi" },
+          { key:"do", label:"Do" },
+          { key:"fr", label:"Fr" },
+          { key:"sa", label:"Sa" },
+          { key:"so", label:"So" }
+        ];
 
-/* Overlay update on param change */
-[elWalkMode, elWindowSec].forEach(el => el.addEventListener("change", ()=> drawPredictionOverlay()));
+        container.innerHTML = "";
+        days.forEach(d=>{
+          const lab = document.createElement("label");
+          lab.className = "day-chip" + (selected.includes(d.key) ? " on" : "");
+          lab.innerHTML = `<input type="checkbox" data-day="${d.key}" ${selected.includes(d.key) ? "checked" : ""} /><span>${d.label}</span>`;
+          lab.addEventListener("click", ()=>{
+            const inp = lab.querySelector("input");
+            setTimeout(()=> lab.classList.toggle("on", inp.checked), 0);
+          });
+          container.appendChild(lab);
+        });
+      }
 
-/* Initial */
-renderAll(true);
-</script>
+      function readDays(container){
+        return Array.from(container.querySelectorAll('input[type="checkbox"]'))
+          .filter(x=>x.checked)
+          .map(x=>x.dataset.day)
+          .filter(Boolean);
+      }
+
+      // ===== Draft UI + Modals =====
+      const draftPreview = document.getElementById("draft-preview");
+
+      function updateDraftUI(){
+        // buttons label
+        const bDays = document.getElementById("open-days");
+        const bTime = document.getElementById("open-time");
+        const bPerson = document.getElementById("open-person");
+
+        const dayText = draft.days && draft.days.length ? fmtDays(draft.days) : "Tage";
+        bDays.textContent = dayText || "Tage";
+
+        let timeText = "Zeit";
+        if (draft.timeMode === "none") timeText = "Keine Zeit";
+        if (draft.timeMode === "at" && normalizeTime(draft.time)) timeText = normalizeTime(draft.time) + " Uhr";
+        if (draft.timeMode === "range" && normalizeTime(draft.from) && normalizeTime(draft.to)) timeText = normalizeTime(draft.from) + "–" + normalizeTime(draft.to);
+        bTime.textContent = timeText;
+
+        bPerson.textContent = draft.person ? draft.person : "Benutzer";
+
+        // preview pills
+        if (!draftPreview) return;
+        const pills = [];
+        if (draft.days && draft.days.length) pills.push(`<span class="tag">${escapeHtml(fmtDays(draft.days))}</span>`);
+        if (draft.timeMode === "range" && draft.from && draft.to) pills.push(`<span class="tag">${escapeHtml(draft.from)}–${escapeHtml(draft.to)} Uhr</span>`);
+        else if (draft.timeMode === "at" && draft.time) pills.push(`<span class="tag">${escapeHtml(normalizeTime(draft.time))} Uhr</span>`);
+        else if (draft.timeMode === "none") pills.push(`<span class="tag warn">ohne Zeit</span>`);
+        if (draft.person) pills.push(`<span class="tag">${escapeHtml(draft.person)}</span>`);
+        draftPreview.innerHTML = pills.join("");
+      }
+
+      function updateActiveUserUI(){
+        ensureSettings();
+        const label = document.getElementById("active-user-label");
+        const name = (data.settings.activeUser || "").trim();
+        if (label) label.textContent = name ? name : "–";
+
+        // Draft person immer = aktiver Benutzer
+        draft.person = name || "";
+        updateDraftUI();
+      }
+
+      // --- Days modal
+      const daysModal = document.getElementById("days-modal");
+      const daysPicker = document.getElementById("days-picker");
+      function openDays(){
+        buildDays(daysPicker, draft.days || []);
+        daysModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeDays(){
+        daysModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      // --- Time modal
+      const timeModal = document.getElementById("time-modal");
+      const modeAtBtn = document.getElementById("mode-at");
+      const modeRangeBtn = document.getElementById("mode-range");
+      const modeNoneBtn = document.getElementById("mode-none");
+      const timeAtWrap = document.getElementById("time-at-wrap");
+      const timeRangeWrap = document.getElementById("time-range-wrap");
+      const timeAt = document.getElementById("time-at");
+      const timeFrom = document.getElementById("time-from");
+      const timeTo = document.getElementById("time-to");
+
+      function setTimeMode(mode){
+        draft.timeMode = mode;
+        modeAtBtn.classList.toggle("on", mode === "at");
+        modeRangeBtn.classList.toggle("on", mode === "range");
+        modeNoneBtn.classList.toggle("on", mode === "none");
+        timeAtWrap.classList.toggle("hidden", mode !== "at");
+        timeRangeWrap.classList.toggle("hidden", mode !== "range");
+      }
+
+      function openTime(){
+        // init fields
+        timeAt.value = normalizeTime(draft.time) || "13:00";
+        timeFrom.value = normalizeTime(draft.from) || "09:00";
+        timeTo.value = normalizeTime(draft.to) || "10:00";
+        setTimeMode(draft.timeMode || "at");
+
+        timeModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeTime(){
+        timeModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      // --- Person modal
+      const userModal = document.getElementById("user-modal");
+      const userListEl = document.getElementById("user-list");
+
+      function openUserMenu(){
+        ensureSettings();
+        const users = data.settings.users || [];
+
+        if (!users.length){
+          promptText("Ersten Benutzer anlegen:", "z.B. Mama", (name)=>{
+            const n = name.trim();
+            if (!n) return;
+
+            const u = { name: n, salt: "", pinHash: "" };
+            data.settings.users = [u];
+            scheduleSave();
+
+            promptPin(`PIN festlegen für "${n}"`, (pin1)=>{
+              promptPin("PIN wiederholen", async (pin2)=>{
+                if (pin1 !== pin2){
+                  setSync("bad","PIN falsch");
+                  return;
+                }
+                const salt = randomSalt();
+                const hash = await sha256Hex(salt + ":" + pin1);
+                u.salt = salt;
+                u.pinHash = hash;
+data.settings.activeUser = n;
+                scheduleSave();
+                userModal.classList.add("active");
+                document.body.classList.add("modal-open");
+                document.documentElement.classList.add("modal-open");
+                renderUserList();
+                updateDraftUI();
+              });
+            });
+          });
+          return;
+        }
+
+        renderUserList();
+        userModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeUserMenu(){
+        userModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      function renderUserList(){
+        ensureSettings();
+        const users = data.settings.users || [];
+        userListEl.innerHTML = "";
+
+        users.forEach(u=>{
+          const name = String(u.name || "").trim();
+          if (!name) return;
+
+          const chip = document.createElement("div");
+          chip.className = "person-chip" + ((data.settings.activeUser || "") === name ? " on" : "");
+          chip.innerHTML = `<span>${escapeHtml(name)}</span><span class="x" title="Entfernen">✕</span>`;
+
+          chip.addEventListener("click", async (e)=>{
+            const isX = (e.target && e.target.classList && e.target.classList.contains("x"));
+            if (isX){
+              e.stopPropagation();
+              showConfirm(`Benutzer "${name}" löschen?`, ()=>{
+                data.settings.users = (data.settings.users || []).filter(x=>String(x.name) !== name);
+                if (draft.person === name) 
+                if (data.settings.activeUser === name) data.settings.activeUser = "";
+              updateActiveUserUI();
+                scheduleSave();
+                renderUserList();
+                updateDraftUI();
+              });
+              return;
+            }
+
+            const user = (data.settings.users || []).find(x=>String(x.name) === name);
+            if (!user) return;
+
+            // bereits ausgewählt -> abwählen
+            if ((data.settings.activeUser || "") === name){
+              
+              data.settings.activeUser = "";
+              updateActiveUserUI();
+              scheduleSave();
+              renderUserList();
+              updateDraftUI();
+              return;
+            }
+
+            // kein PIN gesetzt -> jetzt festlegen
+            if (!user.pinHash || !user.salt){
+              promptPin(`PIN festlegen für "${name}"`, (pin1)=>{
+                promptPin("PIN wiederholen", async (pin2)=>{
+                  if (pin1 !== pin2){
+                    setSync("bad","PIN falsch");
+                    return;
+                  }
+                  const salt = randomSalt();
+                  const hash = await sha256Hex(salt + ":" + pin1);
+                  user.salt = salt;
+                  user.pinHash = hash;
+data.settings.activeUser = name;
+                  updateActiveUserUI();
+                  scheduleSave();
+                  renderUserList();
+                  updateDraftUI();
+                });
+              });
+              return;
+            }
+
+            // PIN abfragen
+            promptPin(`PIN für "${name}"`, async (pin)=>{
+              const hash = await sha256Hex(user.salt + ":" + pin);
+              if (hash !== user.pinHash){
+                setSync("bad","PIN falsch");
+                return;
+              }
+data.settings.activeUser = name;
+                  updateActiveUserUI();
+              scheduleSave();
+              renderUserList();
+              updateDraftUI();
+            });
+          });
+
+          userListEl.appendChild(chip);
+        });
+      }
+
+      async function sha256Hex(str){
+        const enc = new TextEncoder();
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
+        const arr = Array.from(new Uint8Array(buf));
+        return arr.map(b=>b.toString(16).padStart(2,"0")).join("");
+      }
+      function randomSalt(){
+        const a = new Uint8Array(16);
+        crypto.getRandomValues(a);
+        return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join("");
+      }
+
+      function promptPin(msg, onOk){
+        popupMessage.textContent = msg;
+        popupTitle.classList.add("hidden");
+        popupTime.classList.add("hidden");
+        popupPerson.classList.add("hidden");
+        popupDaysWrap.classList.add("hidden");
+
+        const popupPin = document.getElementById("popup-input-pin");
+        popupPin.classList.remove("hidden");
+        popupPin.value = "";
+        popupPin.placeholder = "PIN (z.B. 1234)";
+
+        const popupNoTimeBtn = document.getElementById("popup-no-time-btn");
+        if (popupNoTimeBtn) popupNoTimeBtn.classList.add("hidden");
+
+        openOverlay();
+        popupCallback = (ok)=>{
+          if (!ok){
+            popupPin.classList.add("hidden");
+            closeOverlay();
+            popupCallback=null;
+            return;
+          }
+          const v = (popupPin.value || "").trim();
+          if (!v) return;
+          if (!/^\d{4,10}$/.test(v)) return;
+          popupPin.classList.add("hidden");
+          closeOverlay();
+          popupCallback=null;
+          onOk(v);
+        };
+      }
+
+function promptText(msg, placeholder, onOk){
+        popupMessage.textContent = msg;
+        popupTitle.classList.remove("hidden");
+        popupTime.classList.add("hidden");
+        popupPerson.classList.add("hidden");
+        popupDaysWrap.classList.add("hidden");
+        const popupNoTimeBtn = document.getElementById("popup-no-time-btn");
+        if (popupNoTimeBtn) popupNoTimeBtn.classList.add("hidden");
+
+        popupTitle.value = "";
+        popupTitle.placeholder = placeholder || "";
+
+        openOverlay();
+        popupCallback = (ok)=>{
+          if (!ok){ closeOverlay(); popupCallback=null; return; }
+          const v = (popupTitle.value || "").trim();
+          if (!v) return;
+          closeOverlay();
+          popupCallback=null;
+          onOk(v);
+        };
+      }
+
+      function showTaskEditor(task, onOk){
+        popupMessage.textContent = "Aufgabe bearbeiten:";
+
+        popupTitle.classList.remove("hidden");
+        popupTime.classList.remove("hidden");
+        popupPerson.classList.remove("hidden");
+        popupDaysWrap.classList.remove("hidden");
+
+        popupTitle.value = task.title || "";
+        popupTime.value = task.time || "13:00";
+        popupPerson.value = task.person || "";
+
+        buildDays(popupDaysWrap, (task.days || []));
+
+        openOverlay();
+        popupCallback = (ok)=>{
+          if (!ok){
+            closeOverlay();
+            popupCallback = null;
+            return;
+          }
+          const title = (popupTitle.value || "").trim();
+          const time = normalizeTime(popupTime.value);
+          const person = (popupPerson.value || "").trim();
+          const days = readDays(popupDaysWrap);
+
+          if (!title) return; // stay open
+          if (!time) return;  // stay open
+          if (!days.length) return;
+
+          closeOverlay();
+          popupCallback = null;
+          onOk({ title, time, person, days });
+        };
+      }
+
+      // ===== Helpers =====
+      const DAY_ORDER = ["mo","di","mi","do","fr","sa","so"];
+      const DAY_LABEL = { mo:"Mo", di:"Di", mi:"Mi", do:"Do", fr:"Fr", sa:"Sa", so:"So" };
+
+      function normalizeTime(s){
+        if(!s) return "";
+        s = String(s).toLowerCase().replace("uhr","").trim();
+        s = s.replace(".", ":");
+        if (/^\d{1,2}$/.test(s)) s = s.padStart(2,"0")+":00";
+        if (!/^\d{1,2}:\d{2}$/.test(s)) return "";
+        const [h,m] = s.split(":").map(x=>parseInt(x,10));
+        if (!Number.isFinite(h) || !Number.isFinite(m) || h<0 || h>23 || m<0 || m>59) return "";
+        return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+      }
+
+      function parseDays(s){
+        if(!s) return [];
+        s = String(s).toLowerCase();
+        const parts = s.split(/[,/ ]+/).map(x=>x.trim()).filter(Boolean);
+        const out = [];
+        for (const p of parts){
+          const key = p.slice(0,2);
+          if (DAY_LABEL[key] && !out.includes(key)) out.push(key);
+        }
+        out.sort((a,b)=> DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+        return out;
+      }
+
+      function escapeHtml(s){
+        return String(s ?? "")
+          .replaceAll("&","&amp;")
+          .replaceAll("<","&lt;")
+          .replaceAll(">","&gt;")
+          .replaceAll('"',"&quot;")
+          .replaceAll("'","&#039;");
+      }
+
+      function fmtDays(days){
+        const d = (days || []).slice().sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b));
+        return d.map(x=>DAY_LABEL[x] || x).join(", ");
+      }
+
+      function isDone(t){ return !!t.done; }
+
+      function updateCompletion(){
+        const total = (data.tasks||[]).length;
+        const done = (data.tasks||[]).filter(isDone).length;
+
+        const label = document.getElementById("completion-percentage");
+        const bar = document.getElementById("completion-bar");
+
+        label.textContent = done + "/" + total + " erledigt";
+        const pct = total ? (done/total)*100 : 0;
+        bar.style.width = Math.max(0, Math.min(100, pct)).toFixed(2) + "%";
+      }
+
+      function ensureDataShape(){
+        if (!data || typeof data !== "object") data = { tasks: [], settings: { doneBottom:false, checkbox:false } };
+        if (!Array.isArray(data.tasks)) data.tasks = [];
+        ensureSettings();
+
+        // migrate minimal
+        data.tasks = data.tasks.map(t=>{
+          if (!t || typeof t !== "object") t = {};
+          if (!t.id) t.id = makeId("task");
+          if (typeof t.title !== "string") t.title = String(t.title ?? "");
+          if (!Array.isArray(t.days)) t.days = [];
+          t.days = t.days.map(x=>String(x).toLowerCase().slice(0,2)).filter(x=>DAY_LABEL[x]);
+          t.days = Array.from(new Set(t.days)).sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b));
+          t.time = normalizeTime(t.time) || "13:00";
+          if (typeof t.person !== "string") t.person = String(t.person ?? "");
+          t.done = !!t.done;
+          return t;
+        });
+      }
+
+      // ===== Render =====
+      function render(){
+        ensureDataShape();
+
+        const doneBottom = !!data.settings.doneBottom;
+        const checkboxMode = !!data.settings.checkbox;
+
+        const tasks = (data.tasks || []).slice();
+        if (doneBottom){
+          tasks.sort((a,b)=>(isDone(a)?1:0)-(isDone(b)?1:0));
+        }
+
+        updateCompletion();
+
+        const ul = document.getElementById("tasks-list");
+        ul.innerHTML = "";
+
+        tasks.forEach(task=>{
+          const li = document.createElement("li");
+          li.className = "task-item" + (isDone(task) ? " task-done" : "");
+
+          // checkbox or click anywhere
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.className = "task-check";
+          cb.checked = isDone(task);
+
+          const main = document.createElement("div");
+          main.className = "task-main";
+          main.innerHTML = `
+            <div class="task-title">${escapeHtml(task.title || "Aufgabe")}</div>
+            <div class="task-meta">
+              <span class="tag">${escapeHtml(fmtDays(task.days)) || "—"}</span>
+              <span class="tag">${escapeHtml(task.time)} Uhr</span>
+              ${task.person ? `<span class="tag">${escapeHtml(task.person)}</span>` : ""}
+            </div>
+          `;
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+
+          if (editMode){
+            const editBtn = document.createElement("button");
+            editBtn.className = "btn btn-small btn-secondary";
+            editBtn.textContent = "Bearbeiten";
+            editBtn.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              showTaskEditor(task, (upd)=>{
+                task.title = upd.title;
+                task.time = upd.time;
+                task.person = upd.person;
+                task.days = upd.days;
+                scheduleSave();
+                render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+              });
+            });
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "btn btn-small btn-secondary";
+            delBtn.textContent = "Entfernen";
+            delBtn.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              showConfirm(`Aufgabe "${task.title}" entfernen?`, ()=>{
+                data.tasks = (data.tasks||[]).filter(t=>t.id!==task.id);
+                scheduleSave();
+                render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+              });
+            });
+            actions.appendChild(delBtn);
+          }
+
+          li.appendChild(cb);
+          li.appendChild(main);
+          if (editMode) li.appendChild(actions);
+
+          const toggleDone = ()=>{
+            task.done = !task.done;
+            cb.checked = task.done;
+            li.classList.toggle("task-done", task.done);
+            scheduleSave();
+            render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+          };
+
+          if (checkboxMode){
+            cb.addEventListener("click",(e)=> e.stopPropagation());
+            cb.addEventListener("change", ()=>{
+              task.done = cb.checked;
+              scheduleSave();
+              render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+            });
+            // in checkboxMode: click on row toggles too (nice), but not required:
+            li.addEventListener("click", ()=>{
+              task.done = !task.done;
+              scheduleSave();
+              render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+            });
+          } else {
+            // no checkbox mode -> whole row toggles; checkbox is just a visual toggle
+            cb.addEventListener("click",(e)=> e.stopPropagation());
+            cb.addEventListener("change", toggleDone);
+            li.addEventListener("click", toggleDone);
+          }
+
+          ul.appendChild(li);
+        });
+      }
+
+      // ===== Create task =====
+      function createTaskFromDraft(){
+        const title = (draft.title || "").trim();
+        const days = Array.isArray(draft.days) ? draft.days.slice() : [];
+
+        ensureSettings();
+        const person = ((draft.person || data.settings.activeUser || "") + "").trim();
+        const timeMode = draft.timeMode || "none";
+        const time = normalizeTime(draft.time || "");
+        const from = normalizeTime(draft.from || "");
+        const to = normalizeTime(draft.to || "");
+
+        // Pflicht: Titel + Tage
+        if (!title || !days.length) return;
+
+        // mindestens Zeit ODER Person
+        const hasTime = (timeMode === "at" && !!time) || (timeMode === "range" && !!from && !!to);
+        if (!hasTime && !person) return;
+
+        data.tasks.unshift({
+          id: makeId("task"),
+          title,
+          days,
+          timeMode: hasTime ? timeMode : "none",
+          time: (timeMode === "at") ? time : "",
+          from: (timeMode === "range") ? from : "",
+          to: (timeMode === "range") ? to : "",
+          person,
+          done: false,
+          doneAt: null,
+          createdAt: new Date().toISOString()
+        });
+
+        // reset draft minimal
+        draft.title = "";
+        draft.days = [];
+        draft.timeMode = "at";
+        draft.time = "13:00";
+        draft.from = "";
+        draft.to = "";
+        
+
+        document.getElementById("new-task-title").value = "";
+        updateDraftUI();
+        scheduleSave();
+        render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+      }
+
+            // ===== Settings =====
+      const settingsModal = document.getElementById("settings-modal");
+      const doneBottomToggle = document.getElementById("done-bottom-toggle");
+      const checkboxToggle = document.getElementById("checkbox-toggle");
+
+      function openSettings(){
+        ensureSettings();
+        doneBottomToggle.checked = !!data.settings.doneBottom;
+        checkboxToggle.checked = !!data.settings.checkbox;
+        settingsModal.classList.add("active");
+        document.body.classList.add("modal-open");
+        document.documentElement.classList.add("modal-open");
+      }
+      function closeSettings(){
+        settingsModal.classList.remove("active");
+        document.body.classList.remove("modal-open");
+        document.documentElement.classList.remove("modal-open");
+      }
+
+      // ===== Bind UI =====
+      function bindUI(){
+        // Create (Objekt + Picker)
+        document.getElementById("add-task-btn").addEventListener("click", createTaskFromDraft);
+
+        document.getElementById("new-task-title").addEventListener("keydown", (e)=>{
+          if (e.key === "Enter") createTaskFromDraft();
+        });
+
+        document.getElementById("new-task-title").addEventListener("input", (e)=>{
+          draft.title = e.target.value || "";
+        });
+
+        // Open modals
+        document.getElementById("open-days").addEventListener("click", openDays);
+        document.getElementById("open-time").addEventListener("click", openTime);
+        document.getElementById("open-person").addEventListener("click", openUserMenu);
+        document.getElementById("open-user-menu").addEventListener("click", openUserMenu);
+
+        // Days modal
+        document.getElementById("days-x").addEventListener("click", closeDays);
+        document.getElementById("days-cancel").addEventListener("click", closeDays);
+        document.getElementById("days-ok").addEventListener("click", ()=>{
+          draft.days = readDays(daysPicker);
+          closeDays();
+          updateDraftUI();
+        });
+        daysModal.addEventListener("click", (e)=>{ if (e.target === daysModal) closeDays(); });
+
+        // Time modal
+        document.getElementById("time-x").addEventListener("click", closeTime);
+        document.getElementById("time-cancel").addEventListener("click", closeTime);
+        modeAtBtn.addEventListener("click", ()=> setTimeMode("at"));
+        modeRangeBtn.addEventListener("click", ()=> setTimeMode("range"));
+        modeNoneBtn.addEventListener("click", ()=> setTimeMode("none"));
+        document.getElementById("time-ok").addEventListener("click", ()=>{
+          const mode = draft.timeMode || "at";
+          if (mode === "at"){
+            draft.time = normalizeTime(timeAt.value) || "";
+            draft.from = ""; draft.to = "";
+          } else if (mode === "range"){
+            draft.from = normalizeTime(timeFrom.value) || "";
+            draft.to = normalizeTime(timeTo.value) || "";
+            draft.time = "";
+          } else {
+            draft.time = ""; draft.from = ""; draft.to = "";
+          }
+          closeTime();
+          updateDraftUI();
+        });
+        timeModal.addEventListener("click", (e)=>{ if (e.target === timeModal) closeTime(); });
+
+        // Person modal
+        document.getElementById("user-x").addEventListener("click", closeUserMenu);
+        document.getElementById("user-cancel").addEventListener("click", closeUserMenu);
+        document.getElementById("user-ok").addEventListener("click", ()=>{
+          closeUserMenu();
+          updateDraftUI();
+          scheduleSave();
+        });
+        document.getElementById("user-add").addEventListener("click", ()=>{
+          promptText("Neuen Benutzer hinzufügen:", "z.B. Mama", (name)=>{
+            ensureSettings();
+            const n = name.trim();
+            if (!n) return;
+            if ((data.settings.users || []).some(u=>String(u.name)===n)) return;
+
+            const u = { name: n, salt: "", pinHash: "" };
+            data.settings.users = [u, ...(data.settings.users || [])];
+            scheduleSave();
+
+            promptPin(`PIN festlegen für "${n}"`, (pin1)=>{
+              promptPin("PIN wiederholen", async (pin2)=>{
+                if (pin1 !== pin2){ setSync("bad","PIN falsch"); return; }
+                const salt = randomSalt();
+                const hash = await sha256Hex(salt + ":" + pin1);
+                u.salt = salt;
+                u.pinHash = hash;
+data.settings.activeUser = n;
+                scheduleSave();
+                renderUserList();
+                updateDraftUI();
+              });
+            });
+          });
+        });
+        userModal.addEventListener("click", (e)=>{ if (e.target === userModal) closeUserMenu(); });
+
+        // initial UI
+        updateDraftUI();
+
+document.getElementById("edit-mode-toggle").addEventListener("click", function(){
+          editMode = !editMode;
+          this.textContent = editMode ? "Fertig" : "Bearbeiten";
+          render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+        });
+
+        document.getElementById("check-all-btn").addEventListener("click", ()=>{
+          const total = (data.tasks||[]).length;
+          if (!total) return;
+          const allDone = data.tasks.every(t=>!!t.done);
+          showConfirm(allDone ? "Alles wieder abwählen?" : "Alles abhaken?", ()=>{
+            data.tasks.forEach(t=> t.done = !allDone);
+            scheduleSave();
+            render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+          });
+        });
+
+        document.getElementById("clear-all-btn").addEventListener("click", ()=>{
+          showConfirm("Wirklich ALLES löschen?", ()=>{
+            data.tasks = [];
+            scheduleSave();
+            render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+          });
+        });
+
+        // settings modal
+        document.getElementById("open-settings-btn").addEventListener("click", openSettings);
+        document.getElementById("settings-x").addEventListener("click", closeSettings);
+        document.getElementById("settings-close").addEventListener("click", closeSettings);
+
+        document.getElementById("settings-save").addEventListener("click", ()=>{
+          ensureSettings();
+          data.settings.doneBottom = !!doneBottomToggle.checked;
+          data.settings.checkbox = !!checkboxToggle.checked;
+          scheduleSave();
+          render();
+        updateActiveUserUI();
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!(data.settings.activeUser || "").trim()){
+          openUserMenu();
+        }
+          closeSettings();
+        });
+
+        settingsModal.addEventListener("click", (e)=>{
+          if (e.target === settingsModal) closeSettings();
+        });
+
+        overlay.addEventListener("click", (e)=>{
+          if (e.target === overlay && popupCallback){
+            popupCallback(false);
+          }
+        });
+      }
+
+      async function init(){
+        // UI sofort aktivieren (auch wenn Backend hängt)
+        ensureDataShape();
+        bindUI();
+        render();
+        updateActiveUserUI();
+
+        try{
+          setSync("work","Lade…");
+          const loaded = await apiGet();
+          data = loaded;
+          ensureDataShape();
+          setSync("ok","Geladen");
+        }catch(e){
+          console.error(e);
+          setSync("bad","Fehler");
+          // Daten bleiben lokal nutzbar
+        }
+
+        render();
+        updateActiveUserUI();
+
+        // Wenn kein aktiver Benutzer: Menü sofort öffnen (wie Login)
+        if (!((data.settings.activeUser || "").trim())){
+          openUserMenu();
+        }
+      }
+    })();
+  </script>
 </body>
 </html>
