@@ -813,14 +813,37 @@
           t.time = normalizeTime(t.time) || "";
           if (typeof t.person !== "string") t.person = String(t.person ?? "");
           if (!t.createdAt) t.createdAt = new Date().toISOString();
+          if (t.done){
+            // Wenn bereits erledigt, aber kein doneAt vorhanden: setze jetzt, damit es nicht sofort gelöscht wird
+            if (!t.doneAt) t.doneAt = new Date().toISOString();
+          } else {
+            t.doneAt = null;
+          }
           t.done = !!t.done;
           return t;
         });
       }
 
-      // ===== Render =====
+      // ===== Auto-Löschen: erledigte Aufgaben nach 24h entfernen =====
+      function cleanupDoneTasks(){
+        const now = Date.now();
+        const DAY = 24 * 60 * 60 * 1000;
+        const before = (data.tasks || []).length;
+        data.tasks = (data.tasks || []).filter(t=>{
+          if (!t || !t.done) return true;
+          if (!t.doneAt) return true; // ohne Timestamp nicht löschen
+          const ts = new Date(t.doneAt).getTime();
+          if (!Number.isFinite(ts)) return true;
+          return (now - ts) < DAY;
+        });
+        const after = (data.tasks || []).length;
+        if (after !== before) scheduleSave();
+      }
+
+// ===== Render =====
       function render(){
         ensureDataShape();
+        cleanupDoneTasks();
 
         const doneBottom = !!data.settings.doneBottom;
         const checkboxMode = !!data.settings.checkbox;
@@ -897,6 +920,7 @@
 
           const toggleDone = ()=>{
             task.done = !task.done;
+            task.doneAt = task.done ? new Date().toISOString() : null;
             cb.checked = task.done;
             li.classList.toggle("task-done", task.done);
             scheduleSave();
@@ -907,12 +931,14 @@
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
               task.done = cb.checked;
+              task.doneAt = task.done ? new Date().toISOString() : null;
               scheduleSave();
               render();
             });
             // in checkboxMode: click on row toggles too (nice), but not required:
             li.addEventListener("click", ()=>{
               task.done = !task.done;
+              task.doneAt = task.done ? new Date().toISOString() : null;
               scheduleSave();
               render();
             });
@@ -940,6 +966,7 @@
           id: makeId("task"),
           title, time, person, days,
           done: false,
+          doneAt: null,
           createdAt: new Date().toISOString()
         });
 
@@ -1048,7 +1075,7 @@
         const inp = document.getElementById("quick-task-text");
         const parsed = parseQuickLine(inp.value || "");
         if (!parsed) return;
-        data.tasks.unshift({ id: makeId("task"), done:false, createdAt: new Date().toISOString(), ...parsed });
+        data.tasks.unshift({ id: makeId("task"), done:false, doneAt: null, createdAt: new Date().toISOString(), ...parsed });
         inp.value = "";
         scheduleSave();
         render();
@@ -1109,7 +1136,7 @@
           if (!total) return;
           const allDone = data.tasks.every(t=>!!t.done);
           showConfirm(allDone ? "Alles wieder abwählen?" : "Alles abhaken?", ()=>{
-            data.tasks.forEach(t=> t.done = !allDone);
+            data.tasks.forEach(t=>{ t.done = !allDone; t.doneAt = t.done ? new Date().toISOString() : null; });
             scheduleSave();
             render();
           });
