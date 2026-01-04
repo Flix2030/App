@@ -1118,15 +1118,7 @@ if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"]
           peopleListEl.appendChild(chip);
         });
       }
-            draft.person = (draft.person === name) ? "" : name;
-            renderPeopleList();
-          });
 
-          peopleListEl.appendChild(chip);
-        });
-      }
-
-      
       async function sha256Hex(str){
         const enc = new TextEncoder();
         const buf = await crypto.subtle.digest("SHA-256", enc.encode(str));
