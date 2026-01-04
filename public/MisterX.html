@@ -12,12 +12,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="/app.css">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-  <meta name="theme-color" content="#000000">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -125,6 +119,7 @@
     .field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:180px;}
     .field label{font-size:.82rem; color:var(--muted);}
     .field input, .field select, .field textarea{
+      font-size:16px; /* iOS: kein Zoom */
       width:100%;
       padding:10px 12px;
       border-radius:14px;
@@ -238,8 +233,7 @@
       #map{height: 54vh; min-height: 360px;}
       .side{min-height:auto;}
     }
-  </style>
-</head>
+  </style></head>
 <body>
   <div class="shell">
     <div class="topbar">
@@ -286,6 +280,17 @@
               <input id="gameName" placeholder="z.B. Abendrunde">
             </div>
           </div>
+
+          <div class="row">
+            <div class="field">
+              <label>Spielfeld-Vorlagen</label>
+              <select id="fieldSelect"></select>
+            </div>
+            <button class="btn" id="btnFieldInsert" title="Vorlage als aktuelles Spielfeld setzen">📥 Einfügen</button>
+            <button class="btn" id="btnFieldSave" title="Aktuelles Spielfeld als Vorlage speichern">💾 Speichern</button>
+            <button class="btn danger" id="btnFieldDelete" title="Ausgewählte Vorlage löschen">🗑️</button>
+          </div>
+
 
           <div class="row">
             <div class="field">
@@ -393,6 +398,7 @@ enforceAuth();
    STATE (localStorage MVP)
 ========================= */
 const LS_KEY = "mrx_state_v2";
+const LS_FIELDS_KEY = "mrx_fields_v1";
 function loadState(){
   try{
     const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
@@ -402,6 +408,45 @@ function loadState(){
   }catch{ return { name:"", area:null, pings:[] }; }
 }
 function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+let fields = loadFields();
+
+function loadFields(){
+  try{
+    const a = JSON.parse(localStorage.getItem(LS_FIELDS_KEY) || "[]");
+    return Array.isArray(a) ? a : [];
+  }catch{ return []; }
+}
+function saveFields(){
+  localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
+}
+function uid(){
+  return "f_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+function refreshFieldSelect(){
+  const sel = document.getElementById("fieldSelect");
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = "";
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "— Vorlage wählen —";
+  sel.appendChild(opt0);
+
+  fields
+    .slice()
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+    .forEach(f=>{
+      const o=document.createElement("option");
+      o.value=f.id;
+      o.textContent = f.name || ("Spielfeld " + f.id.slice(-4));
+      sel.appendChild(o);
+    });
+
+  // restore selection if possible
+  if (cur) sel.value = cur;
+}
+
 let state = loadState();
 
 /* =========================
@@ -835,6 +880,62 @@ document.getElementById("btnAnalyze").addEventListener("click", ()=>{
   runAi();
 });
 
+
+/* =========================
+   SPIELFELD-VORLAGEN
+========================= */
+function bindFieldUI(){
+  const sel = document.getElementById("fieldSelect");
+  const btnSave = document.getElementById("btnFieldSave");
+  const btnInsert = document.getElementById("btnFieldInsert");
+  const btnDelete = document.getElementById("btnFieldDelete");
+  if (!sel || !btnSave || !btnInsert || !btnDelete) return;
+
+  refreshFieldSelect();
+
+  btnSave.addEventListener("click", ()=>{
+    if (!state.area){
+      alert("Kein Spielfeld (Polygon) gesetzt. Zeichne zuerst eins in die Karte.");
+      return;
+    }
+    const defName = (state.name||"").trim() || "Spielfeld";
+    const name = (prompt("Name für dieses Spielfeld:", defName) || "").trim();
+    if (!name) return;
+
+    fields.push({
+      id: uid(),
+      name,
+      area: state.area,
+      createdAt: Date.now()
+    });
+    saveFields();
+    refreshFieldSelect();
+    alert("Spielfeld gespeichert ✅");
+  });
+
+  btnInsert.addEventListener("click", ()=>{
+    const id = sel.value || "";
+    if (!id){ alert("Bitte erst eine Vorlage auswählen."); return; }
+    const f = fields.find(x=>x.id===id);
+    if (!f){ alert("Vorlage nicht gefunden."); return; }
+    state.area = f.area;
+    saveState();
+    renderAll(true);
+    alert("Spielfeld eingefügt ✅");
+  });
+
+  btnDelete.addEventListener("click", ()=>{
+    const id = sel.value || "";
+    if (!id){ alert("Bitte erst eine Vorlage auswählen."); return; }
+    const f = fields.find(x=>x.id===id);
+    if (!f) return;
+    const ok = confirm(`Vorlage "${f.name}" löschen?`);
+    if (!ok) return;
+    fields = fields.filter(x=>x.id!==id);
+    saveFields();
+    refreshFieldSelect();
+  });
+}
 /* =========================
    IMPORT / PASTE PARSER
 ========================= */
@@ -873,6 +974,31 @@ function parseLatLngFromText(text){
   return null;
 }
 
+function isValidLatLng(ll){
+  return ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng) && ll.lat>=-90 && ll.lat<=90 && ll.lng>=-180 && ll.lng<=180;
+}
+
+async function resolveLatLng(text){
+  // 1) Direkt aus Text/Link extrahieren
+  const direct = parseLatLngFromText(text);
+  if (isValidLatLng(direct)) return direct;
+
+  // 2) Kurzlink (maps.app.goo.gl) über Worker auflösen
+  const urlMatch = String(text||"").match(/https?:\/\/\S+/);
+  if (!urlMatch) return null;
+
+  try{
+    const r = await fetch("/api/resolve-maps?url=" + encodeURIComponent(urlMatch[0]), { credentials:"include" });
+    const j = await r.json().catch(()=>null);
+    if (j && j.ok) {
+      const ll = { lat: Number(j.lat), lng: Number(j.lng) };
+      if (isValidLatLng(ll)) return ll;
+    }
+  }catch(_){}
+  return null;
+}
+
+
 function parseTimeMs(){
   const v = (pasteTime.value||"").trim();
   if (!v) return null;
@@ -881,18 +1007,25 @@ function parseTimeMs(){
   return Number.isFinite(ms) ? ms : null;
 }
 
-document.getElementById("btnPasteParse").addEventListener("click", ()=>{
+document.getElementById("btnPasteParse").addEventListener("click", async ()=>{
   const text = pasteText.value || "";
-  const ll = parseLatLngFromText(text);
-  if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)){
-    alert("Konnte keine Koordinaten finden. Bitte z.B. '49.0123, 8.4045' oder einen Maps-Link einfügen.");
+  const ll = await resolveLatLng(text);
+
+  if (!ll){
+    alert("Konnte keine Koordinaten finden. Tipp: Bei iOS-Maps Kurzlinks (maps.app.goo.gl) geht’s jetzt auch – Link einfach reinkopieren.");
     return;
   }
+
   const acc = (pasteAcc.value==="" ? null : Number(pasteAcc.value));
   const tms = parseTimeMs();
   addPing(ll.lat, ll.lng, acc, tms);
+
+  // direkt auf den Ping springen
+  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 16), { animate:true });
+
   closeModal();
 });
+
 
 /* =========================
    RESET / COLLAPSE
@@ -926,6 +1059,7 @@ elGameName.addEventListener("input", ()=>{
 
 /* Initial */
 renderAll(true);
+bindFieldUI();
 </script>
 </body>
 </html>

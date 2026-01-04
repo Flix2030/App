@@ -84,6 +84,29 @@ function countItems(profileJson) {
   return { lists: lists.length, items };
 }
 
+
+function extractLatLngFromString(s) {
+  const text = String(s || "");
+
+  // @lat,lng (Google Maps)
+  let m = text.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+  if (m) return { lat: +m[1], lng: +m[2] };
+
+  // q=lat,lng or ll=lat,lng or query=lat,lng
+  m = text.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+  if (m) return { lat: +m[1], lng: +m[2] };
+
+  // !3dLAT!4dLNG (pb= links)
+  m = text.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (m) return { lat: +m[1], lng: +m[2] };
+
+  // plain "lat,lng" somewhere
+  m = text.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/);
+  if (m) return { lat: +m[1], lng: +m[2] };
+
+  return null;
+}
+
 function parseCookies(req) {
   const h = req.headers.get("Cookie") || "";
   const out = {};
@@ -273,6 +296,36 @@ async function handleApi(req, env) {
       const uid = await readToken(env, req);
       if (!uid) return json({ loggedIn: false }, 401);
       return json({ loggedIn: true, userId: uid });
+    }
+
+
+    // Resolve Google Maps short links (maps.app.goo.gl) -> coordinates
+    if (path === "/api/resolve-maps" && req.method === "GET") {
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      const target = url.searchParams.get("url") || "";
+      if (!target) return json({ ok: false, error: "missing_url" }, 400);
+
+      let u;
+      try { u = new URL(target); } catch { return json({ ok: false, error: "bad_url" }, 400); }
+
+      const host = (u.hostname || "").toLowerCase();
+      const allowed = ["maps.app.goo.gl", "goo.gl", "maps.google.com", "www.google.com"];
+      const okHost = allowed.some(a => host === a || host.endsWith("." + a));
+      if (!okHost) return json({ ok: false, error: "domain_not_allowed" }, 400);
+
+      // Follow redirects so the final URL contains coordinates
+      let finalUrl = target;
+      try {
+        const r = await fetch(target, { redirect: "follow" });
+        finalUrl = r.url || finalUrl;
+      } catch {}
+
+      const coords = extractLatLngFromString(finalUrl) || extractLatLngFromString(target);
+      if (!coords) return json({ ok: false, finalUrl, error: "no_coords" }, 200);
+
+      return json({ ok: true, finalUrl, lat: coords.lat, lng: coords.lng }, 200, { "Cache-Control": "no-store" });
     }
 
     // 5) Daten GET/PUT/DELETE (minimal-fix: profileId definieren, statt ReferenceError)
