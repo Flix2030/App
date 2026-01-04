@@ -78,7 +78,7 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
+      gap:10px;
       margin-bottom: 14px;
       flex-wrap: wrap;
     }
@@ -117,7 +117,7 @@
       background: rgba(255,255,255,0.06);
       border: 1px solid var(--border);
       color: var(--text);
-      border-radius: 14px;
+      border-radius: 12px;
       text-decoration:none;
       user-select:none;
       white-space: nowrap;
@@ -127,7 +127,7 @@
       display:flex;
       align-items:center;
       justify-content: space-between;
-      gap:12px;
+      gap:10px;
       flex-wrap: wrap;
       margin-bottom: 12px;
     }
@@ -135,11 +135,11 @@
 
     /* Inputs */
     input[type="text"], input[type="time"]{
-      padding: 12px 12px;
+      padding: 10px 10px;
       border: 1px solid var(--border);
       background: rgba(0,0,0,0.25);
       color: var(--text);
-      border-radius: 14px;
+      border-radius: 12px;
       font-size: 16px; /* no mobile zoom */
       outline: none;
       min-width: 220px;
@@ -155,10 +155,10 @@
       align-items:center;
       background: var(--panel2);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       padding: 12px 14px;
       margin-bottom: 10px;
-      gap:12px;
+      gap:10px;
       -webkit-user-select:none;
       user-select:none;
       flex-wrap: wrap;
@@ -259,13 +259,13 @@
 
     .add-row{
       display:flex;
-      gap:12px;
+      gap:10px;
       align-items:center;
       flex-wrap:wrap;
       background: rgba(255,255,255,0.04);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 12px;
+      padding: 10px;
     }
 
     .days{
@@ -279,14 +279,14 @@
       background: rgba(255,255,255,0.06);
       color: rgba(255,255,255,0.88);
       border-radius: 999px;
-      padding: 8px 10px;
+      padding: 6px 9px;
       font-weight: 900;
       cursor:pointer;
       user-select:none;
       display:inline-flex;
       gap:8px;
       align-items:center;
-      font-size: 0.9rem;
+      font-size: 0.86rem;
     }
     .day-chip.on{
       border-color: rgba(62,227,140,0.35);
@@ -351,7 +351,7 @@
       margin-bottom: 10px;
       padding: 10px 12px;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       background: rgba(0,0,0,0.25);
       color: var(--text);
       box-sizing: border-box;
@@ -437,16 +437,16 @@
     <!-- Add / Quick add -->
     <div id="new-task-section" style="margin-top:10px;">
       <div class="add-row" style="margin-bottom: 10px;">
-        <input type="text" id="quick-task-text" placeholder="wäsche aufhängen; mo, fr; 13:00 Uhr; Mama" style="flex: 1 1 420px;" />
+        <input type="text" id="quick-task-text" placeholder="z.B. wäsche aufhängen; mo, fr; 13:00 Uhr; Mama  (oder: saugen 13uhr mo do mama)" style="flex: 1 1 420px;" />
         <button id="quick-add-btn" class="btn btn-small">Hinzufügen</button>
       </div>
 
       <div class="add-row">
-        <input type="text" id="new-task-text" placeholder="Neue Aufgabe" style="flex: 2 1 320px;" />
-        <div class="days" id="days-wrap" style="flex: 1 1 260px;"></div>
-        <input type="time" id="new-task-time" value="13:00" style="min-width: 140px;" />
+        <input type="text" id="new-task-text" placeholder="Neue Aufgabe" style="flex: 1 1 260px; max-width: 420px;" />
+        <div class="days" id="days-wrap" style="flex: 0 0 auto;"></div>
+        <input type="time" id="new-task-time" value="13:00" style="width: 120px; min-width: 120px;" />
         <button id="no-time-btn" class="btn btn-small btn-secondary" type="button" title="Ohne Uhrzeit">Keine Uhrzeit</button>
-        <input type="text" id="new-task-person" placeholder="Person (z.B. Mama)" style="flex: 1 1 180px; min-width: 160px;" />
+        <input type="text" id="new-task-person" placeholder="Person (z.B. Mama)" style="flex: 0 1 220px; max-width: 280px; min-width: 160px;" />
         <button id="add-task-btn" class="btn btn-small">Erstellen</button>
       </div>
     </div>
@@ -462,7 +462,7 @@
       <h3 style="margin:0 0 12px;">Einstellungen</h3>
 
       <div style="display:flex; flex-direction:column; gap:14px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
           <div style="font-weight:900;">Fertige nach unten</div>
           <label class="switch" aria-label="Fertige nach unten">
             <input id="done-bottom-toggle" type="checkbox">
@@ -470,7 +470,7 @@
           </label>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
           <div style="font-weight:900;">Abhaken mit Kästchen</div>
           <label class="switch" aria-label="Abhaken mit Kästchen">
             <input id="checkbox-toggle" type="checkbox">
@@ -950,23 +950,91 @@
       }
 
       function parseQuickLine(line){
-        // Beispiele:
-        //  "wäsche aufhängen; mo, fr; 13:00 Uhr; Mama"
-        //  "wäsche aufhängen; mo, fr; Mama"   (ohne Uhrzeit)
-        const parts = String(line).split(";").map(p=>p.trim());
-        // keep empty fields (for ";;")
-        while(parts.length && parts[parts.length-1] === "") parts.pop();
-        if (parts.length < 2) return null;
-        const title = (parts[0] || "").trim();
-        const days = parseDays(parts[1] || "");
+        // Unterstützt:
+        //  1) "wäsche aufhängen; mo, fr; 13:00 Uhr; Mama"
+        //  2) "wäsche aufhängen; mo, fr; Mama" (ohne Uhrzeit)
+        //  3) "saugen 13uhr mo do mama" (Space-Format)
+        const raw = String(line || "").trim();
+        if (!raw) return null;
+
+        // --- Semikolon-Format ---
+        if (raw.includes(";")) {
+          const parts = raw.split(";").map(p=>p.trim());
+          while(parts.length && parts[parts.length-1] === "") parts.pop();
+          if (parts.length < 2) return null;
+
+          const title = (parts[0] || "").trim();
+          const days = parseDays(parts[1] || "");
+          let time = "";
+          let person = "";
+
+          if (parts.length >= 3){
+            const maybeTime = normalizeTime(parts[2] || "");
+            if (maybeTime){
+              time = maybeTime;
+              person = parts[3] ? String(parts[3]).trim() : "";
+            } else {
+              time = "";
+              person = parts[2] ? String(parts[2]).trim() : "";
+            }
+          }
+
+          if (!title || !days.length) return null;
+          return { title, days, time, person };
+        }
+
+        // --- Space-Format ---
+        const tokens = raw.split(/\s+/).filter(Boolean);
+        if (tokens.length < 2) return null;
+
+        const daySet = new Set(DAY_ORDER);
+        const days = [];
         let time = "";
-        let person = "";
-        if (parts.length >= 3){
-          const maybeTime = normalizeTime(parts[2] || "");
-          if (maybeTime){
-            time = maybeTime;
-            person = parts[3] ? String(parts[3]).trim() : "";
-          } else {
+        let timeIndex = -1;
+
+        // find time token
+        for (let i=0;i<tokens.length;i++){
+          const t = tokens[i].toLowerCase();
+          const maybe = normalizeTime(t.replace(/uhr$/,""));
+          // accept "13uhr" or "13:00" or "13.00"
+          if (t.endsWith("uhr")) {
+            const maybeUhr = normalizeTime(t.replace("uhr",""));
+            if (maybeUhr){ time = maybeUhr; timeIndex = i; break; }
+          }
+          if (maybe && (t.includes(":") || t.includes(".") || /^\d{1,2}$/.test(t))) {
+            time = maybe; timeIndex = i; break;
+          }
+        }
+
+        // collect days anywhere
+        for (const tok of tokens){
+          const k = tok.toLowerCase().slice(0,2);
+          if (daySet.has(k) && !days.includes(k)) days.push(k);
+        }
+        days.sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b));
+
+        // title/person from around time
+        let titleTokens = [];
+        let afterTokens = [];
+        if (timeIndex >= 0){
+          titleTokens = tokens.slice(0, timeIndex);
+          afterTokens = tokens.slice(timeIndex+1);
+        } else {
+          // no time -> title = first token(s), rest could be person or days; keep simple:
+          titleTokens = [tokens[0]];
+          afterTokens = tokens.slice(1);
+        }
+
+        // remove day tokens from title/person
+        titleTokens = titleTokens.filter(t => !daySet.has(t.toLowerCase().slice(0,2)));
+        afterTokens = afterTokens.filter(t => !daySet.has(t.toLowerCase().slice(0,2)));
+
+        const title = titleTokens.join(" ").trim();
+        const person = afterTokens.join(" ").trim();
+
+        if (!title || !days.length) return null;
+        return { title, days, time, person };
+      } else {
             // no time -> treat as person
             time = "";
             person = parts[2] ? String(parts[2]).trim() : "";
