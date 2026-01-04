@@ -639,7 +639,8 @@ Jetzt der Text:
         const time = normalizeTime(obj.time || ""); // optional
 
         if (!title) return null;
-        return { title, days, time, person };
+        if (!time && !person) return null;
+          return { title, days, time, person };
       }
 
 
@@ -1005,7 +1006,8 @@ Jetzt der Text:
         const person = parts[3] ? String(parts[3]).trim() : "";
 
         if (!title || !days.length || !time) return null;
-        return { title, days, time, person };
+        if (!time && !person) return null;
+          return { title, days, time, person };
       }
 
       async function createTaskFromQuick(){
@@ -1029,7 +1031,7 @@ Jetzt der Text:
           }
         }
 
-        if (!parsed || !parsed.title || !parsed.days || !parsed.days.length){
+        if (!parsed || !parsed.title || !parsed.days || !parsed.days.length || (!parsed.time && !parsed.person)){
           // nichts verstanden
           setSync("bad","Nicht erkannt");
           return;
