@@ -200,6 +200,7 @@ async function handleApi(req, env) {
     if (path === "/packliste") return Response.redirect(new URL("/packliste.html", url.origin).toString(), 302);
     if (path === "/vokabeln") return Response.redirect(new URL("/vokabeln.html", url.origin).toString(), 302);
     if (path === "/einkaufsliste") return env.ASSETS.fetch(new Request(url.origin + "/einkaufsliste.html", req));
+    if (path === "/todo") return env.ASSETS.fetch(new Request(url.origin + "/todo.html", req));
 
     if (path === "/api/health" && req.method === "GET") {
       return json({
@@ -474,6 +475,43 @@ async function handleApi(req, env) {
       return json({ ok: r.ok, status: r.status, body: t.slice(0, 800) }, 200, { "Cache-Control": "no-store" });
     }
 
+    
+    // ===== To-Do API =====
+    if (path.startsWith("/api/todo/")) {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      if (path === "/api/todo/data" && req.method === "GET") {
+        const row = await env.DB.prepare(
+          "SELECT json FROM todo_data WHERE user_id = ?"
+        ).bind(uid).first();
+
+        return json(
+          { ok: true, data: row?.json ? JSON.parse(row.json) : { tasks: [], settings: { doneBottom: false, checkbox: false } } },
+          200,
+          { "Cache-Control": "no-store" }
+        );
+      }
+
+      if (path === "/api/todo/data" && req.method === "PUT") {
+        const body = await safeReadJson(req);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        const now = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO todo_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+        ).bind(uid, JSON.stringify(body), now).run();
+
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      return json({ error: "not_found", path }, 404);
+    }
+
+
     // ===== Einkaufsliste API =====
     if (path.startsWith("/api/einkauf/")) {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
@@ -537,9 +575,11 @@ export default {
       if (path === "/vokabeln") assetPath = "/vokabeln.html";
       if (path === "/settings") assetPath = "/settings.html";
       if (path === "/einkaufsliste") assetPath = "/einkaufsliste.html";
+      if (path === "/todo") assetPath = "/todo.html";
 
       if (path.startsWith("/packliste/")) assetPath = "/packliste.html";
       if (path.startsWith("/einkaufsliste/")) assetPath = "/einkaufsliste.html";
+      if (path.startsWith("/todo/")) assetPath = "/todo.html";
 
       if (path.startsWith("/api/")) {
         return handleApi(req, env);
