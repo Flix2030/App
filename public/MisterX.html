@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
-  <!-- Turf (Geo: Polygon, Punkt-in-Polygon, etc.) -->
+  <!-- Turf -->
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 
   <style>
@@ -29,8 +29,9 @@
       --shadow:0 18px 60px rgba(0,0,0,.55);
       --radius:18px;
       --chip: rgba(255,255,255,0.06);
+      --ok: rgba(62,227,140,0.14);
+      --warn: rgba(255,210,77,0.12);
     }
-
     *{box-sizing:border-box}
     body{
       margin:0;
@@ -41,36 +42,12 @@
                   linear-gradient(180deg, var(--bg0), var(--bg1));
       min-height:100vh;
     }
-
-    .shell{
-      width:min(1200px, 100%);
-      margin:0 auto;
-      padding:18px 14px 28px;
-    }
-
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:12px;
-    }
-
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
+    .shell{width:min(1200px, 100%); margin:0 auto; padding:18px 14px 28px;}
+    .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;}
+    .title{display:flex; flex-direction:column; gap:2px;}
     .title h1{margin:0; font-size:1.35rem; letter-spacing:.2px;}
     .title .sub{color:var(--muted); font-size:.92rem}
-
-    .actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      align-items:center;
-    }
+    .actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;}
 
     .btn{
       appearance:none;
@@ -87,6 +64,7 @@
       align-items:center;
       gap:8px;
       white-space:nowrap;
+      text-decoration:none;
     }
     .btn:hover{filter:brightness(1.04)}
     .btn:active{transform:translateY(1px)}
@@ -94,22 +72,17 @@
       background: linear-gradient(180deg, var(--accent), var(--accent2));
       color:#03130a;
       box-shadow:0 10px 24px rgba(62,227,140,0.14);
+      border-color: rgba(62,227,140,.22);
     }
     .btn.danger{
       background: rgba(255,77,109,0.12);
       border-color: rgba(255,77,109,0.28);
       color:#ffd3db;
     }
-    .btn.icon{
-      width:42px; justify-content:center; padding:10px 0;
-    }
+    .btn.icon{width:42px; justify-content:center; padding:10px 0;}
+    .btn.small{padding:7px 10px; border-radius:12px; font-weight:900;}
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1.35fr .65fr;
-      gap:12px;
-    }
-
+    .grid{display:grid; grid-template-columns: 1.35fr .65fr; gap:12px;}
     .card{
       background:var(--panel);
       border:1px solid var(--border);
@@ -119,7 +92,6 @@
       box-shadow:var(--shadow);
       overflow:hidden;
     }
-
     .cardHeader{
       padding:12px 14px;
       display:flex;
@@ -129,53 +101,16 @@
       border-bottom:1px solid rgba(255,255,255,.08);
       background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
     }
-    .cardHeader .h{
-      font-weight:900;
-      letter-spacing:.2px;
-    }
-    .cardHeader .hint{
-      color:var(--muted);
-      font-size:.9rem;
-    }
+    .cardHeader .h{font-weight:900; letter-spacing:.2px;}
+    .cardHeader .hint{color:var(--muted); font-size:.9rem;}
+    #map{height: 70vh; min-height: 440px; width:100%;}
+    .side{display:flex; flex-direction:column; min-height: 70vh;}
+    .sideBody{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
 
-    #map{
-      height: 70vh;
-      min-height: 440px;
-      width:100%;
-    }
-
-    .side{
-      display:flex;
-      flex-direction:column;
-      min-height: 70vh;
-    }
-
-    .sideBody{
-      padding:12px 14px 14px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .row{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      flex:1;
-      min-width:180px;
-    }
-    .field label{
-      font-size:.82rem;
-      color:var(--muted);
-    }
-    .field input, .field select{
+    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+    .field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:180px;}
+    .field label{font-size:.82rem; color:var(--muted);}
+    .field input, .field select, .field textarea{
       width:100%;
       padding:10px 12px;
       border-radius:14px;
@@ -183,8 +118,8 @@
       background:rgba(255,255,255,.06);
       color:var(--text);
       outline:none;
+      resize: vertical;
     }
-
     .chip{
       display:inline-flex;
       align-items:center;
@@ -208,7 +143,6 @@
       overflow:auto;
       padding-right:4px;
     }
-
     .ping{
       border:1px solid rgba(255,255,255,.10);
       background:rgba(255,255,255,.05);
@@ -216,20 +150,20 @@
       padding:10px 12px;
       display:flex;
       flex-direction:column;
-      gap:4px;
+      gap:6px;
     }
-    .ping .top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      font-weight:900;
-    }
-    .ping .meta{
-      color:var(--muted);
+    .ping .top{display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:900;}
+    .ping .meta{color:var(--muted); font-size:.88rem; line-height:1.25; word-break:break-word;}
+    .ping .stats{
+      display:flex; flex-wrap:wrap; gap:6px;
       font-size:.88rem;
-      line-height:1.25;
-      word-break:break-word;
+      color:rgba(255,255,255,.80);
+    }
+    .tag{
+      display:inline-flex; gap:6px; align-items:center;
+      padding:5px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
     }
 
     .aiBox{
@@ -244,15 +178,49 @@
       overflow:auto;
     }
     .aiBox.muted{color:var(--muted);}
-
-    .sep{
-      height:1px;
-      background:rgba(255,255,255,.08);
-      margin:2px 0;
+    .sep{height:1px; background:rgba(255,255,255,.08); margin:2px 0;}
+    .notice{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.04);
+      border-radius:14px;
+      padding:10px 12px;
+      color:var(--muted);
+      line-height:1.35;
+      font-size:.9rem;
     }
+    .notice.ok{background:var(--ok); color:rgba(255,255,255,.88); border-color:rgba(62,227,140,.20);}
+    .notice.warn{background:var(--warn); color:rgba(255,255,255,.88); border-color:rgba(255,210,77,.18);}
+
+    /* Modal */
+    .modalBackdrop{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:14px;
+      z-index:9999;
+    }
+    .modalBackdrop.show{display:flex;}
+    .modal{
+      width:min(560px, 100%);
+      background: rgba(10,14,26,.96);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      overflow:hidden;
+    }
+    .modalHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .modalHead .h{font-weight:900;}
+    .modalBody{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
+    .modalActions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
 
     @media (max-width: 980px){
-      .grid{grid-template-columns: 1fr; }
+      .grid{grid-template-columns: 1fr;}
       #map{height: 54vh; min-height: 360px;}
       .side{min-height:auto;}
     }
@@ -262,8 +230,8 @@
   <div class="shell">
     <div class="topbar">
       <div class="title">
-        <h1>Mr. X – Standort‑Analyse</h1>
-        <div class="sub">Polygon = Spielfeld · Pings alle 5 Minuten · Vorschläge + Profil</div>
+        <h1>Mr. X – Standort-Analyse</h1>
+        <div class="sub">Polygon = Spielfeld · Pings importieren/eingeben · Übersicht + KI</div>
       </div>
       <div class="actions">
         <a class="btn" href="/home">⬅️ Home</a>
@@ -277,7 +245,7 @@
         <div class="cardHeader">
           <div>
             <div class="h">Karte</div>
-            <div class="hint">1) Spielfeld einzeichnen · 2) Ping setzen</div>
+            <div class="hint">1) Spielfeld einzeichnen · 2) Ping einfügen</div>
           </div>
           <div class="row">
             <span class="chip" id="chipArea"><small>Spielfeld:</small> <span id="areaState">—</span></span>
@@ -291,23 +259,23 @@
       <div class="card side">
         <div class="cardHeader">
           <div>
-            <div class="h">Steuerung</div>
-            <div class="hint">MVP: Gehen (Radius) + KI‑Ranking</div>
+            <div class="h">Übersicht</div>
+            <div class="hint">Du kannst Pings reinschreiben</div>
           </div>
-          <button class="btn icon" id="btnCloseTip" title="Hinweis ausblenden">✕</button>
+          <button class="btn icon" id="btnCollapse" title="Ein-/Ausklappen">▾</button>
         </div>
 
         <div class="sideBody" id="sideBody">
           <div class="row">
             <div class="field">
-              <label>Spielname (nur lokal)</label>
-              <input id="gameName" placeholder="z.B. Heidelberg Abendrunde">
+              <label>Spielname (lokal)</label>
+              <input id="gameName" placeholder="z.B. Abendrunde">
             </div>
           </div>
 
           <div class="row">
             <div class="field">
-              <label>Geh‑Tempo</label>
+              <label>Geh-Tempo</label>
               <select id="walkMode">
                 <option value="1.4">Normal (≈ 5 km/h)</option>
                 <option value="2.0">Schnell (≈ 7.2 km/h)</option>
@@ -324,33 +292,69 @@
             </div>
           </div>
 
-          <div class="row">
-            <button class="btn primary" id="btnGPS">📍 Ping via GPS</button>
-            <button class="btn" id="btnManual">🖱️ Ping per Klick</button>
+          <div class="notice ok" id="overviewBox">
+            <b>Übersicht:</b> Füge mindestens 2 Pings ein für Richtung/Geschwindigkeit.
           </div>
 
-          <div class="sep"></div>
+          <div class="row">
+            <button class="btn primary" id="btnInsert">➕ Ping einfügen</button>
+            <button class="btn" id="btnAnalyze">🤖 Analysieren</button>
+          </div>
+<div class="sep"></div>
 
           <div class="row" style="justify-content:space-between; align-items:flex-end">
             <div style="display:flex; flex-direction:column; gap:2px">
               <div style="font-weight:900">Pings</div>
-              <div style="color:var(--muted); font-size:.9rem">Neuester oben</div>
+              <div style="color:var(--muted); font-size:.9rem">Neuester oben · mit Stats</div>
             </div>
-            <button class="btn" id="btnAnalyze">🤖 Analysieren</button>
           </div>
 
           <div class="list" id="pingList"></div>
 
           <div class="sep"></div>
 
-          <div style="font-weight:900">KI‑Analyse</div>
-          <div class="aiBox muted" id="aiOut">Noch keine Analyse. Zeichne ein Spielfeld und setze 1–2 Pings.</div>
+          <div style="font-weight:900">KI-Analyse</div>
+          <div class="aiBox muted" id="aiOut">Noch keine Analyse. Zeichne ein Spielfeld und füge 1–2 Pings ein.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-          <div class="sep"></div>
+  <!-- MODAL: Paste / Manual Entry -->
+  <div class="modalBackdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modalHead">
+        <div class="h" id="modalTitle">Ping einfügen</div>
+        <button class="btn icon" id="btnModalClose" title="Schließen">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="notice">
+          Du kannst hier alles reinwerfen:<br>
+          • <b>lat,lng</b> (z.B. <code>49.0123, 8.4045</code>)<br>
+          • Google Maps Link (enthält oft <code>@lat,lng</code>)<br>
+          • WhatsApp Text mit Koordinaten<br><br>
+          Optional: Zeit (wenn du’s weißt). Wenn leer → jetzt.
+        </div>
 
-          <div style="color:var(--muted); font-size:.9rem; line-height:1.35">
-            Tipp: Polygon zeichnen mit dem Zeichen‑Tool auf der Karte (oben links). Danach Pings setzen.
+        <div class="field">
+          <label>Ping Text / Link</label>
+          <textarea id="pasteText" rows="4" placeholder="Hier rein…"></textarea>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Zeit (optional)</label>
+            <input id="pasteTime" type="datetime-local">
           </div>
+          <div class="field">
+            <label>Genauigkeit (optional, Meter)</label>
+            <input id="pasteAcc" type="number" min="0" step="1" placeholder="z.B. 15">
+          </div>
+        </div>
+
+        <div class="modalActions">
+          <button class="btn" id="btnPasteParse">✅ Übernehmen</button>
+          <button class="btn danger" id="btnPasteCancel">Abbrechen</button>
         </div>
       </div>
     </div>
@@ -374,7 +378,7 @@ enforceAuth();
 /* =========================
    STATE (localStorage MVP)
 ========================= */
-const LS_KEY = "mrx_state_v1";
+const LS_KEY = "mrx_state_v2";
 function loadState(){
   try{
     const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
@@ -397,13 +401,18 @@ const elGameName  = document.getElementById("gameName");
 const elWalkMode  = document.getElementById("walkMode");
 const elWindowSec = document.getElementById("windowSec");
 const chipArea    = document.getElementById("chipArea");
+const elOverview  = document.getElementById("overviewBox");
+
+/* Modal refs */
+const modalBackdrop = document.getElementById("modalBackdrop");
+const pasteText = document.getElementById("pasteText");
+const pasteTime = document.getElementById("pasteTime");
+const pasteAcc  = document.getElementById("pasteAcc");
 
 /* =========================
    MAP
 ========================= */
 const map = L.map("map", { zoomControl: true }).setView([49.013, 8.404], 13);
-
-// Tile layer (OSM)
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: "© OpenStreetMap"
@@ -418,130 +427,118 @@ let reachableCircle = null;
 
 const drawControl = new L.Control.Draw({
   draw: {
-    polyline: false,
-    rectangle: false,
-    circle: false,
-    circlemarker: false,
-    marker: false,
-    polygon: {
-      allowIntersection: false,
-      showArea: true
-    }
+    polyline:false, rectangle:false, circle:false, circlemarker:false, marker:false,
+    polygon:{ allowIntersection:false, showArea:true }
   },
-  edit: {
-    featureGroup: drawnItems,
-    remove: true
-  }
+  edit:{ featureGroup: drawnItems, remove:true }
 });
 map.addControl(drawControl);
 
 map.on(L.Draw.Event.CREATED, function (e) {
-  // Nur 1 Polygon im MVP: altes löschen
   drawnItems.clearLayers();
   const layer = e.layer;
   drawnItems.addLayer(layer);
-
-  const geo = layer.toGeoJSON();
-  state.area = geo; // GeoJSON Polygon
+  state.area = layer.toGeoJSON();
   saveState();
-  renderAll();
+  renderAll(true);
 });
-
 map.on("draw:edited", () => {
   const layers = drawnItems.getLayers();
   if (layers.length) {
     state.area = layers[0].toGeoJSON();
     saveState();
-    renderAll();
+    renderAll(true);
   }
 });
 map.on("draw:deleted", () => {
   state.area = null;
   saveState();
-  renderAll();
+  renderAll(true);
 });
 
 /* =========================
    HELPERS
 ========================= */
-function fmt(n, d=5){
-  if (!Number.isFinite(n)) return "—";
-  return Number(n).toFixed(d);
-}
-
-function haversineMeters(a, b){
-  const R = 6371000;
-  const toRad = x => x * Math.PI / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
-  const s = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-  return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
-}
-
-function bearingDeg(a, b){
-  const toRad = x => x * Math.PI / 180;
-  const toDeg = x => x * 180 / Math.PI;
-  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
-  let brng = toDeg(Math.atan2(y, x));
-  brng = (brng + 360) % 360;
-  return brng;
-}
-
-// Destination point given start, bearing, distance
-function destPoint(a, brngDeg, distM){
-  const R = 6371000;
-  const toRad = x => x*Math.PI/180;
-  const toDeg = x => x*180/Math.PI;
-  const brng = toRad(brngDeg);
-  const lat1 = toRad(a.lat);
-  const lon1 = toRad(a.lng);
-  const dr = distM / R;
-
-  const lat2 = Math.asin(Math.sin(lat1)*Math.cos(dr) + Math.cos(lat1)*Math.sin(dr)*Math.cos(brng));
-  const lon2 = lon1 + Math.atan2(Math.sin(brng)*Math.sin(dr)*Math.cos(lat1), Math.cos(dr)-Math.sin(lat1)*Math.sin(lat2));
-  return { lat: toDeg(lat2), lng: ((toDeg(lon2)+540)%360)-180 };
-}
-
-function areaPolygon(){
-  if (!state.area) return null;
-  try{
-    // state.area ist Feature
-    const poly = state.area.type === "Feature" ? state.area : { type:"Feature", geometry: state.area, properties:{} };
-    return poly;
-  }catch{ return null; }
-}
-
-function pointInArea(lat, lng){
-  const poly = areaPolygon();
-  if (!poly) return true; // ohne Bereich: alles erlaubt
-  try{
-    return turf.booleanPointInPolygon(turf.point([lng, lat]), poly);
-  }catch{ return true; }
-}
-
-// Punkt ins Polygon "ziehen": Distanz schrittweise reduzieren bis inside
-function clampIntoArea(from, p){
-  if (pointInArea(p.lat, p.lng)) return p;
-  // reduziere Distanz in 10 Schritten
-  const brng = bearingDeg(from, p);
-  let dist = haversineMeters(from, p);
-  for (let i=0;i<12;i++){
-    dist *= 0.75;
-    const cand = destPoint(from, brng, dist);
-    if (pointInArea(cand.lat, cand.lng)) return cand;
-  }
-  // fallback: Original zurück (auch wenn outside)
-  return p;
-}
-
+function fmt(n, d=5){ if (!Number.isFinite(n)) return "—"; return Number(n).toFixed(d); }
 function nowMs(){ return Date.now(); }
 function timeLabel(ms){
   const d = new Date(ms);
   return d.toLocaleString("de-DE", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+function haversineMeters(a, b){
+  const R=6371000, toRad=x=>x*Math.PI/180;
+  const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
+  const lat1=toRad(a.lat), lat2=toRad(b.lat);
+  const s=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
+}
+function bearingDeg(a, b){
+  const toRad=x=>x*Math.PI/180, toDeg=x=>x*180/Math.PI;
+  const lat1=toRad(a.lat), lat2=toRad(b.lat);
+  const dLng=toRad(b.lng-a.lng);
+  const y=Math.sin(dLng)*Math.cos(lat2);
+  const x=Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+  return (toDeg(Math.atan2(y,x))+360)%360;
+}
+function destPoint(a, brngDeg, distM){
+  const R=6371000, toRad=x=>x*Math.PI/180, toDeg=x=>x*180/Math.PI;
+  const brng=toRad(brngDeg);
+  const lat1=toRad(a.lat), lon1=toRad(a.lng);
+  const dr=distM/R;
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(dr) + Math.cos(lat1)*Math.sin(dr)*Math.cos(brng));
+  const lon2=lon1 + Math.atan2(Math.sin(brng)*Math.sin(dr)*Math.cos(lat1), Math.cos(dr)-Math.sin(lat1)*Math.sin(lat2));
+  return { lat: toDeg(lat2), lng: ((toDeg(lon2)+540)%360)-180 };
+}
+function areaPolygon(){
+  if (!state.area) return null;
+  try{
+    return state.area.type==="Feature" ? state.area : { type:"Feature", geometry: state.area, properties:{} };
+  }catch{ return null; }
+}
+function pointInArea(lat,lng){
+  const poly=areaPolygon();
+  if (!poly) return true;
+  try{ return turf.booleanPointInPolygon(turf.point([lng,lat]), poly); }catch{ return true; }
+}
+function clampIntoArea(from,p){
+  if (pointInArea(p.lat,p.lng)) return p;
+  const brng=bearingDeg(from,p);
+  let dist=haversineMeters(from,p);
+  for (let i=0;i<12;i++){
+    dist*=0.75;
+    const cand=destPoint(from, brng, dist);
+    if (pointInArea(cand.lat,cand.lng)) return cand;
+  }
+  return p;
+}
+
+/* =========================
+   OVERVIEW (Stats)
+========================= */
+function computeOverview(){
+  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
+  if (pings.length===0){
+    return { text:"Übersicht: Noch keine Pings.", cls:"ok" };
+  }
+  if (pings.length===1){
+    return { text:"Übersicht: 1 Ping vorhanden. Setze/importiere einen zweiten für Richtung & Tempo.", cls:"ok" };
+  }
+  const last=pings[pings.length-1], prev=pings[pings.length-2];
+  const d=haversineMeters(prev,last);
+  const dt=Math.max(1, (last.t-prev.t)/1000);
+  const spd=d/dt;
+  const br=bearingDeg(prev,last);
+
+  const windowS=Number(elWindowSec.value||"300");
+  const predictDist=spd*windowS;
+
+  let warn="";
+  if (dt < 60) warn=" (Achtung: sehr kurzer Zeitabstand)";
+  if (dt > 900) warn=" (Achtung: großer Zeitabstand)";
+  return {
+    text:`Übersicht: Letzte Strecke ≈ ${Math.round(d)}m in ≈ ${Math.round(dt)}s → ≈ ${spd.toFixed(2)} m/s · Richtung ≈ ${Math.round(br)}° · In ${windowS/60}min bei gleichem Tempo ≈ ${Math.round(predictDist)}m.${warn}`,
+    cls: warn ? "warn" : "ok"
+  };
 }
 
 /* =========================
@@ -550,325 +547,371 @@ function timeLabel(ms){
 function renderAreaOnMap(){
   drawnItems.clearLayers();
   if (!state.area) return;
-
-  const layer = L.geoJSON(state.area);
+  const layer=L.geoJSON(state.area);
   layer.eachLayer(l => drawnItems.addLayer(l));
-  // Zoom to polygon
-  const b = layer.getBounds();
+  const b=layer.getBounds();
   if (b.isValid()) map.fitBounds(b.pad(0.12));
 }
-
 function renderPingsOnMap(){
   pingLayer.clearLayers();
-  const pings = [...state.pings].sort((a,b)=>b.t-a.t);
-  pings.forEach((p, idx) => {
-    const isLatest = idx === 0;
-    const m = L.circleMarker([p.lat, p.lng], {
-      radius: isLatest ? 9 : 7,
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.85
-    }).addTo(pingLayer);
-    m.bindPopup(`<b>${isLatest ? "Letzter Ping" : "Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?`<br>± ${Math.round(p.accuracy)}m`:``}`);
+  const pings=[...state.pings].sort((a,b)=>b.t-a.t);
+  pings.forEach((p,idx)=>{
+    const isLatest=idx===0;
+    const m=L.circleMarker([p.lat,p.lng], { radius:isLatest?9:7, weight:2, opacity:1, fillOpacity:0.85 }).addTo(pingLayer);
+    m.bindPopup(`<b>${isLatest?"Letzter Ping":"Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?`<br>± ${Math.round(p.accuracy)}m`:``}`);
   });
 }
-
 function renderPingList(){
-  const pings = [...state.pings].sort((a,b)=>b.t-a.t);
-  elPingList.innerHTML = "";
+  const pings=[...state.pings].sort((a,b)=>b.t-a.t);
+  elPingList.innerHTML="";
   if (!pings.length){
-    elPingList.innerHTML = `<div class="ping"><div class="meta">Noch keine Pings.</div></div>`;
+    elPingList.innerHTML=`<div class="ping"><div class="meta">Noch keine Pings.</div></div>`;
     return;
   }
-  pings.forEach((p, idx) => {
-    const div = document.createElement("div");
-    div.className = "ping";
-    div.innerHTML = `
+  // For stats per row: compare to next (older) ping
+  const chron=[...state.pings].sort((a,b)=>a.t-b.t);
+  const idxByT=new Map(chron.map((p,i)=>[p.t,i]));
+
+  pings.forEach((p,idx)=>{
+    const div=document.createElement("div");
+    div.className="ping";
+
+    const iChron=idxByT.get(p.t);
+    let statsHtml=`<span class="tag">📌 <b>Ping</b></span>`;
+    if (iChron!=null && iChron>0){
+      const prev=chron[iChron-1];
+      const d=haversineMeters(prev,p);
+      const dt=Math.max(1,(p.t-prev.t)/1000);
+      const spd=d/dt;
+      const br=bearingDeg(prev,p);
+      statsHtml += ` <span class="tag">📏 ${Math.round(d)}m</span>`;
+      statsHtml += ` <span class="tag">⏱️ ${Math.round(dt)}s</span>`;
+      statsHtml += ` <span class="tag">🏃 ${spd.toFixed(2)} m/s</span>`;
+      statsHtml += ` <span class="tag">🧭 ${Math.round(br)}°</span>`;
+    } else {
+      statsHtml += ` <span class="tag">— erster Ping</span>`;
+    }
+
+    div.innerHTML=`
       <div class="top">
         <span>${idx===0?"📌 Letzter Ping":"📍 Ping"}</span>
-        <button class="btn danger" style="padding:6px 10px; border-radius:12px" data-del="${p.t}">Löschen</button>
+        <span class="row" style="gap:6px">
+          <button class="btn small" data-zoom="${p.t}">🔎</button>
+          <button class="btn small danger" data-del="${p.t}">Löschen</button>
+        </span>
       </div>
       <div class="meta">${timeLabel(p.t)} · ${fmt(p.lat)} , ${fmt(p.lng)}${p.accuracy?` · ± ${Math.round(p.accuracy)}m`:``}</div>
+      <div class="stats">${statsHtml}</div>
     `;
     elPingList.appendChild(div);
   });
 
   elPingList.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.addEventListener("click", () => {
-      const t = Number(btn.getAttribute("data-del"));
-      state.pings = state.pings.filter(x => x.t !== t);
+    btn.addEventListener("click", ()=>{
+      const t=Number(btn.getAttribute("data-del"));
+      state.pings=state.pings.filter(x=>x.t!==t);
       saveState();
-      renderAll();
+      renderAll(true);
+    });
+  });
+  elPingList.querySelectorAll("[data-zoom]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const t=Number(btn.getAttribute("data-zoom"));
+      const p=state.pings.find(x=>x.t===t);
+      if (!p) return;
+      map.setView([p.lat,p.lng], Math.max(map.getZoom(), 16), { animate:true });
     });
   });
 }
-
 function renderChips(){
-  elPingCount.textContent = String(state.pings.length);
-  if (state.area) {
-    elAreaState.textContent = "gesetzt";
-    chipArea.style.borderColor = "rgba(62,227,140,0.35)";
-  } else {
-    elAreaState.textContent = "fehlt";
-    chipArea.style.borderColor = "rgba(255,255,255,0.10)";
-  }
+  elPingCount.textContent=String(state.pings.length);
+  if (state.area){ elAreaState.textContent="gesetzt"; chipArea.style.borderColor="rgba(62,227,140,0.35)"; }
+  else { elAreaState.textContent="fehlt"; chipArea.style.borderColor="rgba(255,255,255,0.10)"; }
 }
-
+function renderOverview(){
+  const o=computeOverview();
+  elOverview.classList.remove("ok","warn");
+  elOverview.classList.add(o.cls);
+  elOverview.innerHTML = `<b>Übersicht:</b> ${o.text.replace(/^Übersicht:\s*/,"")}`;
+}
 function clearOverlays(){
   candidateLayer.clearLayers();
-  if (reachableCircle) { map.removeLayer(reachableCircle); reachableCircle = null; }
+  if (reachableCircle){ map.removeLayer(reachableCircle); reachableCircle=null; }
 }
-
-function renderAll(){
-  elGameName.value = state.name || "";
+function renderAll(redrawOverlay=false){
+  elGameName.value=state.name||"";
   renderChips();
   renderAreaOnMap();
   renderPingsOnMap();
   renderPingList();
-  // reach + candidates aus letztem ping sofort zeichnen (wenn vorhanden)
-  drawPredictionOverlay();
-}
-
-function drawPredictionOverlay(){
-  clearOverlays();
-  const last = state.pings.length ? [...state.pings].sort((a,b)=>b.t-a.t)[0] : null;
-  if (!last) return;
-
-  const speed = Number(elWalkMode.value || "1.4");
-  const windowS = Number(elWindowSec.value || "300");
-  const radius = Math.max(30, speed * windowS); // meters
-
-  reachableCircle = L.circle([last.lat, last.lng], {
-    radius,
-    weight: 2,
-    opacity: 1,
-    fillOpacity: 0.10
-  }).addTo(map);
-
-  const candidates = computeCandidates();
-  candidates.forEach((c, i) => {
-    const m = L.circleMarker([c.lat, c.lng], { radius: 7, weight: 2, fillOpacity: 0.85 }).addTo(candidateLayer);
-    m.bindTooltip(String(i+1), { permanent: true, direction: "center", className:"" });
-    m.bindPopup(`<b>Kandidat ${i+1}</b><br>${fmt(c.lat)} , ${fmt(c.lng)}<br><small>${c.note||""}</small>`);
-  });
+  renderOverview();
+  if (redrawOverlay) drawPredictionOverlay();
 }
 
 /* =========================
-   PREDICTION / CANDIDATES
+   CANDIDATES / OVERLAY
 ========================= */
 function computeCandidates(){
-  const pings = [...state.pings].sort((a,b)=>a.t-b.t); // chronologisch
-  const last = pings[pings.length-1];
-  const prev = pings.length >= 2 ? pings[pings.length-2] : null;
+  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
+  const last=pings[pings.length-1];
+  const prev=pings.length>=2 ? pings[pings.length-2] : null;
 
-  const speed = Number(elWalkMode.value || "1.4");
-  const windowS = Number(elWindowSec.value || "300");
-  const distMax = Math.max(30, speed * windowS);
+  const speedSet=Number(elWalkMode.value||"1.4");
+  const windowS=Number(elWindowSec.value||"300");
+  const distMax=Math.max(30, speedSet*windowS);
 
-  let baseBearing = 0;
-  let effSpeed = null;
-
+  let baseBearing=0;
+  let effSpeed=null;
   if (prev){
-    baseBearing = bearingDeg(prev, last);
-    const d = haversineMeters(prev, last);
-    const dt = Math.max(1, (last.t - prev.t) / 1000);
-    effSpeed = d / dt;
-  } else {
-    baseBearing = 0;
+    baseBearing=bearingDeg(prev,last);
+    const d=haversineMeters(prev,last);
+    const dt=Math.max(1,(last.t-prev.t)/1000);
+    effSpeed=d/dt;
   }
-
-  // Winkel-Spread: mit 2 Pings enger, sonst breiter
   const angles = prev ? [0, 25, -25, 55, -55, 180] : [0, 45, -45, 90, -90, 180];
-
-  // Distanz: wenn effSpeed bekannt, nutze 80–110% davon; sonst 85% vom Max
   let dBase = prev && effSpeed ? Math.min(distMax, Math.max(60, effSpeed * windowS * 0.95)) : distMax * 0.85;
 
-  const out = [];
+  const out=[];
   for (let i=0;i<angles.length;i++){
-    const brng = (baseBearing + angles[i] + 360) % 360;
-    let p = destPoint(last, brng, dBase);
-    p = clampIntoArea(last, p);
-    if (!pointInArea(p.lat, p.lng) && state.area) continue; // wenn polygon existiert und clamp fail -> skip
+    const brng=(baseBearing+angles[i]+360)%360;
+    let p=destPoint(last, brng, dBase);
+    p=clampIntoArea(last,p);
+    if (!pointInArea(p.lat,p.lng) && state.area) continue;
     out.push({ ...p, note: prev ? `Richtung ${Math.round(brng)}°` : `Richtung ${Math.round(brng)}° (ohne Verlauf)` });
   }
-
-  // Falls weniger als 6: kürzere Distanz ergänzen
-  let tries = 0;
-  while (out.length < 6 && tries < 12){
-    tries++;
-    dBase *= 0.78;
-    const brng = (baseBearing + (tries%2?35:-35) + 360) % 360;
-    let p = destPoint(last, brng, dBase);
-    p = clampIntoArea(last, p);
-    if (pointInArea(p.lat, p.lng)) out.push({ ...p, note:`Kurzstrecke ${Math.round(dBase)}m` });
+  let tries=0;
+  while(out.length<6 && tries<12){
+    tries++; dBase*=0.78;
+    const brng=(baseBearing + (tries%2?35:-35) + 360)%360;
+    let p=destPoint(last, brng, dBase);
+    p=clampIntoArea(last,p);
+    if (pointInArea(p.lat,p.lng)) out.push({ ...p, note:`Kurzstrecke ${Math.round(dBase)}m` });
   }
-
   return out.slice(0,6);
+}
+function drawPredictionOverlay(){
+  clearOverlays();
+  const last=state.pings.length ? [...state.pings].sort((a,b)=>b.t-a.t)[0] : null;
+  if (!last) return;
+
+  const speedSet=Number(elWalkMode.value||"1.4");
+  const windowS=Number(elWindowSec.value||"300");
+  const radius=Math.max(30, speedSet*windowS);
+
+  reachableCircle=L.circle([last.lat,last.lng], { radius, weight:2, opacity:1, fillOpacity:0.10 }).addTo(map);
+
+  const candidates=computeCandidates();
+  candidates.forEach((c,i)=>{
+    const m=L.circleMarker([c.lat,c.lng], { radius:7, weight:2, fillOpacity:0.85 }).addTo(candidateLayer);
+    m.bindTooltip(String(i+1), { permanent:true, direction:"center" });
+    m.bindPopup(`<b>Kandidat ${i+1}</b><br>${fmt(c.lat)} , ${fmt(c.lng)}<br><small>${c.note||""}</small>`);
+  });
 }
 
 /* =========================
    AI
 ========================= */
 function buildAiPrompt(){
-  const poly = areaPolygon();
-  const pings = [...state.pings].sort((a,b)=>a.t-b.t);
-  const candidates = computeCandidates();
+  const poly=areaPolygon();
+  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
+  const candidates=computeCandidates();
 
-  const last = pings[pings.length-1] || null;
-  const prev = pings.length>=2 ? pings[pings.length-2] : null;
+  const last=pings[pings.length-1]||null;
+  const prev=pings.length>=2 ? pings[pings.length-2] : null;
 
   let d=null, brng=null, dt=null, spd=null;
   if (last && prev){
-    d = haversineMeters(prev, last);
-    dt = Math.max(1, (last.t - prev.t)/1000);
-    brng = bearingDeg(prev, last);
-    spd = d/dt;
+    d=haversineMeters(prev,last);
+    dt=Math.max(1,(last.t-prev.t)/1000);
+    brng=bearingDeg(prev,last);
+    spd=d/dt;
   }
 
-  const speedSet = Number(elWalkMode.value||"1.4");
-  const windowS = Number(elWindowSec.value||"300");
+  const speedSet=Number(elWalkMode.value||"1.4");
+  const windowS=Number(elWindowSec.value||"300");
 
   return [
 `Du bist ein Helfer für ein Live-Spiel "Mr. X".`,
 `Aufgabe: Bewerte die wahrscheinlichsten nächsten Positionen in den nächsten ${windowS/60} Minuten.`,
-`Du darfst NICHT "raten" ohne Bezug auf Daten. Nutze nur die Pings + Kandidaten + Spielfeld-Polygon.`,
+`Nutze nur Pings + Kandidaten + Spielfeld-Polygon. Keine Fantasie-Orte.`,
 `Gib am Ende:`,
-`1) Top-6 Kandidaten in Reihenfolge (1..6) mit kurzer Begründung je Punkt.`,
-`2) Ein kurzes "Profil" (max 6 Bulletpoints): eher schnell/risiko/stealth, Richtungs-Tendenz, bleibt im Gebiet oder flieht Rand, etc.`,
-`3) Verfolger-Taktik (max 5 Bulletpoints): wie aufteilen, welche Routen blocken.`,
+`1) Top-6 Kandidaten (1..6) mit 1 Satz Begründung je Punkt.`,
+`2) Profil (max 6 Bulletpoints).`,
+`3) Verfolger-Taktik (max 5 Bulletpoints).`,
 ``,
 `Daten:`,
 `- Spielname: ${state.name||"(ohne)"}`,
 `- Geh-Tempo gesetzt: ${speedSet} m/s`,
 `- Spielfeld-Polygon: ${poly ? JSON.stringify(poly.geometry) : "nicht gesetzt"}`,
-`- Pings (chronologisch): ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:p.accuracy||null})))}`,
-(prev && last ? `- Letzte Bewegung: Distanz≈${Math.round(d)}m, Zeit≈${Math.round(dt)}s, Geschwindigkeit≈${spd.toFixed(2)}m/s, Bearing≈${Math.round(brng)}°` : `- Letzte Bewegung: nur 1 Ping vorhanden`),
-`- Kandidatenpunkte (müssen gerankt werden): ${JSON.stringify(candidates.map((c,i)=>({k:i+1, lat:c.lat, lng:c.lng, note:c.note||""})))}`,
+`- Pings: ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:p.accuracy||null})))}`,
+(prev && last ? `- Letzte Bewegung: Distanz≈${Math.round(d)}m, Zeit≈${Math.round(dt)}s, Speed≈${spd.toFixed(2)}m/s, Bearing≈${Math.round(brng)}°` : `- Letzte Bewegung: nur 1 Ping`),
+`- Kandidaten (zu ranken): ${JSON.stringify(candidates.map((c,i)=>({k:i+1, lat:c.lat, lng:c.lng, note:c.note||""})))}`,
 ``,
-`Wichtig: Wenn das Polygon fehlt, sag zuerst kurz "Polygon fehlt" und gib trotzdem Ranking basierend auf Bewegung.`,
+`Wichtig: Wenn Polygon fehlt, sag kurz "Polygon fehlt".`,
   ].join("\n");
 }
 
 async function runAi(){
   if (!state.pings.length){
     elAiOut.classList.add("muted");
-    elAiOut.textContent = "Keine Pings vorhanden.";
+    elAiOut.textContent="Keine Pings vorhanden.";
     return;
   }
-
   elAiOut.classList.remove("muted");
-  elAiOut.textContent = "Analysiere…";
-
-  const prompt = buildAiPrompt();
+  elAiOut.textContent="Analysiere…";
+  const prompt=buildAiPrompt();
 
   try{
-    const r = await fetch("/api/ai", {
+    const r=await fetch("/api/ai", {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       credentials:"include",
       body: JSON.stringify({ prompt })
     });
-    const j = await r.json().catch(()=>null);
+    const j=await r.json().catch(()=>null);
     if (!r.ok || !j){
-      elAiOut.textContent = "KI-Fehler: " + (j?.error ? JSON.stringify(j) : `HTTP ${r.status}`);
+      elAiOut.textContent="KI-Fehler: " + (j?.error ? JSON.stringify(j) : `HTTP ${r.status}`);
       return;
     }
     elAiOut.textContent = j.text || "(leer)";
   }catch(e){
-    elAiOut.textContent = "KI-Fehler: " + String(e?.message || e);
+    elAiOut.textContent="KI-Fehler: " + String(e?.message || e);
   }
 }
 
 /* =========================
    PING ACTIONS
 ========================= */
-function addPing(lat, lng, accuracy){
+function addPing(lat,lng,accuracy,tOverrideMs){
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-  // Wenn Polygon existiert: nur erlauben, wenn inside
-  if (state.area && !pointInArea(lat, lng)){
+  if (state.area && !pointInArea(lat,lng)){
     alert("Ping liegt außerhalb des Spielfelds (Polygon).");
     return;
   }
 
+  const t = Number.isFinite(tOverrideMs) ? tOverrideMs : nowMs();
+
   state.pings.push({
-    t: nowMs(),
-    lat: Number(lat),
-    lng: Number(lng),
-    accuracy: Number.isFinite(accuracy) ? Number(accuracy) : null
+    t,
+    lat:Number(lat),
+    lng:Number(lng),
+    accuracy:Number.isFinite(accuracy) ? Number(accuracy) : null
   });
 
-  // Keep last 50 pings
-  state.pings = state.pings.sort((a,b)=>a.t-b.t).slice(-50);
+  // dedupe same timestamp (keep latest)
+  const seen=new Set();
+  state.pings = state.pings
+    .sort((a,b)=>a.t-b.t)
+    .filter(p=>{
+      if (seen.has(p.t)) return false;
+      seen.add(p.t); return true;
+    })
+    .slice(-80);
 
   saveState();
-  renderAll();
+  renderAll(true);
 }
 
-let manualMode = false;
-function setManualMode(on){
-  manualMode = !!on;
-  const btn = document.getElementById("btnManual");
-  btn.textContent = on ? "🖱️ Klick: aktiv (zum Beenden klicken)" : "🖱️ Ping per Klick";
-  btn.classList.toggle("primary", on);
-}
+let manualMode=false;
 
-map.on("click", (e) => {
-  if (!manualMode) return;
-  addPing(e.latlng.lat, e.latlng.lng, null);
-  setManualMode(false);
-});
 
-document.getElementById("btnGPS").addEventListener("click", () => {
-  if (!navigator.geolocation){
-    alert("GPS nicht verfügbar.");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition((pos)=>{
-    addPing(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-  }, (err)=>{
-    alert("GPS Fehler: " + (err?.message || err));
-  }, { enableHighAccuracy:true, timeout:12000, maximumAge:0 });
-});
-
-document.getElementById("btnManual").addEventListener("click", () => {
-  setManualMode(!manualMode);
-});
-
-document.getElementById("btnAnalyze").addEventListener("click", () => {
+document.getElementById("btnAnalyze").addEventListener("click", ()=>{
   drawPredictionOverlay();
   runAi();
 });
 
-document.getElementById("btnReset").addEventListener("click", () => {
+/* =========================
+   IMPORT / PASTE PARSER
+========================= */
+function openModal(){
+  pasteText.value="";
+  pasteAcc.value="";
+  pasteTime.value="";
+  modalBackdrop.classList.add("show");
+  setTimeout(()=>pasteText.focus(), 0);
+}
+function closeModal(){
+  modalBackdrop.classList.remove("show");
+}
+
+document.getElementById("btnInsert").addEventListener("click", openModal);
+document.getElementById("btnModalClose").addEventListener("click", closeModal);
+document.getElementById("btnPasteCancel").addEventListener("click", closeModal);
+modalBackdrop.addEventListener("click", (e)=>{ if (e.target===modalBackdrop) closeModal(); });
+
+function parseLatLngFromText(text){
+  const t = (text||"").trim();
+  if (!t) return null;
+
+  // 1) Google Maps style: @lat,lng
+  let m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+
+  // 2) plain "lat, lng" or "lat lng"
+  m = t.match(/(-?\d{1,3}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
+  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+
+  // 3) "lat: x lng: y"
+  m = t.match(/lat[^0-9-]*(-?\d+(?:\.\d+)?)[^0-9-]+lng[^0-9-]*(-?\d+(?:\.\d+)?)/i);
+  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
+
+  return null;
+}
+
+function parseTimeMs(){
+  const v = (pasteTime.value||"").trim();
+  if (!v) return null;
+  const d = new Date(v);
+  const ms = d.getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+document.getElementById("btnPasteParse").addEventListener("click", ()=>{
+  const text = pasteText.value || "";
+  const ll = parseLatLngFromText(text);
+  if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)){
+    alert("Konnte keine Koordinaten finden. Bitte z.B. '49.0123, 8.4045' oder einen Maps-Link einfügen.");
+    return;
+  }
+  const acc = (pasteAcc.value==="" ? null : Number(pasteAcc.value));
+  const tms = parseTimeMs();
+  addPing(ll.lat, ll.lng, acc, tms);
+  closeModal();
+});
+
+/* =========================
+   RESET / COLLAPSE
+========================= */
+document.getElementById("btnReset").addEventListener("click", ()=>{
   const ok = confirm("Alles löschen? (Polygon + Pings + KI-Text)");
   if (!ok) return;
   state = { name:"", area:null, pings:[] };
   saveState();
   elAiOut.classList.add("muted");
-  elAiOut.textContent = "Noch keine Analyse. Zeichne ein Spielfeld und setze 1–2 Pings.";
+  elAiOut.textContent="Noch keine Analyse. Zeichne ein Spielfeld und füge 1–2 Pings ein.";
   clearOverlays();
-  renderAll();
+  renderAll(true);
 });
 
-document.getElementById("btnCloseTip").addEventListener("click", () => {
-  const body = document.getElementById("sideBody");
-  body.style.display = (body.style.display === "none") ? "" : "none";
+let collapsed=false;
+document.getElementById("btnCollapse").addEventListener("click", ()=>{
+  collapsed=!collapsed;
+  document.getElementById("sideBody").style.display = collapsed ? "none" : "";
+  document.getElementById("btnCollapse").textContent = collapsed ? "▸" : "▾";
 });
 
 /* Name sync */
-elGameName.addEventListener("input", () => {
+elGameName.addEventListener("input", ()=>{
   state.name = elGameName.value || "";
   saveState();
 });
 
-/* Re-render overlay on parameter change */
-[elWalkMode, elWindowSec].forEach(el => el.addEventListener("change", () => {
-  drawPredictionOverlay();
-}));
+/* Overlay update on param change */
+[elWalkMode, elWindowSec].forEach(el => el.addEventListener("change", ()=> drawPredictionOverlay()));
 
 /* Initial */
-renderAll();
+renderAll(true);
 </script>
 </body>
 </html>
