@@ -78,7 +78,7 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:10px;
+      gap:12px;
       margin-bottom: 14px;
       flex-wrap: wrap;
     }
@@ -117,7 +117,7 @@
       background: rgba(255,255,255,0.06);
       border: 1px solid var(--border);
       color: var(--text);
-      border-radius: 12px;
+      border-radius: 14px;
       text-decoration:none;
       user-select:none;
       white-space: nowrap;
@@ -127,7 +127,7 @@
       display:flex;
       align-items:center;
       justify-content: space-between;
-      gap:10px;
+      gap:12px;
       flex-wrap: wrap;
       margin-bottom: 12px;
     }
@@ -135,11 +135,11 @@
 
     /* Inputs */
     input[type="text"], input[type="time"]{
-      padding: 10px 10px;
+      padding: 12px 12px;
       border: 1px solid var(--border);
       background: rgba(0,0,0,0.25);
       color: var(--text);
-      border-radius: 12px;
+      border-radius: 14px;
       font-size: 16px; /* no mobile zoom */
       outline: none;
       min-width: 220px;
@@ -155,10 +155,10 @@
       align-items:center;
       background: var(--panel2);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 12px 14px;
       margin-bottom: 10px;
-      gap:10px;
+      gap:12px;
       -webkit-user-select:none;
       user-select:none;
       flex-wrap: wrap;
@@ -259,13 +259,13 @@
 
     .add-row{
       display:flex;
-      gap:10px;
+      gap:12px;
       align-items:center;
       flex-wrap:wrap;
       background: rgba(255,255,255,0.04);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 10px;
+      padding: 12px;
     }
 
     .days{
@@ -279,14 +279,14 @@
       background: rgba(255,255,255,0.06);
       color: rgba(255,255,255,0.88);
       border-radius: 999px;
-      padding: 6px 9px;
+      padding: 8px 10px;
       font-weight: 900;
       cursor:pointer;
       user-select:none;
       display:inline-flex;
       gap:8px;
       align-items:center;
-      font-size: 0.86rem;
+      font-size: 0.9rem;
     }
     .day-chip.on{
       border-color: rgba(62,227,140,0.35);
@@ -351,7 +351,7 @@
       margin-bottom: 10px;
       padding: 10px 12px;
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       background: rgba(0,0,0,0.25);
       color: var(--text);
       box-sizing: border-box;
@@ -437,16 +437,15 @@
     <!-- Add / Quick add -->
     <div id="new-task-section" style="margin-top:10px;">
       <div class="add-row" style="margin-bottom: 10px;">
-        <input type="text" id="quick-task-text" placeholder="z.B. wäsche aufhängen; mo, fr; 13:00 Uhr; Mama  (oder: saugen 13uhr mo do mama)" style="flex: 1 1 420px;" />
+        <input type="text" id="quick-task-text" placeholder="wäsche aufhängen; mo, fr; 13:00 Uhr; Mama" style="flex: 1 1 420px;" />
         <button id="quick-add-btn" class="btn btn-small">Hinzufügen</button>
       </div>
 
       <div class="add-row">
-        <input type="text" id="new-task-text" placeholder="Neue Aufgabe" style="flex: 1 1 260px; max-width: 420px;" />
-        <div class="days" id="days-wrap" style="flex: 0 0 auto;"></div>
-        <input type="time" id="new-task-time" value="13:00" style="width: 120px; min-width: 120px;" />
-        <button id="no-time-btn" class="btn btn-small btn-secondary" type="button" title="Ohne Uhrzeit">Keine Uhrzeit</button>
-        <input type="text" id="new-task-person" placeholder="Person (z.B. Mama)" style="flex: 0 1 220px; max-width: 280px; min-width: 160px;" />
+        <input type="text" id="new-task-text" placeholder="Neue Aufgabe" style="flex: 2 1 320px;" />
+        <div class="days" id="days-wrap" style="flex: 1 1 260px;"></div>
+        <input type="time" id="new-task-time" value="13:00" style="min-width: 140px;" />
+        <input type="text" id="new-task-person" placeholder="Person (z.B. Mama)" style="flex: 1 1 180px; min-width: 160px;" />
         <button id="add-task-btn" class="btn btn-small">Erstellen</button>
       </div>
     </div>
@@ -462,7 +461,7 @@
       <h3 style="margin:0 0 12px;">Einstellungen</h3>
 
       <div style="display:flex; flex-direction:column; gap:14px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <div style="font-weight:900;">Fertige nach unten</div>
           <label class="switch" aria-label="Fertige nach unten">
             <input id="done-bottom-toggle" type="checkbox">
@@ -470,7 +469,7 @@
           </label>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <div style="font-weight:900;">Abhaken mit Kästchen</div>
           <label class="switch" aria-label="Abhaken mit Kästchen">
             <input id="checkbox-toggle" type="checkbox">
@@ -496,7 +495,6 @@
       <input type="text" id="popup-input-title" class="hidden" placeholder="Aufgabe" />
       <div id="popup-days" class="days hidden" style="margin: 6px 0 10px;"></div>
       <input type="time" id="popup-input-time" class="hidden" />
-      <button type="button" id="popup-no-time-btn" class="btn btn-small btn-secondary hidden" style="margin-bottom:10px;">Keine Uhrzeit</button>
       <input type="text" id="popup-input-person" class="hidden" placeholder="Person" />
 
       <div class="popup-buttons">
@@ -647,9 +645,6 @@
         popupPerson.classList.add("hidden");
         popupDaysWrap.classList.add("hidden");
 
-        const popupNoTimeBtn = document.getElementById("popup-no-time-btn");
-        popupNoTimeBtn.classList.add("hidden");
-
         openOverlay();
         popupCallback = (ok)=>{
           closeOverlay();
@@ -698,11 +693,7 @@
         popupDaysWrap.classList.remove("hidden");
 
         popupTitle.value = task.title || "";
-        popupTime.value = (task.time || "");
-
-        const popupNoTimeBtn = document.getElementById("popup-no-time-btn");
-        popupNoTimeBtn.classList.remove("hidden");
-        popupNoTimeBtn.onclick = ()=>{ popupTime.value = ""; };
+        popupTime.value = task.time || "13:00";
         popupPerson.value = task.person || "";
 
         buildDays(popupDaysWrap, (task.days || []));
@@ -715,11 +706,12 @@
             return;
           }
           const title = (popupTitle.value || "").trim();
-          const time = normalizeTime(popupTime.value); // optional
+          const time = normalizeTime(popupTime.value);
           const person = (popupPerson.value || "").trim();
           const days = readDays(popupDaysWrap);
 
           if (!title) return; // stay open
+          if (!time) return;  // stay open
           if (!days.length) return;
 
           closeOverlay();
@@ -730,19 +722,6 @@
 
       // ===== Helpers =====
       const DAY_ORDER = ["mo","di","mi","do","fr","sa","so"];
-      function fmtCreated(iso){
-        try{
-          const d = new Date(iso);
-          if (isNaN(d)) return "";
-          const dd = String(d.getDate()).padStart(2,"0");
-          const mm = String(d.getMonth()+1).padStart(2,"0");
-          const yyyy = d.getFullYear();
-          const hh = String(d.getHours()).padStart(2,"0");
-          const mi = String(d.getMinutes()).padStart(2,"0");
-          return `${dd}.${mm}.${yyyy} ${hh}:${mi}`;
-        }catch(e){ return ""; }
-      }
-
       const DAY_LABEL = { mo:"Mo", di:"Di", mi:"Mi", do:"Do", fr:"Fr", sa:"Sa", so:"So" };
 
       function normalizeTime(s){
@@ -810,40 +789,16 @@
           if (!Array.isArray(t.days)) t.days = [];
           t.days = t.days.map(x=>String(x).toLowerCase().slice(0,2)).filter(x=>DAY_LABEL[x]);
           t.days = Array.from(new Set(t.days)).sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b));
-          t.time = normalizeTime(t.time) || "";
+          t.time = normalizeTime(t.time) || "13:00";
           if (typeof t.person !== "string") t.person = String(t.person ?? "");
-          if (!t.createdAt) t.createdAt = new Date().toISOString();
-          if (t.done){
-            // Wenn bereits erledigt, aber kein doneAt vorhanden: setze jetzt, damit es nicht sofort gelöscht wird
-            if (!t.doneAt) t.doneAt = new Date().toISOString();
-          } else {
-            t.doneAt = null;
-          }
           t.done = !!t.done;
           return t;
         });
       }
 
-      // ===== Auto-Löschen: erledigte Aufgaben nach 24h entfernen =====
-      function cleanupDoneTasks(){
-        const now = Date.now();
-        const DAY = 24 * 60 * 60 * 1000;
-        const before = (data.tasks || []).length;
-        data.tasks = (data.tasks || []).filter(t=>{
-          if (!t || !t.done) return true;
-          if (!t.doneAt) return true; // ohne Timestamp nicht löschen
-          const ts = new Date(t.doneAt).getTime();
-          if (!Number.isFinite(ts)) return true;
-          return (now - ts) < DAY;
-        });
-        const after = (data.tasks || []).length;
-        if (after !== before) scheduleSave();
-      }
-
-// ===== Render =====
+      // ===== Render =====
       function render(){
         ensureDataShape();
-        cleanupDoneTasks();
 
         const doneBottom = !!data.settings.doneBottom;
         const checkboxMode = !!data.settings.checkbox;
@@ -874,9 +829,8 @@
             <div class="task-title">${escapeHtml(task.title || "Aufgabe")}</div>
             <div class="task-meta">
               <span class="tag">${escapeHtml(fmtDays(task.days)) || "—"}</span>
-              ${task.time ? `<span class="tag">${escapeHtml(task.time)} Uhr</span>` : `<span class="tag warn">ohne Uhrzeit</span>`}
+              <span class="tag">${escapeHtml(task.time)} Uhr</span>
               ${task.person ? `<span class="tag">${escapeHtml(task.person)}</span>` : ""}
-              ${task.createdAt ? `<span class="tag">erstellt: ${escapeHtml(fmtCreated(task.createdAt))}</span>` : ""}
             </div>
           `;
 
@@ -920,7 +874,6 @@
 
           const toggleDone = ()=>{
             task.done = !task.done;
-            task.doneAt = task.done ? new Date().toISOString() : null;
             cb.checked = task.done;
             li.classList.toggle("task-done", task.done);
             scheduleSave();
@@ -931,14 +884,12 @@
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
               task.done = cb.checked;
-              task.doneAt = task.done ? new Date().toISOString() : null;
               scheduleSave();
               render();
             });
             // in checkboxMode: click on row toggles too (nice), but not required:
             li.addEventListener("click", ()=>{
               task.done = !task.done;
-              task.doneAt = task.done ? new Date().toISOString() : null;
               scheduleSave();
               render();
             });
@@ -956,18 +907,16 @@
       // ===== Create task =====
       function createTaskFromFields(){
         const title = (document.getElementById("new-task-text").value || "").trim();
-        const time = normalizeTime(document.getElementById("new-task-time").value); // optional
+        const time = normalizeTime(document.getElementById("new-task-time").value);
         const person = (document.getElementById("new-task-person").value || "").trim();
         const days = readDays(document.getElementById("days-wrap"));
 
-        if (!title || !days.length) return;
+        if (!title || !time || !days.length) return;
 
         data.tasks.unshift({
           id: makeId("task"),
           title, time, person, days,
-          done: false,
-          doneAt: null,
-          createdAt: new Date().toISOString()
+          done: false
         });
 
         document.getElementById("new-task-text").value = "";
@@ -977,97 +926,16 @@
       }
 
       function parseQuickLine(line){
-        // Unterstützt:
-        //  1) "wäsche aufhängen; mo, fr; 13:00 Uhr; Mama"
-        //  2) "wäsche aufhängen; mo, fr; Mama" (ohne Uhrzeit)
-        //  3) "saugen 13uhr mo do mama" (Space-Format)
-        const raw = String(line || "").trim();
-        if (!raw) return null;
+        // "wäsche aufhängen; mo, fr; 13:00 Uhr; Mama"
+        const parts = String(line).split(";").map(p=>p.trim()).filter(Boolean);
+        if (parts.length < 3) return null;
 
-        // --- Semikolon-Format ---
-        if (raw.includes(";")) {
-          const parts = raw.split(";").map(p=>p.trim());
-          while(parts.length && parts[parts.length-1] === "") parts.pop();
-          if (parts.length < 2) return null;
+        const title = parts[0] || "";
+        const days = parseDays(parts[1] || "");
+        const time = normalizeTime(parts[2] || "");
+        const person = parts[3] ? String(parts[3]).trim() : "";
 
-          const title = (parts[0] || "").trim();
-          const days = parseDays(parts[1] || "");
-          let time = "";
-          let person = "";
-
-          if (parts.length >= 3){
-            const maybeTime = normalizeTime(parts[2] || "");
-            if (maybeTime){
-              time = maybeTime;
-              person = parts[3] ? String(parts[3]).trim() : "";
-            } else {
-              time = "";
-              person = parts[2] ? String(parts[2]).trim() : "";
-            }
-          }
-
-          if (!title || !days.length) return null;
-          return { title, days, time, person };
-        }
-
-        // --- Space-Format ---
-        const tokens = raw.split(/\s+/).filter(Boolean);
-        if (tokens.length < 2) return null;
-
-        const daySet = new Set(DAY_ORDER);
-        const days = [];
-        let time = "";
-        let timeIndex = -1;
-
-        // find time token
-        for (let i=0;i<tokens.length;i++){
-          const t = tokens[i].toLowerCase();
-          const maybe = normalizeTime(t.replace(/uhr$/,""));
-          // accept "13uhr" or "13:00" or "13.00"
-          if (t.endsWith("uhr")) {
-            const maybeUhr = normalizeTime(t.replace("uhr",""));
-            if (maybeUhr){ time = maybeUhr; timeIndex = i; break; }
-          }
-          if (maybe && (t.includes(":") || t.includes(".") || /^\d{1,2}$/.test(t))) {
-            time = maybe; timeIndex = i; break;
-          }
-        }
-
-        // collect days anywhere
-        for (const tok of tokens){
-          const k = tok.toLowerCase().slice(0,2);
-          if (daySet.has(k) && !days.includes(k)) days.push(k);
-        }
-        days.sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b));
-
-        // title/person from around time
-        let titleTokens = [];
-        let afterTokens = [];
-        if (timeIndex >= 0){
-          titleTokens = tokens.slice(0, timeIndex);
-          afterTokens = tokens.slice(timeIndex+1);
-        } else {
-          // no time -> title = first token(s), rest could be person or days; keep simple:
-          titleTokens = [tokens[0]];
-          afterTokens = tokens.slice(1);
-        }
-
-        // remove day tokens from title/person
-        titleTokens = titleTokens.filter(t => !daySet.has(t.toLowerCase().slice(0,2)));
-        afterTokens = afterTokens.filter(t => !daySet.has(t.toLowerCase().slice(0,2)));
-
-        const title = titleTokens.join(" ").trim();
-        const person = afterTokens.join(" ").trim();
-
-        if (!title || !days.length) return null;
-        return { title, days, time, person };
-      } else {
-            // no time -> treat as person
-            time = "";
-            person = parts[2] ? String(parts[2]).trim() : "";
-          }
-        }
-        if (!title || !days.length) return null;
+        if (!title || !days.length || !time) return null;
         return { title, days, time, person };
       }
 
@@ -1075,7 +943,7 @@
         const inp = document.getElementById("quick-task-text");
         const parsed = parseQuickLine(inp.value || "");
         if (!parsed) return;
-        data.tasks.unshift({ id: makeId("task"), done:false, doneAt: null, createdAt: new Date().toISOString(), ...parsed });
+        data.tasks.unshift({ id: makeId("task"), done:false, ...parsed });
         inp.value = "";
         scheduleSave();
         render();
@@ -1106,12 +974,6 @@
         buildDays(document.getElementById("days-wrap"), ["mo","fr"]);
 
         document.getElementById("add-task-btn").addEventListener("click", createTaskFromFields);
-
-        // Keine Uhrzeit (Create)
-        document.getElementById("no-time-btn").addEventListener("click", ()=>{
-          const t = document.getElementById("new-task-time");
-          t.value = "";
-        });
         document.getElementById("quick-add-btn").addEventListener("click", createTaskFromQuick);
 
         document.getElementById("quick-task-text").addEventListener("keydown", (e)=>{
@@ -1136,7 +998,7 @@
           if (!total) return;
           const allDone = data.tasks.every(t=>!!t.done);
           showConfirm(allDone ? "Alles wieder abwählen?" : "Alles abhaken?", ()=>{
-            data.tasks.forEach(t=>{ t.done = !allDone; t.doneAt = t.done ? new Date().toISOString() : null; });
+            data.tasks.forEach(t=> t.done = !allDone);
             scheduleSave();
             render();
           });
