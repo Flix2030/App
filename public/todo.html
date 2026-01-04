@@ -669,7 +669,6 @@
     </div>
   </div>
 
-
   <!-- Popup (Prompt/Confirm/Edit) -->
   <div id="popup-overlay" class="popup-overlay">
     <div class="popup">
@@ -872,7 +871,6 @@
           .map(x=>x.dataset.day)
           .filter(Boolean);
       }
-
 
       // ===== Draft UI + Modals =====
       const draftPreview = document.getElementById("draft-preview");
@@ -1293,19 +1291,9 @@
         updateDraftUI();
         scheduleSave();
         render();
-      });
-}
-function createTaskFromQuick(){
-        const inp = document.getElementById("quick-task-text");
-        const parsed = parseQuickLine(inp.value || "");
-        if (!parsed) return;
-        data.tasks.unshift({ id: makeId("task"), done:false, ...parsed });
-        inp.value = "";
-        scheduleSave();
-        render();
       }
 
-      // ===== Settings =====
+            // ===== Settings =====
       const settingsModal = document.getElementById("settings-modal");
       const doneBottomToggle = document.getElementById("done-bottom-toggle");
       const checkboxToggle = document.getElementById("checkbox-toggle");
@@ -1449,7 +1437,6 @@ document.getElementById("edit-mode-toggle").addEventListener("click", function()
           }
         });
       }
-
 
       async function init(){
         try{
