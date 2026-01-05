@@ -1012,7 +1012,16 @@ function saveData() {
 
 
     
-    // ===== Cloud Profiles API (statt global /api/data) =====
+    // ===== Cloud Sync über /api/data (ohne /api/profiles) =====
+    // Backend hat bei dir kein /api/profiles (404). Deshalb speichern wir ALLES in /api/data unter einem Namespace.
+    // Struktur in /api/data:
+    // {
+    //   ... (andere Apps dürfen hier auch Keys haben),
+    //   packliste: {
+    //     profiles: [ { id, name, lists:[], updatedAt } ]
+    //   }
+    // }
+
     // Profiles = "Benutzer" in der UI (jedes Profil hat eigene Listen)
     let profilesMeta = [];          // [{id,name,updated_at}]
     let profileData = null;         // {id,name,lists:[]}
@@ -1038,59 +1047,17 @@ function saveData() {
     }
     // ---- /Local Profile Cache ----
 
-
-    async function apiListProfiles() {
-      const r = await fetch("/api/profiles", { credentials: "include" });
-      if (r.status === 401) return { unauth: true, profiles: [] };
-      if (!r.ok) throw new Error("apiListProfiles failed: " + r.status);
-      const j = await r.json().catch(() => null);
-      return { unauth: false, profiles: (j && j.ok && Array.isArray(j.profiles)) ? j.profiles : [] };
+    function makeProfileId(){
+      try{
+        const a = new Uint32Array(2);
+        crypto.getRandomValues(a);
+        return "p_" + a[0].toString(16) + a[1].toString(16) + "_" + Date.now().toString(16);
+      }catch(_){
+        return "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+      }
     }
 
-    async function apiCreateProfile(name) {
-      const r = await fetch("/api/profiles", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
-      });
-      if (r.status === 401) return { unauth: true, id: null };
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j || j.ok !== true) throw new Error("apiCreateProfile failed");
-      return { unauth: false, id: j.id };
-    }
-
-    async function apiGetProfile(profileId) {
-      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), { credentials: "include" });
-      if (r.status === 401) return { unauth: true, data: null };
-      if (!r.ok) throw new Error("apiGetProfile failed: " + r.status);
-      const j = await r.json().catch(() => null);
-      return { unauth: false, data: (j && j.ok && j.data) ? j.data : null };
-    }
-
-    async function apiSaveProfile(profileId, body) {
-      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-      if (r.status === 401) return { unauth: true };
-      if (!r.ok) throw new Error("apiSaveProfile failed: " + r.status);
-      return { unauth: false };
-    }
-
-    async function apiDeleteProfile(profileId) {
-      const r = await fetch("/api/profiles/" + encodeURIComponent(profileId), {
-        method: "DELETE",
-        credentials: "include"
-      });
-      if (r.status === 401) return { unauth: true };
-      if (!r.ok) throw new Error("apiDeleteProfile failed: " + r.status);
-      return { unauth: false };
-    }
-
-    // Legacy (falls du später wieder globalen State willst)
+    // Legacy: globaler State Storage
     async function apiGetData() {
       const r = await fetch("/api/data", { credentials: "include" });
       if (r.status === 401) return { unauth: true, data: null };
@@ -1107,7 +1074,84 @@ function saveData() {
         body: JSON.stringify(data)
       });
     }
-    // ===== /Cloud Profiles API =====
+
+    async function getServerRoot(){
+      const res = await apiGetData();
+      if (res.unauth) return { unauth:true, root:null };
+      const root = (res.data && typeof res.data === "object") ? res.data : {};
+      if (!root.packliste || typeof root.packliste !== "object") root.packliste = {};
+      if (!Array.isArray(root.packliste.profiles)) root.packliste.profiles = [];
+      return { unauth:false, root };
+    }
+
+    async function setServerRoot(root){
+      // root ist der komplette /api/data Payload
+      await apiSaveData(root);
+    }
+
+    function normalizeMetaFromProfiles(profiles){
+      return (profiles||[]).map(p=>({
+        id: p.id,
+        name: p.name || "Benutzer",
+        updated_at: Number(p.updatedAt || 0)
+      }));
+    }
+
+    async function apiListProfiles() {
+      const res = await getServerRoot();
+      if (res.unauth) return { unauth: true, profiles: [] };
+      const profiles = res.root.packliste.profiles || [];
+      return { unauth:false, profiles: normalizeMetaFromProfiles(profiles) };
+    }
+
+    async function apiCreateProfile(name) {
+      const res = await getServerRoot();
+      if (res.unauth) return { unauth:true, id:null };
+
+      const id = makeProfileId();
+      const prof = { id, name: String(name||"Benutzer"), lists: [], updatedAt: Date.now() };
+      res.root.packliste.profiles.unshift(prof);
+      await setServerRoot(res.root);
+      return { unauth:false, id };
+    }
+
+    async function apiGetProfile(profileId) {
+      const res = await getServerRoot();
+      if (res.unauth) return { unauth:true, data:null };
+      const p = (res.root.packliste.profiles || []).find(x=>x.id===profileId) || null;
+      return { unauth:false, data: p ? { ...p } : null };
+    }
+
+    async function apiSaveProfile(profileId, body) {
+      const res = await getServerRoot();
+      if (res.unauth) return { unauth:true };
+
+      const profiles = res.root.packliste.profiles || [];
+      const idx = profiles.findIndex(x=>x.id===profileId);
+      const name = String(body?.name || "Benutzer");
+      const lists = Array.isArray(body?.lists) ? body.lists : [];
+      const updatedAt = Number(body?.updatedAt || Date.now()) || Date.now();
+
+      const next = { id: profileId, name, lists, updatedAt };
+
+      if (idx >= 0) profiles[idx] = next;
+      else profiles.unshift(next);
+
+      res.root.packliste.profiles = profiles;
+      await setServerRoot(res.root);
+      return { unauth:false };
+    }
+
+    async function apiDeleteProfile(profileId) {
+      const res = await getServerRoot();
+      if (res.unauth) return { unauth:true };
+      res.root.packliste.profiles = (res.root.packliste.profiles || []).filter(p=>p.id!==profileId);
+      await setServerRoot(res.root);
+      return { unauth:false };
+    }
+
+    // ===== /Cloud Sync über /api/data =====
+
 
 
     // ===== Profiles: Laden / Wechseln / Speichern =====
