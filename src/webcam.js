@@ -264,22 +264,31 @@ const HTML_LIVE = `<!doctype html>
     const intervalMs = Math.round(1000 / fps);
     log("send:", fps, "fps", width + "x" + height, "q=" + quality);
 
-    sendTimer = setInterval(async () => {
-      if (!ws || ws.readyState !== 1) return;
-      try {
-        ctx.drawImage(localV, 0, 0, width, height);
-        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-        if (!blob) return;
-        const buf = await blobToArrayBuffer(blob);
-        ws.send(buf);
-      } catch (e) {
-        // ignore occasional frame errors
+    let running = true;
+    sendTimer = { stop: () => (running = false) };
+
+    const loop = async () => {
+      while (running) {
+        if (!ws || ws.readyState !== 1) { await new Promise(r => setTimeout(r, 200)); continue; }
+        if (!localV || localV.readyState < 2) { await new Promise(r => setTimeout(r, 100)); continue; }
+
+        try {
+          ctx.drawImage(localV, 0, 0, width, height);
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+          if (!blob) { await new Promise(r => setTimeout(r, 50)); continue; }
+          const buf = await blobToArrayBuffer(blob);
+          ws.send(buf);
+        } catch (e) {
+          // Safari wirft hier gerne InvalidStateError -> kurz warten und weiter
+        }
+
+        await new Promise(r => setTimeout(r, intervalMs));
       }
-    }, intervalMs);
-  }
+    };
+    loop();
 
   function stopSender() {
-    if (sendTimer) clearInterval(sendTimer);
+    if (sendTimer?.stop) sendTimer.stop();
     sendTimer = null;
     if (localStream) {
       for (const t of localStream.getTracks()) try { t.stop(); } catch {}
