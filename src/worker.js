@@ -646,7 +646,10 @@ export default {
       const url = new URL(req.url);
       const path = url.pathname;
 
-      
+      // WEBCAM – MUSS VOR LOGIN-GATE!
+      if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
+        return handleWebcam(req, env);
+      }
 
       // ✅ WEBCAM ROUTE: muss VOR Login-Gate laufen
       if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
