@@ -3,8 +3,7 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-import { handleWebcam, handleWebcamLive } from "./webcam.js";
-import { LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "./webcam.js";
+import { handleWebcamLive, LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "./webcam.js";
 
 // wrangler will die Klassen im entrypoint sehen:
 export class LOBBY extends LOBBY_DO {}
@@ -649,10 +648,6 @@ export default {
     try {
       const url = new URL(req.url);
       const path = url.pathname;
-      // ✅ WEBCAM (alt) – MUSS VOR LOGIN-GATE!
-      if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
-        return handleWebcam(req, env);
-      }
 
       // ✅ WEBCAM LIVE (stabil + Gruppen) – MUSS VOR LOGIN-GATE!
       if (
