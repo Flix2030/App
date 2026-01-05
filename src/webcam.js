@@ -270,6 +270,7 @@ const HTML_LOBBY = `<!doctype html>
     button { padding: 10px 12px; border-radius: 12px; border:1px solid #2a2a33; background:#1b1b22; color:#fff; cursor:pointer; }
     button:hover { filter: brightness(1.1); }
     .row { display:flex; gap:10px; align-items:center; }
+    .row.row-right > * { flex: 0 0 auto; }
     .row > * { flex: 1; }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
     .list { display:flex; flex-direction:column; gap:10px; margin-top: 10px; }
@@ -280,9 +281,8 @@ const HTML_LOBBY = `<!doctype html>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="row" style="margin-bottom:10px;">
+      <div class="row row-right" style="margin-bottom:10px; justify-content:flex-end;">
         <button onclick="location.href='/home'">🏠 Home</button>
-        <div style="flex:2"></div>
       </div>
       <h2 style="margin: 0 0 6px;">Aktive Gruppen</h2>
       <div class="small">Hier siehst du Gruppen, in denen gerade jemand live sendet.</div>
@@ -294,7 +294,7 @@ const HTML_LOBBY = `<!doctype html>
       <h2 style="margin: 0 0 6px;">Neue Gruppe erstellen</h2>
       <div class="row">
         <input id="room" placeholder="Gruppenname (z.B. flix)" />
-        <button id="create">Erstellen & Senden</button>
+        <button id="create" type="button">Erstellen & Senden</button>
       </div>
       <div class="row" style="margin-top:10px;">
         <input id="code" placeholder="Gruppen-Code (mind. 4 Zeichen)" />
@@ -353,14 +353,17 @@ const HTML_LOBBY = `<!doctype html>
     }
   }
 
-  createBtn.onclick = function () {
+  createBtn.addEventListener("click", function () {
     var room = (roomEl.value || "").trim();
     if (!room) return alert("Gruppenname fehlt");
-    var code = (codeEl.value || "").trim();
+
+    var code = (codeEl && codeEl.value ? codeEl.value : "").trim();
     if (!code) return alert("Code fehlt");
     if (code.length < 4) return alert("Code zu kurz (mind. 4 Zeichen)");
+
+    // Weiterleiten in den Room (Sender)
     location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send&code=" + encodeURIComponent(code);
-  };
+  });
 
   load();
   setInterval(load, 3000);
@@ -388,6 +391,7 @@ const HTML_ROOM = `<!doctype html>
     @media(min-width: 860px){ .grid { grid-template-columns: 1fr 1fr; } }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
     .row { display:flex; gap:10px; align-items:center; }
+    .row.row-right > * { flex: 0 0 auto; }
     .row > * { flex: 1; }
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #2a2a33; background:#101017; font-size: 12px; }
     .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; background:#0f0f13; border:1px solid #24242a; border-radius: 14px; padding: 10px; height: 140px; overflow:auto; margin-top: 12px; }
