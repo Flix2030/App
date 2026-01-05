@@ -16,13 +16,21 @@
     }
   ],
 
+  // ✅ Durable Object Binding
   "durable_objects": {
     "bindings": [
-      { "name": "SIGNAL", "class_name": "SIGNAL" }
+      {
+        "name": "SIGNAL",
+        "class_name": "SIGNAL"
+      }
     ]
   },
 
+  // ✅ WICHTIG für Free Plan (SQLite-DO!)
   "migrations": [
-    { "tag": "v1", "new_classes": ["SIGNAL"] }
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SIGNAL"]
+    }
   ]
 }
