@@ -26,5 +26,5 @@
 "migrations": [
   { "tag": "v1", "new_sqlite_classes": ["SIGNAL"] },
   { "tag": "v2", "new_sqlite_classes": ["STREAM"] },
-  { "tag": "v3", "new_sqlite_classes": ["LOBBY"] }
+  { "tag": "v3", "new_sqlite_classes": ["LOBBY"] },
 ]
