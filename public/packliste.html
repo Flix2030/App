@@ -1001,7 +1001,7 @@ function saveData() {
     // Dein Backend hat KEIN /api/profiles. Deshalb mappen wir "Profiles" (Benutzer)
     // auf ein einziges Cloud-JSON unter /api/packliste/data.
     // Struktur im Cloud-Doc: { users:[ {id,name,lists,updatedAt}, ... ], updatedAt }
-    const CLOUD_DATA_URL = "/api/packliste/data";
+    const CLOUD_DATA_URL = "/api/data";
 
     async function cloudFetchData() {
       const r = await fetch(CLOUD_DATA_URL, { credentials: "include" });

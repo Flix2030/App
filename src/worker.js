@@ -342,9 +342,31 @@ async function handleApi(req, env) {
       }
 
       const body = await safeReadJson(req);
+
+      // ✅ FALL 1: Globales Packliste-Dokument (dein { users:[...] } von /api/data)
+      // -> in user_data speichern (damit alle Geräte syncen, ohne profileId)
+      if (req.method === "PUT") {
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        const looksGlobal = Array.isArray(body.users) || ("users" in body) || body.__test === "hello";
+
+        if (looksGlobal) {
+          const now = new Date().toISOString();
+          await env.DB.prepare(
+            "INSERT INTO user_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+            "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+          ).bind(uid, JSON.stringify(body), now).run();
+
+          return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+        }
+      }
+
+      // ✅ FALL 2: Profil-basiert (dein bestehendes profiles/profile_data System)
+      // -> profileId ist Pflicht
       const profileId = pickProfileId(new URL(req.url), body);
       if (!profileId) return json({ error: "profileId_required" }, 400);
 
+      // ===== ab hier bleibt DEIN Code wie er ist =====
       if (req.method === "PUT") {
         if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
 
@@ -424,7 +446,7 @@ async function handleApi(req, env) {
           "ON CONFLICT(owner_id, profile_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
         ).bind(uid, profileId, JSON.stringify(bodyForHash), now).run();
 
-        return json({ ok: true });
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
       }
 
       if (req.method === "DELETE") {
