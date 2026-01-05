@@ -6,6 +6,18 @@ const decoder = new TextDecoder();
 import { handleWebcamLive, LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "./webcam.js";
 
 // wrangler will die Klassen im entrypoint sehen:
+
+export class SIGNAL {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+  async fetch() {
+    // Legacy Durable Object (wird aktuell nicht genutzt)
+    return new Response("SIGNAL: not implemented", { status: 404 });
+  }
+}
+
 export class LOBBY extends LOBBY_DO {}
 export class STREAM extends STREAM_DO {}
 
