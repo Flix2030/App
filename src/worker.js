@@ -3,6 +3,13 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+import { handleWebcam, handleWebcamLive } from "./webcam.js";
+import { LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "./webcam.js";
+
+// wrangler will die Klassen im entrypoint sehen:
+export class LOBBY extends LOBBY_DO {}
+export class STREAM extends STREAM_DO {}
+
 function makeId(prefix="id") {
   const bytes = new Uint8Array(10);
   crypto.getRandomValues(bytes);
