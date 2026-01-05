@@ -3,8 +3,8 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-import { handleWebcam } from "./webcam.js";
-export { SIGNAL } from "./webcam.js";
+import { handleWebcam, handleWebcamLive } from "./webcam.js";
+export { SIGNAL, LOBBY, STREAM } from "./webcam.js";
 
 function makeId(prefix="id") {
   const bytes = new Uint8Array(10);
@@ -645,17 +645,23 @@ export default {
     try {
       const url = new URL(req.url);
       const path = url.pathname;
-
-      // WEBCAM – MUSS VOR LOGIN-GATE!
+      // ✅ WEBCAM (alt) – MUSS VOR LOGIN-GATE!
       if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
         return handleWebcam(req, env);
       }
 
-      // ✅ WEBCAM ROUTE: muss VOR Login-Gate laufen
-      if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
-        return handleWebcam(req, env);
+      // ✅ WEBCAM LIVE (stabil + Gruppen) – MUSS VOR LOGIN-GATE!
+      if (
+        path === "/webcam-live" ||
+        path === "/webcam-live/" ||
+        path === "/webcam-live/room" ||
+        path === "/webcam-live/groups" ||
+        path === "/webcam-live/ws"
+      ) {
+        return handleWebcamLive(req, env);
       }
-let assetPath = path;
+
+      let assetPath = path;
 
       if (path === "/home") assetPath = "/home.html";
       if (path === "/packliste") assetPath = "/packliste.html";
