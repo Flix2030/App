@@ -123,6 +123,15 @@ export class STREAM {
 
     const roomName = String(url.searchParams.get("room") || "default").slice(0, 64);
 
+    const providedCode = String(url.searchParams.get("code") || "").trim();
+    const codeOk = (c) => typeof c === "string" && c.length >= 4 && c.length <= 32;
+    const sha256Hex = async (str) => {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    };
+    const getStoredHash = async () => (await this.state.storage.get("codeHash")) || "";
+
+
     const touchLobby = async () => {
       try {
         if (!this.env.LOBBY) return;
@@ -168,8 +177,22 @@ export class STREAM {
 
         if (msg.type === "role") {
           const role = msg.role === "send" ? "send" : "watch";
+          const storedHash = await getStoredHash();
+          if (!codeOk(providedCode)) {
+            sendText(server, { type: "role_denied", reason: "code_required" });
+            return;
+          }
+          const providedHash = await sha256Hex(providedCode);
 
           if (role === "send") {
+            if (storedHash) {
+              if (storedHash !== providedHash) {
+                sendText(server, { type: "role_denied", reason: "wrong_code" });
+                return;
+              }
+            } else {
+              await this.state.storage.put("codeHash", providedHash);
+            }
             // only one sender allowed
             if (this.senderId && this.senderId !== id && this.clients.has(this.senderId)) {
               sendText(server, { type: "role_denied", reason: "sender_exists" });
@@ -184,6 +207,14 @@ export class STREAM {
           }
 
           // watch
+          if (!storedHash) {
+            sendText(server, { type: "role_denied", reason: "code_not_set" });
+            return;
+          }
+          if (storedHash !== providedHash) {
+            sendText(server, { type: "role_denied", reason: "wrong_code" });
+            return;
+          }
           c.role = "watch";
           this.clients.set(id, c);
           sendText(server, { type: "role_ok", role: "watch" });
@@ -272,6 +303,7 @@ const HTML_LOBBY = `<!doctype html>
   var listEl = document.getElementById("list");
   var roomEl = document.getElementById("room");
   var createBtn = document.getElementById("create");
+  var codeEl = document.getElementById("code");
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -296,7 +328,7 @@ const HTML_LOBBY = `<!doctype html>
         +     '<div class="small">Zuschauer: ' + viewers + '</div>'
         +   '</div>'
         +   '<div>'
-        +     '<button onclick="location.href=\\'/webcam-live/room?room=' + encodeURIComponent(room) + '&mode=watch\\'">Zuschauen</button>'
+        +     '<button onclick="location.href=\'/webcam-live/room?room=' + encodeURIComponent(room) + '&mode=watch\'">Zuschauen</button>'
         +   '</div>'
         + '</div>';
     }
@@ -316,7 +348,10 @@ const HTML_LOBBY = `<!doctype html>
   createBtn.onclick = function () {
     var room = (roomEl.value || "").trim();
     if (!room) return alert("Gruppenname fehlt");
-    location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send";
+    var code = (codeEl.value || "").trim();
+    if (!code) return alert("Code fehlt");
+    if (code.length < 4) return alert("Code zu kurz (mind. 4 Zeichen)");
+    location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send&code=" + encodeURIComponent(code);
   };
 
   load();
@@ -437,7 +472,7 @@ const HTML_ROOM = `<!doctype html>
       var x = arguments[i];
       line += (typeof x === "string" ? x : JSON.stringify(x)) + " ";
     }
-    logEl.textContent += line.trim() + "\\n";
+    logEl.textContent += line.trim() + "\n";
     logEl.scrollTop = logEl.scrollHeight;
   }
 
@@ -450,7 +485,7 @@ const HTML_ROOM = `<!doctype html>
 
   function wsUrl() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
-    return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room);
+    return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room) + "&code=" + encodeURIComponent(code);
   }
 
   function setRemoteFromBuffer(buf) {
@@ -616,7 +651,7 @@ export async function handleWebcamLive(req, env) {
     if (!env.LOBBY) return new Response("Missing DO binding: LOBBY", { status: 500 });
     const lobbyId = env.LOBBY.idFromName("global");
     const lobby = env.LOBBY.get(lobbyId);
-    return lobby.fetch(new Request("https://internal/webcam-live/groups", req));
+    return lobby.fetch("https://internal/webcam-live/groups", req);
   }
 
   if (url.pathname === "/webcam-live/ws") {
