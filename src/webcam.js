@@ -449,8 +449,8 @@ const HTML_ROOM = `<!doctype html>
       </div>
 
       <div class="row" style="margin-top:12px;">
-        <button id="btnGo">Verbinden</button>
-        <button id="btnHang">Trennen</button>
+        <button id="btnGo" type="button" onclick="__connectNow()">Verbinden</button>
+        <button id="btnHang" type="button" onclick="__disconnectNow()">Trennen</button>
       </div>
 
       <div class="log" id="log"></div>
@@ -610,7 +610,7 @@ const HTML_ROOM = `<!doctype html>
     };
 
     ws.onclose = function () { setStatus("offline"); log("WS close"); };
-    ws.onerror = function () { log("WS error"); };
+    ws.onerror = function (e) { log("WS error"); };
 
     ws.onmessage = async function (evt) {
       if (typeof evt.data === "string") {
@@ -644,11 +644,7 @@ const HTML_ROOM = `<!doctype html>
       }
     };
   }
-
-  btnGo.onclick = function () { connect(); };
-  btnHang.onclick = function () { stopSender(); cleanupWs(); setStatus("offline"); };
-
-  // Auto-Reconnect
+// Auto-Reconnect
   setInterval(function () {
     if (!ws) return;
     if (ws.readyState === 2 || ws.readyState === 3) {
