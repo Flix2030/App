@@ -616,7 +616,7 @@ export async function handleWebcamLive(req, env) {
     if (!env.LOBBY) return new Response("Missing DO binding: LOBBY", { status: 500 });
     const lobbyId = env.LOBBY.idFromName("global");
     const lobby = env.LOBBY.get(lobbyId);
-    return lobby.fetch("https://internal/webcam-live/groups", req);
+    return lobby.fetch(new Request("https://internal/webcam-live/groups", req));
   }
 
   if (url.pathname === "/webcam-live/ws") {

@@ -16,15 +16,15 @@
     }
   ],
 
-  "durable_objects": {
-    "bindings": [
-      { "name": "SIGNAL", "class_name": "SIGNAL" },
-      { "name": "STREAM", "class_name": "STREAM" }
-    ]
-  },
-
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["SIGNAL"] },
-    { "tag": "v2", "new_sqlite_classes": ["STREAM"] }
+"durable_objects": {
+  "bindings": [
+    { "name": "SIGNAL", "class_name": "SIGNAL" },
+    { "name": "LOBBY",  "class_name": "LOBBY" },
+    { "name": "STREAM", "class_name": "STREAM" }
   ]
-}
+},
+"migrations": [
+  { "tag": "v1", "new_sqlite_classes": ["SIGNAL"] },
+  { "tag": "v2", "new_sqlite_classes": ["STREAM"] },
+  { "tag": "v3", "new_sqlite_classes": ["LOBBY"] }
+]
