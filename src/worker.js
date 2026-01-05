@@ -3,7 +3,7 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-import { handleWebcamLive, LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "../public/webcam.js";
+import { handleWebcamLive, LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "./webcam.js";
 
 // wrangler will die Klassen im entrypoint sehen:
 
