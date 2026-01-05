@@ -989,18 +989,55 @@ function applyRouteToState() {
     
     
 function saveData() {
+      // ✅ updatedAt für Sync/Conflict-Check
+      try {
+        const u = getCurrentUser();
+        if (u) u.updatedAt = Date.now();
+      } catch(_) {}
+
       // lokal immer (offline fallback)
       localStorage.setItem('packlisteData', JSON.stringify(data));
+
+      // pro Profil zusätzlich cachen (damit nach Reload sofort etwas da ist)
+      try {
+        const u = getCurrentUser();
+        if (u && u.id) {
+          localStorage.setItem(getProfileCacheKey(u.id), JSON.stringify(u));
+        }
+      } catch(_) {}
 
       // cloud: aktuelles Profil speichern (debounced)
       scheduleProfileSave();
     }
+
 
     
     // ===== Cloud Profiles API (statt global /api/data) =====
     // Profiles = "Benutzer" in der UI (jedes Profil hat eigene Listen)
     let profilesMeta = [];          // [{id,name,updated_at}]
     let profileData = null;         // {id,name,lists:[]}
+
+    // ---- Local Profile Cache (für Sofort-Load + Sync-Vergleich) ----
+    const PROFILE_CACHE_PREFIX = "packliste_profile_cache__";
+    function getProfileCacheKey(profileId){
+      return PROFILE_CACHE_PREFIX + String(profileId || "");
+    }
+    function loadCachedProfile(profileId){
+      try{
+        const s = localStorage.getItem(getProfileCacheKey(profileId));
+        if(!s) return null;
+        const j = JSON.parse(s);
+        return (j && typeof j === "object") ? j : null;
+      }catch(_){ return null; }
+    }
+    function cacheProfile(profileId, obj){
+      try{
+        if(!profileId || !obj) return;
+        localStorage.setItem(getProfileCacheKey(profileId), JSON.stringify(obj));
+      }catch(_){}
+    }
+    // ---- /Local Profile Cache ----
+
 
     async function apiListProfiles() {
       const r = await fetch("/api/profiles", { credentials: "include" });
@@ -1082,15 +1119,27 @@ function saveData() {
         try {
           const u = getCurrentUser();
           if (!u) return;
+
+          // ✅ updatedAt setzen + lokal cachen
+          u.updatedAt = Date.now();
+          cacheProfile(currentUserId, u);
+
           // Name muss mit Meta konsistent sein
           u.id = currentUserId;
           if (!u.name) u.name = "Benutzer";
+
           await apiSaveProfile(currentUserId, u);
+
+          // nach erfolgreichem Save nochmal cachen (falls API serverseitig Felder ergänzt)
+          cacheProfile(currentUserId, u);
+
           // Meta refresh (damit Sortierung/Name passt)
           try { profilesMeta = (await apiListProfiles()).profiles || profilesMeta; } catch (_) {}
         } catch (_) {
           // silent (offline)
         }
+      }, 350);
+    }
       }, 350);
     }
 
@@ -1124,20 +1173,108 @@ function saveData() {
     }
 
     async function loadCurrentProfileData() {
-      if (!currentUserId) { data = { users: [] }; return; }
+      if (!currentUserId) { data = { users: [] }; return { unauth: false }; }
       const res = await apiGetProfile(currentUserId);
       if (res.unauth) return { unauth: true };
+
       const meta = profilesMeta.find(p => p.id === currentUserId);
       const name = meta?.name || res.data?.name || "Benutzer";
-      profileData = res.data && typeof res.data === "object"
-        ? { id: currentUserId, name, lists: Array.isArray(res.data.lists) ? res.data.lists : [] }
-        : { id: currentUserId, name, lists: [] };
+      const serverUpdatedAt = Number(meta?.updated_at || res.data?.updatedAt || 0) || Date.now();
+
+      profileData = (res.data && typeof res.data === "object")
+        ? { id: currentUserId, name, lists: Array.isArray(res.data.lists) ? res.data.lists : [], updatedAt: serverUpdatedAt }
+        : { id: currentUserId, name, lists: [], updatedAt: serverUpdatedAt };
 
       // App erwartet data.users
       data = { users: [profileData] };
+
+      // local cache aktualisieren
+      cacheProfile(currentUserId, profileData);
+
       return { unauth: false };
     }
-    // ===== /Profiles =====
+    
+    // ===== Sync: Änderungen von anderen Geräten holen =====
+    let _syncRunning = false;
+    async function syncNow(opts = {}) {
+      if (_syncRunning) return false;
+      if (!currentUserId) return false;
+      _syncRunning = true;
+
+      const force = !!opts.force;
+
+      try {
+        const metaRes = await apiListProfiles();
+        if (metaRes.unauth) {
+          // init() hat goLogin; hier nur hart redirect
+          location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+          return false;
+        }
+        profilesMeta = metaRes.profiles || profilesMeta;
+
+        const meta = profilesMeta.find(p => p.id === currentUserId);
+        const serverUpdated = Number(meta?.updated_at || 0);
+
+        // lokale Version (aus Cache oder aktuellem State)
+        const localCached = loadCachedProfile(currentUserId);
+        const localState = getCurrentUser();
+        const localUpdated = Number((localState?.updatedAt || localCached?.updatedAt || 0));
+
+        // Wenn Server neuer ist (oder force) -> Profil neu ziehen
+        if (force || (serverUpdated && serverUpdated > localUpdated)) {
+          const profRes = await apiGetProfile(currentUserId);
+          if (profRes.unauth) {
+            location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+            return false;
+          }
+          const name = meta?.name || profRes.data?.name || "Benutzer";
+          profileData = (profRes.data && typeof profRes.data === "object")
+            ? { id: currentUserId, name, lists: Array.isArray(profRes.data.lists) ? profRes.data.lists : [], updatedAt: serverUpdated || Date.now() }
+            : { id: currentUserId, name, lists: [], updatedAt: serverUpdated || Date.now() };
+
+          data = { users: [profileData] };
+
+          // localStorage aktualisieren
+          localStorage.setItem("packlisteData", JSON.stringify(data));
+          cacheProfile(currentUserId, profileData);
+
+          // Route validieren (falls Liste gelöscht wurde)
+          if (currentListId) {
+            const u = getCurrentUser();
+            const exists = u?.lists?.some(l => l.id === currentListId);
+            if (!exists) {
+              currentListId = null;
+              setRoute(currentUserId, null, true);
+            }
+          }
+
+          // UI aktualisieren (ohne alles neu zu binden)
+          if (currentListId) {
+            showListEditSection();
+            renderItems();
+          } else {
+            loadLists();
+          }
+
+          return true;
+        }
+
+        return false;
+      } catch (_) {
+        return false;
+      } finally {
+        _syncRunning = false;
+      }
+    }
+
+    // Beim Zurückkehren in die App / Tab wieder sichtbar -> Sync ziehen
+    window.addEventListener("pageshow", () => { syncNow(); });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) syncNow();
+    });
+    // ===== /Sync =====
+
+// ===== /Profiles =====
 
 function handleRoute() {
   // URL -> State
@@ -1186,8 +1323,19 @@ async function init() {
   try {
     const metaRes = await refreshProfilesAndMaybeSelect();
     if (metaRes.unauth) { goLogin(); return; }
+    // 2.1) Sofort aus lokalem Profil-Cache anzeigen (wenn vorhanden)
+    const cached = loadCachedProfile(currentUserId);
+    if (cached && typeof cached === "object") {
+      profileData = cached;
+      data = { users: [profileData] };
+      localStorage.setItem("packlisteData", JSON.stringify(data));
+    }
+
+    // 2.2) Dann frisch vom Server holen
     const profRes = await loadCurrentProfileData();
     if (profRes.unauth) { goLogin(); return; }
+    // Cache aktualisieren
+    try { cacheProfile(currentUserId, getCurrentUser()); } catch(_) {}
   } catch (_) {
     // Cloud nicht erreichbar → nur lokal arbeiten (offline)
     data = loadData();
