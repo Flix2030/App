@@ -3,6 +3,9 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+import { handleWebcam } from "./webcam.js";
+export { SIGNAL } from "./webcam.js";
+
 function makeId(prefix="id") {
   const bytes = new Uint8Array(10);
   crypto.getRandomValues(bytes);
@@ -643,7 +646,13 @@ export default {
       const url = new URL(req.url);
       const path = url.pathname;
 
-      let assetPath = path;
+      
+
+      // ✅ WEBCAM ROUTE: muss VOR Login-Gate laufen
+      if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
+        return handleWebcam(req, env);
+      }
+let assetPath = path;
 
       if (path === "/home") assetPath = "/home.html";
       if (path === "/packliste") assetPath = "/packliste.html";

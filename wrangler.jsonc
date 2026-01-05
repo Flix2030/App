@@ -14,5 +14,15 @@
       "database_name": "app-db",
       "database_id": "621593a3-7a7b-40dc-8693-edd71bbff14f"
     }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "SIGNAL", "class_name": "SIGNAL" }
+    ]
+  },
+
+  "migrations": [
+    { "tag": "v1", "new_classes": ["SIGNAL"] }
   ]
 }
