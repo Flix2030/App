@@ -270,8 +270,7 @@ const HTML_LOBBY = `<!doctype html>
     button { padding: 10px 12px; border-radius: 12px; border:1px solid #2a2a33; background:#1b1b22; color:#fff; cursor:pointer; }
     button:hover { filter: brightness(1.1); }
     .row { display:flex; gap:10px; align-items:center; }
-    /* Home row should not stretch */
-    .row[style*="justify-content:flex-end"] > * { flex: 0 0 auto; }
+    .row.row-right > * { flex: 0 0 auto !important; }
     .row > * { flex: 1; }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
     .list { display:flex; flex-direction:column; gap:10px; margin-top: 10px; }
@@ -282,7 +281,7 @@ const HTML_LOBBY = `<!doctype html>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="row" style="margin-bottom:10px; justify-content:flex-end;">
+      <div class="row row-right" style="margin-bottom:10px; justify-content:flex-end;">
         <button type="button" onclick="location.href='/home'">🏠 Home</button>
       </div>
       <h2 style="margin: 0 0 6px;">Aktive Gruppen</h2>
@@ -397,8 +396,7 @@ const HTML_ROOM = `<!doctype html>
     @media(min-width: 860px){ .grid { grid-template-columns: 1fr 1fr; } }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
     .row { display:flex; gap:10px; align-items:center; }
-    /* Home row should not stretch */
-    .row[style*="justify-content:flex-end"] > * { flex: 0 0 auto; }
+    .row.row-right > * { flex: 0 0 auto !important; }
     .row > * { flex: 1; }
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #2a2a33; background:#101017; font-size: 12px; }
     .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; background:#0f0f13; border:1px solid #24242a; border-radius: 14px; padding: 10px; height: 140px; overflow:auto; margin-top: 12px; }
@@ -429,9 +427,7 @@ const HTML_ROOM = `<!doctype html>
         </div>
       </div>
 
-      <div id="senderSettings" style="margin-top:12px;">
-        <div class="small">Sender-Einstellungen:</div>
-        <div class="row" style="margin-top:8px;">
+              <div class="row" style="margin-top:8px;">
           <div>
             <label class="small">FPS</label>
             <input id="fps" type="number" min="1" max="15" value="4" />
@@ -466,17 +462,12 @@ const HTML_ROOM = `<!doctype html>
   var localV = $("local");
   var remoteImg = $("remote");
   var btnGo = $("btnGo");
-  var btnHang = $("btnHang");
-  var fpsEl = $("fps");
-  var wEl = $("w");
-  var qEl = $("q");
-  var localBox = $("localBox");
-  var senderSettings = $("senderSettings");
-
+  var btnHang = $("btnHang");  var localBox = $("localBox");
   var params = new URLSearchParams(location.search);
   var room = (params.get("room") || "").trim() || "default";
   var mode = (params.get("mode") || "watch") === "send" ? "send" : "watch";
 
+  // ✅ Code bei jedem Join (oder via URL)
   var codeFromUrl = (params.get("code") || "").trim();
   var code = codeFromUrl || prompt("Bitte Code für diese Gruppe eingeben:");
   if (!code || String(code).trim().length < 4) {
@@ -491,7 +482,6 @@ const HTML_ROOM = `<!doctype html>
 
   if (mode !== "send") {
     localBox.style.display = "none";
-    senderSettings.style.display = "none";
   }
 
   function log() {
@@ -527,9 +517,10 @@ const HTML_ROOM = `<!doctype html>
   }
 
   async function startSenderLoop() {
-    var width = Math.max(160, Math.min(1280, parseInt(wEl.value || "640", 10) || 640));
-    var fps = Math.max(1, Math.min(15, parseInt(fpsEl.value || "4", 10) || 4));
-    var quality = Math.max(0.3, Math.min(0.95, parseFloat(qEl.value || "0.7") || 0.7));
+    // 🔥 Beste feste Einstellungen (kein UI)
+    var width = 1280;      // HD
+    var fps = 15;          // max stabil
+    var quality = 0.95;    // maximale Qualität
     var intervalMs = Math.round(1000 / fps);
 
     localStream = await navigator.mediaDevices.getUserMedia({
@@ -610,7 +601,7 @@ const HTML_ROOM = `<!doctype html>
     };
 
     ws.onclose = function () { setStatus("offline"); log("WS close"); };
-    ws.onerror = function (e) { log("WS error"); };
+    ws.onerror = function () { log("WS error"); };
 
     ws.onmessage = async function (evt) {
       if (typeof evt.data === "string") {
@@ -626,8 +617,14 @@ const HTML_ROOM = `<!doctype html>
         }
 
         if (msg.type === "role_denied") {
-          alert("Senden nicht möglich: Es gibt bereits einen Sender in dieser Gruppe.");
-          setStatus("watch only");
+          var reason = msg.reason || "denied";
+          if (reason === "sender_exists") alert("Senden nicht möglich: Es gibt bereits einen Sender in dieser Gruppe.");
+          else if (reason === "wrong_code") alert("Falscher Code.");
+          else if (reason === "code_required") alert("Code fehlt.");
+          else if (reason === "code_not_set") alert("Für diese Gruppe ist noch kein Code gesetzt (Sender muss zuerst verbinden).");
+          else alert("Zugriff verweigert.");
+          setStatus("offline");
+          try { ws.close(); } catch {}
           return;
         }
 
