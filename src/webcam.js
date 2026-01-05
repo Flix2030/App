@@ -146,7 +146,7 @@ const HTML = `<!doctype html>
 
   const log = (...a) => {
     const line = a.map(x => typeof x === "string" ? x : JSON.stringify(x)).join(" ");
-    logEl.textContent += line + "\n";
+    logEl.textContent += line + "\\n";
     logEl.scrollTop = logEl.scrollHeight;
   };
 
