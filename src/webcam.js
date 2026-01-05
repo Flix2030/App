@@ -1,12 +1,16 @@
 // src/webcam.js
-// WebRTC Kamera-Demo: Handy A (send) -> Handy B (watch)
-// Signaling via Durable Object (WebSocket). STUN-only (für Mobilfunk oft TURN nötig).
+// Option C: Stabiler "Livebild"-Stream ohne WebRTC.
+// Technik: Sender macht JPEG-Frames -> WebSocket -> Durable Object -> Zuschauer bekommen Frames (binär).
+// Latenz: typisch 0.3–2s je nach FPS/Netz. Funktioniert auch über Mobilfunk/verschiedene Netze.
 
-export class SIGNAL {
+export class STREAM {
   constructor(state, env) {
     this.state = state;
     this.env = env;
-    this.clients = new Map(); // clientId -> WebSocket
+    /** @type {Map<string, {ws: WebSocket, role: "send"|"watch"}>} */
+    this.clients = new Map();
+    /** @type {ArrayBuffer|null} */
+    this.lastFrame = null;
   }
 
   async fetch(request) {
@@ -18,33 +22,69 @@ export class SIGNAL {
     const client = pair[1];
     const server = pair[0];
 
-    const clientId = crypto.randomUUID();
+    const id = crypto.randomUUID();
     server.accept();
-    this.clients.set(clientId, server);
 
-    const send = (ws, obj) => { try { ws.send(JSON.stringify(obj)); } catch {} };
+    // default role until we get "hello"
+    this.clients.set(id, { ws: server, role: "watch" });
 
-    send(server, { type: "hello", clientId, peers: this.clients.size - 1 });
+    const sendText = (ws, obj) => { try { ws.send(JSON.stringify(obj)); } catch {} };
+    const sendBin = (ws, buf) => { try { ws.send(buf); } catch {} };
 
+    // greet
+    sendText(server, { type: "hello", id });
+
+    // If we already have a frame, send it to new watchers after they say role=watch.
     server.addEventListener("message", (evt) => {
-      let msg;
-      try { msg = JSON.parse(evt.data); } catch { return; }
-      if (!msg || typeof msg !== "object") return;
+      const c = this.clients.get(id);
+      if (!c) return;
 
-      // simple broadcast to other peers in same room
-      for (const [id, ws] of this.clients.entries()) {
-        if (id === clientId) continue;
-        send(ws, { ...msg, _from: clientId });
+      // Text message: role selection / ping
+      if (typeof evt.data === "string") {
+        let msg = null;
+        try { msg = JSON.parse(evt.data); } catch { return; }
+        if (!msg || typeof msg !== "object") return;
+
+        if (msg.type === "role" && (msg.role === "send" || msg.role === "watch")) {
+          c.role = msg.role;
+          this.clients.set(id, c);
+
+          sendText(server, { type: "role_ok", role: c.role });
+
+          // If watcher joins and we have a last frame -> send it
+          if (c.role === "watch" && this.lastFrame) {
+            sendBin(server, this.lastFrame);
+          }
+          return;
+        }
+
+        if (msg.type === "ping") {
+          sendText(server, { type: "pong" });
+          return;
+        }
+
+        return;
+      }
+
+      // Binary message: frame from sender
+      // Cloudflare delivers binary WS as ArrayBuffer
+      const buf = evt.data; // ArrayBuffer
+      if (!(buf instanceof ArrayBuffer)) return;
+
+      // store last frame
+      this.lastFrame = buf;
+
+      // broadcast to watchers
+      for (const [otherId, other] of this.clients.entries()) {
+        if (otherId === id) continue;
+        if (other.role !== "watch") continue;
+        sendBin(other.ws, buf);
       }
     });
 
     const cleanup = () => {
-      this.clients.delete(clientId);
-      for (const ws of this.clients.values()) {
-        send(ws, { type: "peer_left", clientId });
-      }
+      this.clients.delete(id);
     };
-
     server.addEventListener("close", cleanup);
     server.addEventListener("error", cleanup);
 
@@ -52,16 +92,16 @@ export class SIGNAL {
   }
 }
 
-const HTML = `<!doctype html>
+const HTML_LIVE = `<!doctype html>
 <html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>WebRTC Kamera Demo</title>
+  <title>Livebild (stabil) – Webcam</title>
   <style>
     :root { color-scheme: dark; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0b0b0c; color:#fff; }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 16px; }
     .card { background:#141417; border:1px solid #24242a; border-radius: 14px; padding: 14px; }
     input, button, select { font-size: 16px; }
     input { width: 100%; padding: 10px 12px; border-radius: 12px; border:1px solid #2a2a33; background:#0f0f13; color:#fff; outline:none; }
@@ -71,22 +111,21 @@ const HTML = `<!doctype html>
     .row > * { flex: 1; }
     .grid { display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
     @media(min-width: 860px){ .grid { grid-template-columns: 1fr 1fr; } }
-    video { width:100%; background:#000; border-radius: 14px; border:1px solid #24242a; aspect-ratio: 16/9; }
+    video, img { width:100%; background:#000; border-radius: 14px; border:1px solid #24242a; aspect-ratio: 16/9; object-fit: cover; }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
-    .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; background:#0f0f13; border:1px solid #24242a; border-radius: 14px; padding: 10px; height: 150px; overflow:auto; }
+    .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; background:#0f0f13; border:1px solid #24242a; border-radius: 14px; padding: 10px; height: 140px; overflow:auto; }
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #2a2a33; background:#101017; font-size: 12px; }
+    .hint { margin-top: 8px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <div class="badge" id="status">offline</div>
-      <h2 style="margin:10px 0 6px;">Kamera → anderes Handy (WebRTC)</h2>
-      <div class="small">
-        1) Room eingeben (z.B. <b>flix</b>)<br/>
-        2) Handy A: <b>send</b> + Verbinden<br/>
-        3) Handy B: <b>watch</b> + Verbinden<br/>
-        Hinweis: Mobilfunk kann ohne TURN scheitern.
+      <h2 style="margin:10px 0 6px;">Livebild (stabil, ohne WebRTC)</h2>
+      <div class="small hint">
+        Funktioniert auch über Mobilfunk/verschiedene Netze. Latenz hängt von FPS/Netz ab.<br/>
+        Tipp: Sender nutzt am besten WLAN + Handy ans Ladegerät.
       </div>
 
       <div style="height:10px"></div>
@@ -96,7 +135,7 @@ const HTML = `<!doctype html>
           <label class="small">Room</label>
           <input id="room" placeholder="room-name" />
         </div>
-        <div style="max-width: 220px;">
+        <div style="max-width: 240px;">
           <label class="small">Modus</label>
           <select id="mode" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid #2a2a33; background:#0f0f13; color:#fff;">
             <option value="send">send (Kamera)</option>
@@ -114,12 +153,29 @@ const HTML = `<!doctype html>
 
       <div class="grid">
         <div>
-          <div class="small" style="margin-bottom:6px;">Local</div>
+          <div class="small" style="margin-bottom:6px;">Local (nur Sender)</div>
           <video id="local" playsinline muted autoplay></video>
         </div>
         <div>
-          <div class="small" style="margin-bottom:6px;">Remote</div>
-          <video id="remote" playsinline autoplay></video>
+          <div class="small" style="margin-bottom:6px;">Remote (Livebild)</div>
+          <img id="remote" alt="Remote" />
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+      <div class="small">Einstellungen (nur Sender):</div>
+      <div class="row" style="margin-top:8px;">
+        <div>
+          <label class="small">FPS</label>
+          <input id="fps" type="number" min="1" max="15" value="4" />
+        </div>
+        <div>
+          <label class="small">Breite (px)</label>
+          <input id="w" type="number" min="160" max="1280" value="640" />
+        </div>
+        <div>
+          <label class="small">Qualität (0.3–0.9)</label>
+          <input id="q" type="number" min="0.3" max="0.95" step="0.05" value="0.7" />
         </div>
       </div>
 
@@ -136,9 +192,12 @@ const HTML = `<!doctype html>
   const statusEl = $("status");
   const logEl = $("log");
   const localV = $("local");
-  const remoteV = $("remote");
+  const remoteImg = $("remote");
   const btnGo = $("btnGo");
   const btnHang = $("btnHang");
+  const fpsEl = $("fps");
+  const wEl = $("w");
+  const qEl = $("q");
 
   const params = new URLSearchParams(location.search);
   if (params.get("room")) roomEl.value = params.get("room");
@@ -151,14 +210,92 @@ const HTML = `<!doctype html>
   };
 
   let ws = null;
-  let pc = null;
   let localStream = null;
+  let sendTimer = null;
+  let lastUrl = null;
 
   function setStatus(s) { statusEl.textContent = s; }
 
   function wsUrl(room) {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
-    return proto + "//" + location.host + "/webcam/ws?room=" + encodeURIComponent(room);
+    return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room);
+  }
+
+  function blobToArrayBuffer(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsArrayBuffer(blob);
+    });
+  }
+
+  async function startSender(room) {
+    const width = Math.max(160, Math.min(1280, parseInt(wEl.value || "640", 10) || 640));
+    const fps = Math.max(1, Math.min(15, parseInt(fpsEl.value || "4", 10) || 4));
+    const quality = Math.max(0.3, Math.min(0.95, parseFloat(qEl.value || "0.7") || 0.7));
+
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false
+    });
+
+    localV.srcObject = localStream;
+
+    const videoTrack = localStream.getVideoTracks()[0];
+    const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+    log("camera:", settings.width, "x", settings.height);
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+
+    // wait for video metadata
+    await new Promise((res) => {
+      if (localV.readyState >= 2) return res();
+      localV.onloadedmetadata = () => res();
+    });
+
+    const srcW = localV.videoWidth || 1280;
+    const srcH = localV.videoHeight || 720;
+    const height = Math.round(width * (srcH / srcW));
+    canvas.width = width;
+    canvas.height = height;
+
+    const intervalMs = Math.round(1000 / fps);
+    log("send:", fps, "fps", width + "x" + height, "q=" + quality);
+
+    sendTimer = setInterval(async () => {
+      if (!ws || ws.readyState !== 1) return;
+      try {
+        ctx.drawImage(localV, 0, 0, width, height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (!blob) return;
+        const buf = await blobToArrayBuffer(blob);
+        ws.send(buf);
+      } catch (e) {
+        // ignore occasional frame errors
+      }
+    }, intervalMs);
+  }
+
+  function stopSender() {
+    if (sendTimer) clearInterval(sendTimer);
+    sendTimer = null;
+    if (localStream) {
+      for (const t of localStream.getTracks()) try { t.stop(); } catch {}
+    }
+    localStream = null;
+    localV.srcObject = null;
+  }
+
+  function setRemoteFromBuffer(buf) {
+    try {
+      const blob = new Blob([buf], { type: "image/jpeg" });
+      const url = URL.createObjectURL(blob);
+      remoteImg.src = url;
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      lastUrl = url;
+    } catch {}
   }
 
   async function start() {
@@ -174,91 +311,48 @@ const HTML = `<!doctype html>
     await hangup();
 
     ws = new WebSocket(wsUrl(room));
-    ws.onopen = () => setStatus("signaling online");
-    ws.onclose = () => setStatus("offline");
+    ws.binaryType = "arraybuffer";
 
-    pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-      ]
-    });
-
-    pc.onicecandidate = (e) => {
-      if (e.candidate && ws?.readyState === 1) {
-        ws.send(JSON.stringify({ type: "ice", candidate: e.candidate }));
-      }
+    ws.onopen = () => {
+      setStatus("signaling online");
+      ws.send(JSON.stringify({ type: "role", role: mode }));
+      log("WS open");
     };
 
-    pc.onconnectionstatechange = () => setStatus("pc: " + pc.connectionState);
-
-    pc.ontrack = (e) => {
-      if (remoteV.srcObject !== e.streams[0]) remoteV.srcObject = e.streams[0];
-    };
+    ws.onclose = () => { setStatus("offline"); log("WS close"); };
+    ws.onerror = () => { log("WS error"); };
 
     ws.onmessage = async (evt) => {
-      let msg;
-      try { msg = JSON.parse(evt.data); } catch { return; }
-
-      if (msg.type === "hello") {
-        setStatus("ready (" + mode + ")");
+      if (typeof evt.data === "string") {
+        let msg = null;
+        try { msg = JSON.parse(evt.data); } catch { return; }
+        if (msg?.type === "hello") return;
+        if (msg?.type === "role_ok") {
+          setStatus("ready (" + msg.role + ")");
+          if (msg.role === "send") {
+            try { await startSender(room); } catch (e) { alert(String(e)); }
+          } else {
+            stopSender();
+          }
+        }
         return;
       }
-
-      if (msg.type === "offer") {
-        await pc.setRemoteDescription(msg.sdp);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ws.send(JSON.stringify({ type: "answer", sdp: pc.localDescription }));
-        return;
-      }
-
-      if (msg.type === "answer") {
-        await pc.setRemoteDescription(msg.sdp);
-        return;
-      }
-
-      if (msg.type === "ice" && msg.candidate) {
-        try { await pc.addIceCandidate(msg.candidate); } catch {}
-      }
+      // binary frame
+      if (evt.data instanceof ArrayBuffer) setRemoteFromBuffer(evt.data);
     };
-
-    if (mode === "send") {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false
-      });
-      localV.srcObject = localStream;
-      for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
-
-      const offer = await pc.createOffer({ offerToReceiveVideo: true });
-      await pc.setLocalDescription(offer);
-      ws.send(JSON.stringify({ type: "offer", sdp: pc.localDescription }));
-      log("offer sent");
-    } else {
-      log("watching...");
-    }
   }
 
   async function hangup() {
-    try { if (ws) ws.close(); } catch {}
+    stopSender();
+    if (ws) { try { ws.close(); } catch {} }
     ws = null;
-
-    try { if (pc) pc.close(); } catch {}
-    pc = null;
-
-    if (localStream) {
-      for (const t of localStream.getTracks()) try { t.stop(); } catch {}
-    }
-    localStream = null;
-
-    localV.srcObject = null;
-    remoteV.srcObject = null;
     setStatus("offline");
   }
 
   btnGo.onclick = () => start().catch(e => alert(String(e)));
   btnHang.onclick = () => hangup();
+
+  setStatus("offline");
 })();
 </script>
 </body>
@@ -269,20 +363,18 @@ function roomIdFromRequest(req) {
   return (url.searchParams.get("room") || "default").slice(0, 64);
 }
 
-export async function handleWebcam(req, env) {
+export async function handleWebcamLive(req, env) {
   const url = new URL(req.url);
 
-  // WebSocket endpoint => Durable Object room
-  if (url.pathname === "/webcam/ws") {
-    if (!env.SIGNAL) return new Response("Missing Durable Object binding: SIGNAL", { status: 500 });
+  if (url.pathname === "/webcam-live/ws") {
+    if (!env.STREAM) return new Response("Missing Durable Object binding: STREAM", { status: 500 });
     const room = roomIdFromRequest(req);
-    const id = env.SIGNAL.idFromName(room);
-    const stub = env.SIGNAL.get(id);
+    const id = env.STREAM.idFromName("room:" + room);
+    const stub = env.STREAM.get(id);
     return stub.fetch(req);
   }
 
-  // Page
-  return new Response(HTML, {
+  return new Response(HTML_LIVE, {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
