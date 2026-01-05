@@ -270,7 +270,8 @@ const HTML_LOBBY = `<!doctype html>
     button { padding: 10px 12px; border-radius: 12px; border:1px solid #2a2a33; background:#1b1b22; color:#fff; cursor:pointer; }
     button:hover { filter: brightness(1.1); }
     .row { display:flex; gap:10px; align-items:center; }
-    .row.row-right > * { flex: 0 0 auto; }
+    /* Home row should not stretch */
+    .row[style*="justify-content:flex-end"] > * { flex: 0 0 auto; }
     .row > * { flex: 1; }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
     .list { display:flex; flex-direction:column; gap:10px; margin-top: 10px; }
@@ -281,8 +282,8 @@ const HTML_LOBBY = `<!doctype html>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="row row-right" style="margin-bottom:10px; justify-content:flex-end;">
-        <button onclick="location.href='/home'">🏠 Home</button>
+      <div class="row" style="margin-bottom:10px; justify-content:flex-end;">
+        <button type="button" onclick="location.href='/home'">🏠 Home</button>
       </div>
       <h2 style="margin: 0 0 6px;">Aktive Gruppen</h2>
       <div class="small">Hier siehst du Gruppen, in denen gerade jemand live sendet.</div>
@@ -294,12 +295,11 @@ const HTML_LOBBY = `<!doctype html>
       <h2 style="margin: 0 0 6px;">Neue Gruppe erstellen</h2>
       <div class="row">
         <input id="room" placeholder="Gruppenname (z.B. flix)" />
-        <button id="create" type="button">Erstellen & Senden</button>
+        <button id="create" type="button" onclick="__createRoom()">Erstellen & Senden</button>
       </div>
       <div class="row" style="margin-top:10px;">
         <input id="code" placeholder="Gruppen-Code (mind. 4 Zeichen)" />
       </div>
-
       <div class="small" style="margin-top:10px;">
         Tipp: FPS 2–4, Breite 480/640, Qualität 0.5–0.7 (in der Gruppe einstellbar).
       </div>
@@ -307,10 +307,9 @@ const HTML_LOBBY = `<!doctype html>
   </div>
 
 <script>
-(function () {
+(function(){
   var listEl = document.getElementById("list");
   var roomEl = document.getElementById("room");
-  var createBtn = document.getElementById("create");
   var codeEl = document.getElementById("code");
 
   function escapeHtml(s) {
@@ -319,31 +318,50 @@ const HTML_LOBBY = `<!doctype html>
     });
   }
 
+  window.__createRoom = function(){
+    try {
+      var room = (roomEl && roomEl.value ? roomEl.value : "").trim();
+      if (!room) return alert("Gruppenname fehlt");
+
+      var code = (codeEl && codeEl.value ? codeEl.value : "").trim();
+      if (!code) return alert("Code fehlt");
+      if (code.length < 4) return alert("Code zu kurz (mind. 4 Zeichen)");
+
+      location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send&code=" + encodeURIComponent(code);
+    } catch (e) {
+      alert("Create-Fehler: " + (e && e.message ? e.message : e));
+    }
+  };
+
+  window.__watchRoom = function(room){
+    location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=watch";
+  };
+
   function render(rooms) {
     if (!rooms || !rooms.length) {
       listEl.innerHTML = '<div class="small">Keine aktiven Gruppen.</div>';
       return;
     }
     var html = "";
-    for (var i = 0; i < rooms.length; i++) {
+    for (var i=0;i<rooms.length;i++){
       var r = rooms[i];
-      var room = escapeHtml(r.room);
+      var room = String(r.room || "");
       var viewers = Number(r.viewers || 0);
       html += ''
         + '<div class="item">'
         +   '<div>'
-        +     '<div><b>' + room + '</b> <span class="badge">LIVE</span></div>'
+        +     '<div><b>' + escapeHtml(room) + '</b> <span class="badge">LIVE</span></div>'
         +     '<div class="small">Zuschauer: ' + viewers + '</div>'
         +   '</div>'
         +   '<div>'
-        +     '<button onclick="location.href=\'/webcam-live/room?room=' + encodeURIComponent(room) + '&mode=watch\'">Zuschauen</button>'
+        +     '<button type="button" onclick="__watchRoom(' + "'" + room.replace(/'/g,"\'") + "'" + ')">Zuschauen</button>'
         +   '</div>'
         + '</div>';
     }
     listEl.innerHTML = html;
   }
 
-  async function load() {
+  async function load(){
     try {
       var r = await fetch("/webcam-live/groups", { cache: "no-store" });
       var j = await r.json();
@@ -352,18 +370,6 @@ const HTML_LOBBY = `<!doctype html>
       listEl.innerHTML = '<div class="small">Fehler beim Laden.</div>';
     }
   }
-
-  createBtn.addEventListener("click", function () {
-    var room = (roomEl.value || "").trim();
-    if (!room) return alert("Gruppenname fehlt");
-
-    var code = (codeEl && codeEl.value ? codeEl.value : "").trim();
-    if (!code) return alert("Code fehlt");
-    if (code.length < 4) return alert("Code zu kurz (mind. 4 Zeichen)");
-
-    // Weiterleiten in den Room (Sender)
-    location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send&code=" + encodeURIComponent(code);
-  });
 
   load();
   setInterval(load, 3000);
@@ -391,7 +397,8 @@ const HTML_ROOM = `<!doctype html>
     @media(min-width: 860px){ .grid { grid-template-columns: 1fr 1fr; } }
     .small { opacity:.85; font-size: 13px; line-height: 1.35; }
     .row { display:flex; gap:10px; align-items:center; }
-    .row.row-right > * { flex: 0 0 auto; }
+    /* Home row should not stretch */
+    .row[style*="justify-content:flex-end"] > * { flex: 0 0 auto; }
     .row > * { flex: 1; }
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #2a2a33; background:#101017; font-size: 12px; }
     .log { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre-wrap; background:#0f0f13; border:1px solid #24242a; border-radius: 14px; padding: 10px; height: 140px; overflow:auto; margin-top: 12px; }
@@ -470,7 +477,6 @@ const HTML_ROOM = `<!doctype html>
   var room = (params.get("room") || "").trim() || "default";
   var mode = (params.get("mode") || "watch") === "send" ? "send" : "watch";
 
-  // ✅ Code muss bei jedem Join eingegeben werden
   var codeFromUrl = (params.get("code") || "").trim();
   var code = codeFromUrl || prompt("Bitte Code für diese Gruppe eingeben:");
   if (!code || String(code).trim().length < 4) {
@@ -620,20 +626,8 @@ const HTML_ROOM = `<!doctype html>
         }
 
         if (msg.type === "role_denied") {
-          var reason = msg.reason || "denied";
-          if (reason === "sender_exists") {
-            alert("Senden nicht möglich: Es gibt bereits einen Sender in dieser Gruppe.");
-          } else if (reason === "wrong_code") {
-            alert("Falscher Code.");
-          } else if (reason === "code_required") {
-            alert("Code fehlt.");
-          } else if (reason === "code_not_set") {
-            alert("Für diese Gruppe wurde noch kein Code gesetzt. Bitte zuerst als Sender beitreten und einen Code festlegen.");
-          } else {
-            alert("Zugriff verweigert.");
-          }
-          setStatus("offline");
-          try { ws.close(); } catch {}
+          alert("Senden nicht möglich: Es gibt bereits einen Sender in dieser Gruppe.");
+          setStatus("watch only");
           return;
         }
 
