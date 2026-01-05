@@ -989,169 +989,137 @@ function applyRouteToState() {
     
     
 function saveData() {
-      // ✅ updatedAt für Sync/Conflict-Check
-      try {
-        const u = getCurrentUser();
-        if (u) u.updatedAt = Date.now();
-      } catch(_) {}
-
       // lokal immer (offline fallback)
       localStorage.setItem('packlisteData', JSON.stringify(data));
-
-      // pro Profil zusätzlich cachen (damit nach Reload sofort etwas da ist)
-      try {
-        const u = getCurrentUser();
-        if (u && u.id) {
-          localStorage.setItem(getProfileCacheKey(u.id), JSON.stringify(u));
-        }
-      } catch(_) {}
 
       // cloud: aktuelles Profil speichern (debounced)
       scheduleProfileSave();
     }
 
-
     
-    // ===== Cloud Sync über /api/data (ohne /api/profiles) =====
-    // Backend hat bei dir kein /api/profiles (404). Deshalb speichern wir ALLES in /api/data unter einem Namespace.
-    // Struktur in /api/data:
-    // {
-    //   ... (andere Apps dürfen hier auch Keys haben),
-    //   packliste: {
-    //     profiles: [ { id, name, lists:[], updatedAt } ]
-    //   }
-    // }
+    // ===== Cloud Profiles API (über /api/packliste/data) =====
+    // Dein Backend hat KEIN /api/profiles. Deshalb mappen wir "Profiles" (Benutzer)
+    // auf ein einziges Cloud-JSON unter /api/packliste/data.
+    // Struktur im Cloud-Doc: { users:[ {id,name,lists,updatedAt}, ... ], updatedAt }
+    const CLOUD_DATA_URL = "/api/packliste/data";
 
-    // Profiles = "Benutzer" in der UI (jedes Profil hat eigene Listen)
-    let profilesMeta = [];          // [{id,name,updated_at}]
-    let profileData = null;         // {id,name,lists:[]}
-
-    // ---- Local Profile Cache (für Sofort-Load + Sync-Vergleich) ----
-    const PROFILE_CACHE_PREFIX = "packliste_profile_cache__";
-    function getProfileCacheKey(profileId){
-      return PROFILE_CACHE_PREFIX + String(profileId || "");
-    }
-    function loadCachedProfile(profileId){
-      try{
-        const s = localStorage.getItem(getProfileCacheKey(profileId));
-        if(!s) return null;
-        const j = JSON.parse(s);
-        return (j && typeof j === "object") ? j : null;
-      }catch(_){ return null; }
-    }
-    function cacheProfile(profileId, obj){
-      try{
-        if(!profileId || !obj) return;
-        localStorage.setItem(getProfileCacheKey(profileId), JSON.stringify(obj));
-      }catch(_){}
-    }
-    // ---- /Local Profile Cache ----
-
-    function makeProfileId(){
-      try{
-        const a = new Uint32Array(2);
-        crypto.getRandomValues(a);
-        return "p_" + a[0].toString(16) + a[1].toString(16) + "_" + Date.now().toString(16);
-      }catch(_){
-        return "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
-      }
-    }
-
-    // Legacy: globaler State Storage
-    async function apiGetData() {
-      const r = await fetch("/api/data", { credentials: "include" });
+    async function cloudFetchData() {
+      const r = await fetch(CLOUD_DATA_URL, { credentials: "include" });
       if (r.status === 401) return { unauth: true, data: null };
-      if (!r.ok) throw new Error("apiGetData failed: " + r.status);
+      if (!r.ok) throw new Error("cloudFetchData failed: " + r.status);
       const j = await r.json().catch(() => null);
-      return { unauth: false, data: (j && ("data" in j) ? j.data : null) };
+
+      // Akzeptiere beide Formen:
+      // 1) {users:[...]} direkt
+      // 2) {ok:true,data:{users:[...]}}
+      const d = (j && j.data && typeof j.data === "object") ? j.data : j;
+      return { unauth: false, data: d };
     }
 
-    async function apiSaveData(data) {
-      await fetch("/api/data", {
+    async function cloudSaveData(doc) {
+      const r = await fetch(CLOUD_DATA_URL, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(doc)
       });
+      if (r.status === 401) return { unauth: true };
+      if (!r.ok) throw new Error("cloudSaveData failed: " + r.status);
+      return { unauth: false };
     }
 
-    async function getServerRoot(){
-      const res = await apiGetData();
-      if (res.unauth) return { unauth:true, root:null };
-      const root = (res.data && typeof res.data === "object") ? res.data : {};
-      if (!root.packliste || typeof root.packliste !== "object") root.packliste = {};
-      if (!Array.isArray(root.packliste.profiles)) root.packliste.profiles = [];
-      return { unauth:false, root };
-    }
-
-    async function setServerRoot(root){
-      // root ist der komplette /api/data Payload
-      await apiSaveData(root);
-    }
-
-    function normalizeMetaFromProfiles(profiles){
-      return (profiles||[]).map(p=>({
-        id: p.id,
-        name: p.name || "Benutzer",
-        updated_at: Number(p.updatedAt || 0)
-      }));
-    }
+    // ===== API-kompatible Wrapper (damit der Rest deines Codes nicht umgebaut werden muss) =====
+    let profilesMeta = [];          // [{id,name,updated_at}]
+    let profileData = null;         // {id,name,lists:[]}
 
     async function apiListProfiles() {
-      const res = await getServerRoot();
+      const res = await cloudFetchData();
       if (res.unauth) return { unauth: true, profiles: [] };
-      const profiles = res.root.packliste.profiles || [];
-      return { unauth:false, profiles: normalizeMetaFromProfiles(profiles) };
+
+      const users = Array.isArray(res.data?.users) ? res.data.users : [];
+      const profiles = users.map(u => ({
+        id: u.id,
+        name: u.name || "Benutzer",
+        updated_at: u.updatedAt || res.data?.updatedAt || 0
+      }));
+
+      return { unauth: false, profiles };
     }
 
     async function apiCreateProfile(name) {
-      const res = await getServerRoot();
-      if (res.unauth) return { unauth:true, id:null };
+      const res = await cloudFetchData();
+      if (res.unauth) return { unauth: true, id: null };
 
-      const id = makeProfileId();
-      const prof = { id, name: String(name||"Benutzer"), lists: [], updatedAt: Date.now() };
-      res.root.packliste.profiles.unshift(prof);
-      await setServerRoot(res.root);
-      return { unauth:false, id };
+      const doc = (res.data && typeof res.data === "object") ? res.data : { users: [] };
+      if (!Array.isArray(doc.users)) doc.users = [];
+
+      const id = ("p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16));
+      doc.users.unshift({ id, name: (name || "Benutzer"), lists: [], updatedAt: Date.now() });
+      doc.updatedAt = Date.now();
+
+      await cloudSaveData(doc);
+      return { unauth: false, id };
     }
 
     async function apiGetProfile(profileId) {
-      const res = await getServerRoot();
-      if (res.unauth) return { unauth:true, data:null };
-      const p = (res.root.packliste.profiles || []).find(x=>x.id===profileId) || null;
-      return { unauth:false, data: p ? { ...p } : null };
+      const res = await cloudFetchData();
+      if (res.unauth) return { unauth: true, data: null };
+
+      const users = Array.isArray(res.data?.users) ? res.data.users : [];
+      const u = users.find(x => x.id === profileId) || null;
+
+      // apiGetProfile erwartet {data:{id,name,lists}}
+      return { unauth: false, data: u ? { id: u.id, name: u.name, lists: Array.isArray(u.lists) ? u.lists : [] } : null };
     }
 
     async function apiSaveProfile(profileId, body) {
-      const res = await getServerRoot();
-      if (res.unauth) return { unauth:true };
+      const res = await cloudFetchData();
+      if (res.unauth) return { unauth: true };
 
-      const profiles = res.root.packliste.profiles || [];
-      const idx = profiles.findIndex(x=>x.id===profileId);
-      const name = String(body?.name || "Benutzer");
-      const lists = Array.isArray(body?.lists) ? body.lists : [];
-      const updatedAt = Number(body?.updatedAt || Date.now()) || Date.now();
+      const doc = (res.data && typeof res.data === "object") ? res.data : { users: [] };
+      if (!Array.isArray(doc.users)) doc.users = [];
 
-      const next = { id: profileId, name, lists, updatedAt };
+      const idx = doc.users.findIndex(u => u.id === profileId);
+      const next = {
+        id: profileId,
+        name: (body && body.name) ? body.name : "Benutzer",
+        lists: (body && Array.isArray(body.lists)) ? body.lists : [],
+        updatedAt: Date.now()
+      };
 
-      if (idx >= 0) profiles[idx] = next;
-      else profiles.unshift(next);
+      if (idx >= 0) doc.users[idx] = next;
+      else doc.users.unshift(next);
 
-      res.root.packliste.profiles = profiles;
-      await setServerRoot(res.root);
-      return { unauth:false };
+      doc.updatedAt = Date.now();
+      await cloudSaveData(doc);
+      return { unauth: false };
     }
 
     async function apiDeleteProfile(profileId) {
-      const res = await getServerRoot();
-      if (res.unauth) return { unauth:true };
-      res.root.packliste.profiles = (res.root.packliste.profiles || []).filter(p=>p.id!==profileId);
-      await setServerRoot(res.root);
-      return { unauth:false };
+      const res = await cloudFetchData();
+      if (res.unauth) return { unauth: true };
+
+      const doc = (res.data && typeof res.data === "object") ? res.data : { users: [] };
+      if (!Array.isArray(doc.users)) doc.users = [];
+
+      doc.users = doc.users.filter(u => u.id !== profileId);
+      doc.updatedAt = Date.now();
+
+      await cloudSaveData(doc);
+      return { unauth: false };
     }
 
-    // ===== /Cloud Sync über /api/data =====
+    // Legacy (dein Code ruft das evtl. noch irgendwo auf)
+    async function apiGetData() {
+      const res = await cloudFetchData();
+      if (res.unauth) return { unauth: true, data: null };
+      return { unauth: false, data: res.data };
+    }
 
+    async function apiSaveData(doc) {
+      return await cloudSaveData(doc);
+    }
+    // ===== /Cloud Profiles API =====
 
 
     // ===== Profiles: Laden / Wechseln / Speichern =====
@@ -1163,20 +1131,10 @@ function saveData() {
         try {
           const u = getCurrentUser();
           if (!u) return;
-
-          // ✅ updatedAt setzen + lokal cachen
-          u.updatedAt = Date.now();
-          cacheProfile(currentUserId, u);
-
           // Name muss mit Meta konsistent sein
           u.id = currentUserId;
           if (!u.name) u.name = "Benutzer";
-
           await apiSaveProfile(currentUserId, u);
-
-          // nach erfolgreichem Save nochmal cachen (falls API serverseitig Felder ergänzt)
-          cacheProfile(currentUserId, u);
-
           // Meta refresh (damit Sortierung/Name passt)
           try { profilesMeta = (await apiListProfiles()).profiles || profilesMeta; } catch (_) {}
         } catch (_) {
@@ -1215,108 +1173,20 @@ function saveData() {
     }
 
     async function loadCurrentProfileData() {
-      if (!currentUserId) { data = { users: [] }; return { unauth: false }; }
+      if (!currentUserId) { data = { users: [] }; return; }
       const res = await apiGetProfile(currentUserId);
       if (res.unauth) return { unauth: true };
-
       const meta = profilesMeta.find(p => p.id === currentUserId);
       const name = meta?.name || res.data?.name || "Benutzer";
-      const serverUpdatedAt = Number(meta?.updated_at || res.data?.updatedAt || 0) || Date.now();
-
-      profileData = (res.data && typeof res.data === "object")
-        ? { id: currentUserId, name, lists: Array.isArray(res.data.lists) ? res.data.lists : [], updatedAt: serverUpdatedAt }
-        : { id: currentUserId, name, lists: [], updatedAt: serverUpdatedAt };
+      profileData = res.data && typeof res.data === "object"
+        ? { id: currentUserId, name, lists: Array.isArray(res.data.lists) ? res.data.lists : [] }
+        : { id: currentUserId, name, lists: [] };
 
       // App erwartet data.users
       data = { users: [profileData] };
-
-      // local cache aktualisieren
-      cacheProfile(currentUserId, profileData);
-
       return { unauth: false };
     }
-    
-    // ===== Sync: Änderungen von anderen Geräten holen =====
-    let _syncRunning = false;
-    async function syncNow(opts = {}) {
-      if (_syncRunning) return false;
-      if (!currentUserId) return false;
-      _syncRunning = true;
-
-      const force = !!opts.force;
-
-      try {
-        const metaRes = await apiListProfiles();
-        if (metaRes.unauth) {
-          // init() hat goLogin; hier nur hart redirect
-          location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-          return false;
-        }
-        profilesMeta = metaRes.profiles || profilesMeta;
-
-        const meta = profilesMeta.find(p => p.id === currentUserId);
-        const serverUpdated = Number(meta?.updated_at || 0);
-
-        // lokale Version (aus Cache oder aktuellem State)
-        const localCached = loadCachedProfile(currentUserId);
-        const localState = getCurrentUser();
-        const localUpdated = Number((localState?.updatedAt || localCached?.updatedAt || 0));
-
-        // Wenn Server neuer ist (oder force) -> Profil neu ziehen
-        if (force || (serverUpdated && serverUpdated > localUpdated)) {
-          const profRes = await apiGetProfile(currentUserId);
-          if (profRes.unauth) {
-            location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-            return false;
-          }
-          const name = meta?.name || profRes.data?.name || "Benutzer";
-          profileData = (profRes.data && typeof profRes.data === "object")
-            ? { id: currentUserId, name, lists: Array.isArray(profRes.data.lists) ? profRes.data.lists : [], updatedAt: serverUpdated || Date.now() }
-            : { id: currentUserId, name, lists: [], updatedAt: serverUpdated || Date.now() };
-
-          data = { users: [profileData] };
-
-          // localStorage aktualisieren
-          localStorage.setItem("packlisteData", JSON.stringify(data));
-          cacheProfile(currentUserId, profileData);
-
-          // Route validieren (falls Liste gelöscht wurde)
-          if (currentListId) {
-            const u = getCurrentUser();
-            const exists = u?.lists?.some(l => l.id === currentListId);
-            if (!exists) {
-              currentListId = null;
-              setRoute(currentUserId, null, true);
-            }
-          }
-
-          // UI aktualisieren (ohne alles neu zu binden)
-          if (currentListId) {
-            showListEditSection();
-            renderItems();
-          } else {
-            loadLists();
-          }
-
-          return true;
-        }
-
-        return false;
-      } catch (_) {
-        return false;
-      } finally {
-        _syncRunning = false;
-      }
-    }
-
-    // Beim Zurückkehren in die App / Tab wieder sichtbar -> Sync ziehen
-    window.addEventListener("pageshow", () => { syncNow(); });
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) syncNow();
-    });
-    // ===== /Sync =====
-
-// ===== /Profiles =====
+    // ===== /Profiles =====
 
 function handleRoute() {
   // URL -> State
@@ -1365,19 +1235,8 @@ async function init() {
   try {
     const metaRes = await refreshProfilesAndMaybeSelect();
     if (metaRes.unauth) { goLogin(); return; }
-    // 2.1) Sofort aus lokalem Profil-Cache anzeigen (wenn vorhanden)
-    const cached = loadCachedProfile(currentUserId);
-    if (cached && typeof cached === "object") {
-      profileData = cached;
-      data = { users: [profileData] };
-      localStorage.setItem("packlisteData", JSON.stringify(data));
-    }
-
-    // 2.2) Dann frisch vom Server holen
     const profRes = await loadCurrentProfileData();
     if (profRes.unauth) { goLogin(); return; }
-    // Cache aktualisieren
-    try { cacheProfile(currentUserId, getCurrentUser()); } catch(_) {}
   } catch (_) {
     // Cloud nicht erreichbar → nur lokal arbeiten (offline)
     data = loadData();
