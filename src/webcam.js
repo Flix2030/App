@@ -280,6 +280,10 @@ const HTML_LOBBY = `<!doctype html>
 <body>
   <div class="wrap">
     <div class="card">
+      <div class="row" style="margin-bottom:10px;">
+        <button onclick="location.href='/home'">🏠 Home</button>
+        <div style="flex:2"></div>
+      </div>
       <h2 style="margin: 0 0 6px;">Aktive Gruppen</h2>
       <div class="small">Hier siehst du Gruppen, in denen gerade jemand live sendet.</div>
       <div class="list" id="list"></div>
@@ -292,6 +296,10 @@ const HTML_LOBBY = `<!doctype html>
         <input id="room" placeholder="Gruppenname (z.B. flix)" />
         <button id="create">Erstellen & Senden</button>
       </div>
+      <div class="row" style="margin-top:10px;">
+        <input id="code" placeholder="Gruppen-Code (mind. 4 Zeichen)" />
+      </div>
+
       <div class="small" style="margin-top:10px;">
         Tipp: FPS 2–4, Breite 480/640, Qualität 0.5–0.7 (in der Gruppe einstellbar).
       </div>
@@ -458,6 +466,16 @@ const HTML_ROOM = `<!doctype html>
   var room = (params.get("room") || "").trim() || "default";
   var mode = (params.get("mode") || "watch") === "send" ? "send" : "watch";
 
+  // ✅ Code muss bei jedem Join eingegeben werden
+  var codeFromUrl = (params.get("code") || "").trim();
+  var code = codeFromUrl || prompt("Bitte Code für diese Gruppe eingeben:");
+  if (!code || String(code).trim().length < 4) {
+    alert("Ungültiger Code (mind. 4 Zeichen).");
+    location.href = "/webcam-live";
+    return;
+  }
+  code = String(code).trim();
+
   $("roomName").textContent = room;
   $("modeName").textContent = mode;
 
@@ -598,8 +616,20 @@ const HTML_ROOM = `<!doctype html>
         }
 
         if (msg.type === "role_denied") {
-          alert("Senden nicht möglich: Es gibt bereits einen Sender in dieser Gruppe.");
-          setStatus("watch only");
+          var reason = msg.reason || "denied";
+          if (reason === "sender_exists") {
+            alert("Senden nicht möglich: Es gibt bereits einen Sender in dieser Gruppe.");
+          } else if (reason === "wrong_code") {
+            alert("Falscher Code.");
+          } else if (reason === "code_required") {
+            alert("Code fehlt.");
+          } else if (reason === "code_not_set") {
+            alert("Für diese Gruppe wurde noch kein Code gesetzt. Bitte zuerst als Sender beitreten und einen Code festlegen.");
+          } else {
+            alert("Zugriff verweigert.");
+          }
+          setStatus("offline");
+          try { ws.close(); } catch {}
           return;
         }
 
@@ -651,7 +681,7 @@ export async function handleWebcamLive(req, env) {
     if (!env.LOBBY) return new Response("Missing DO binding: LOBBY", { status: 500 });
     const lobbyId = env.LOBBY.idFromName("global");
     const lobby = env.LOBBY.get(lobbyId);
-    return lobby.fetch("https://internal/webcam-live/groups", req);
+    return lobby.fetch(new Request("https://internal/webcam-live/groups", req));
   }
 
   if (url.pathname === "/webcam-live/ws") {
