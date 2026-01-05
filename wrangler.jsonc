@@ -8,24 +8,11 @@
     "binding": "ASSETS"
   },
 
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "app-db",
-      "database_id": "621593a3-7a7b-40dc-8693-edd71bbff14f"
-    }
-  ],
-
-"durable_objects": {
-  "bindings": [
-    { "name": "SIGNAL", "class_name": "SIGNAL" },
-    { "name": "LOBBY",  "class_name": "LOBBY" },
-    { "name": "STREAM", "class_name": "STREAM" }
-  ]
-},
-"migrations": [
-  { "tag": "v1", "new_sqlite_classes": ["SIGNAL"] },
-  { "tag": "v2", "new_sqlite_classes": ["STREAM"] },
-  { "tag": "v3", "new_sqlite_classes": ["LOBBY"] }
-]
-}
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "app-db",
+        "database_id": "621593a3-7a7b-40dc-8693-edd71bbff14f"
+      }
+    ]
+  }
