@@ -636,3 +636,86 @@ async function handleApi(req, env) {
     );
   }
 }
+
+export default {
+  async fetch(req, env, ctx) {
+    try {
+      const url = new URL(req.url);
+      const path = url.pathname;
+      // ✅ WEBCAM (alt) – MUSS VOR LOGIN-GATE!
+      if (path === "/webcam" || path === "/webcam/" || path === "/webcam/ws") {
+        return handleWebcam(req, env);
+      }
+
+      // ✅ WEBCAM LIVE (stabil + Gruppen) – MUSS VOR LOGIN-GATE!
+      if (
+        path === "/webcam-live" ||
+        path === "/webcam-live/" ||
+        path === "/webcam-live/room" ||
+        path === "/webcam-live/groups" ||
+        path === "/webcam-live/ws"
+      ) {
+        return handleWebcamLive(req, env);
+      }
+
+      let assetPath = path;
+
+      if (path === "/home") assetPath = "/home.html";
+      if (path === "/packliste") assetPath = "/packliste.html";
+      if (path === "/vokabeln") assetPath = "/vokabeln.html";
+      if (path === "/settings") assetPath = "/settings.html";
+      if (path === "/einkaufsliste") assetPath = "/einkaufsliste.html";
+      if (path === "/todo") assetPath = "/todo.html";
+
+      if (path.startsWith("/packliste/")) assetPath = "/packliste.html";
+      if (path.startsWith("/einkaufsliste/")) assetPath = "/einkaufsliste.html";
+      if (path.startsWith("/todo/")) assetPath = "/todo.html";
+
+      if (path.startsWith("/api/")) {
+        return handleApi(req, env);
+      }
+
+      if (path === "/login") {
+        return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
+      }
+
+      const uid = await readToken(env, req);
+      if (!uid) {
+        const loginUrl = new URL("/login", url.origin);
+        loginUrl.searchParams.set("returnTo", path + url.search);
+        return Response.redirect(loginUrl.toString(), 302);
+      }
+
+      const res = await env.ASSETS.fetch(new Request(url.origin + assetPath, req));
+      if (res.status === 404) {
+        const target = new URL("/home", url.origin);
+        target.searchParams.set("msg", "loadfail");
+        return Response.redirect(target.toString(), 302);
+      }
+      return res;
+
+    } catch (err) {
+      const url = new URL(req.url);
+      const path = url.pathname;
+
+      if (path.startsWith("/api/")) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "worker_exception",
+          message: String(err && err.message ? err.message : err),
+        }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8" }
+        });
+      }
+
+      if (path === "/home" || path === "/" || path === "/home.html") {
+        return new Response("Fehler im Worker. Bitte Workers Logs prüfen.", { status: 500 });
+      }
+
+      const target = new URL("/home.html", url.origin);
+      target.searchParams.set("msg", "loadfail");
+      return Response.redirect(target.toString(), 302);
+    }
+  },
+};
