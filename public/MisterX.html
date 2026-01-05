@@ -2,16 +2,14 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mr. X – Live Analyse</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mister X – Karte</title>
 
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <link rel="stylesheet" href="/app.css">
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -26,297 +24,481 @@
 
   <style>
     :root{
-      --bg0:#05080f; --bg1:#070c16;
-      --panel:rgba(17,24,39,.72);
-      --panel2:rgba(20,28,46,.78);
-      --border:rgba(255,255,255,.10);
-      --text:rgba(255,255,255,.92);
-      --muted:rgba(255,255,255,.62);
-      --accent:#3ee38c; --accent2:#2fce7a;
-      --danger:#ff4d6d;
-      --shadow:0 18px 60px rgba(0,0,0,.55);
-      --radius:18px;
-      --chip: rgba(255,255,255,0.06);
-      --ok: rgba(62,227,140,0.14);
-      --warn: rgba(255,210,77,0.12);
+      --bg:#000;
+      --fg:#fff;
+      --muted:rgba(255,255,255,.75);
+      --line:rgba(255,255,255,.65);
+      --line2:rgba(255,255,255,.30);
+
+      --blue:#56a7ff;     /* aktuelle position */
+      --green:#62ff83;    /* letzter ping */
+      --orange:#ffb64f;
+      --red:#ff4d6d;
+
+      --r:14px;
+      --shadow: 0 12px 40px rgba(0,0,0,.55);
     }
-    *{box-sizing:border-box}
+
+    *{ box-sizing:border-box; }
     body{
       margin:0;
-      font-family:'Segoe UI', Tahoma, sans-serif;
-      color:var(--text);
-      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
-                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
-                  linear-gradient(180deg, var(--bg0), var(--bg1));
-      min-height:100vh;
+      background:var(--bg);
+      color:var(--fg);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      overflow-x:hidden;
     }
-    .shell{width:min(1200px, 100%); margin:0 auto; padding:18px 14px 28px;}
-    .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;}
-    .title{display:flex; flex-direction:column; gap:2px;}
-    .title h1{margin:0; font-size:1.35rem; letter-spacing:.2px;}
-    .title .sub{color:var(--muted); font-size:.92rem}
-    .actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center;}
 
-    .btn{
-      appearance:none;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:800;
-      transition:transform .12s ease, filter .2s ease;
+    /* Title (wie im Mockup: groß, mittig) */
+    .title{
+      text-align:center;
+      padding:18px 10px 6px;
+      font-weight:1000;
+      letter-spacing:.5px;
+      font-size: clamp(32px, 4vw, 54px);
+      text-shadow: 0 3px 0 rgba(0,0,0,.7);
       user-select:none;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      white-space:nowrap;
-      text-decoration:none;
     }
-    .btn:hover{filter:brightness(1.04)}
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color:#03130a;
-      box-shadow:0 10px 24px rgba(62,227,140,0.14);
-      border-color: rgba(62,227,140,.22);
-    }
-    .btn.danger{
-      background: rgba(255,77,109,0.12);
-      border-color: rgba(255,77,109,0.28);
-      color:#ffd3db;
-    }
-    .btn.icon{width:42px; justify-content:center; padding:10px 0;}
-    .btn.small{padding:7px 10px; border-radius:12px; font-weight:900;}
 
-    .grid{display:grid; grid-template-columns: 1.35fr .65fr; gap:12px;}
-    .card{
-      background:var(--panel);
-      border:1px solid var(--border);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
+    .wrap{
+      width: min(1600px, 98vw);
+      margin: 0 auto;
+      padding: 8px 10px 18px;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns: 1fr 380px;
+      gap: 12px;
+      align-items:stretch;
+    }
+
+    /* Left big map card */
+    .mapCard{
+      border: 3px solid var(--line);
+      border-radius: 10px;
       overflow:hidden;
+      position:relative;
+      background: #0a0a0a;
+      box-shadow: var(--shadow);
+      min-height: 640px;
     }
-    .cardHeader{
-      padding:12px 14px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
-    }
-    .cardHeader .h{font-weight:900; letter-spacing:.2px;}
-    .cardHeader .hint{color:var(--muted); font-size:.9rem;}
-    #map{height: 70vh; min-height: 440px; width:100%;}
-    .side{display:flex; flex-direction:column; min-height: 70vh;}
-    .sideBody{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
-
-    .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
-    .field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:180px;}
-    .field label{font-size:.82rem; color:var(--muted);}
-    .field input, .field select, .field textarea{
-      font-size:16px; /* iOS: kein Zoom */
+    #map{
+      height: 100%;
+      min-height: 640px;
       width:100%;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      outline:none;
-      resize: vertical;
     }
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:var(--chip);
-      color:var(--text);
-      font-weight:800;
-      font-size:.9rem;
-      user-select:none;
-    }
-    .chip small{color:var(--muted); font-weight:700}
 
-    .list{
+    .mapLabel{
+      position:absolute;
+      left: 24px;
+      bottom: 18px;
+      font-size: clamp(26px, 3vw, 54px);
+      font-weight:1000;
+      opacity:.95;
+      pointer-events:none;
+      text-shadow: 0 3px 0 rgba(0,0,0,.75);
+    }
+
+    .legend{
+      position:absolute;
+      left: 14px;
+      top: 14px;
       display:flex;
       flex-direction:column;
       gap:8px;
-      max-height: 210px;
-      overflow:auto;
-      padding-right:4px;
+      font-weight:900;
+      font-size: 14px;
+      text-shadow:0 2px 0 rgba(0,0,0,.7);
+      pointer-events:none;
     }
-    .ping{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.05);
-      border-radius:14px;
-      padding:10px 12px;
+    .legRow{ display:flex; gap:10px; align-items:center; }
+    .sq{
+      width:18px; height:18px;
+      border: 3px solid var(--line);
+      border-radius:4px;
+      background:transparent;
+    }
+    .sq.blue{ border-color: var(--blue); }
+    .sq.green{ border-color: var(--green); }
+    .legText.blue{ color: var(--blue); }
+    .legText.green{ color: var(--green); }
+
+    /* Right panel */
+    .side{
+      border: 3px solid var(--line);
+      border-radius: 10px;
+      overflow:hidden;
+      background:#0a0a0a;
+      box-shadow: var(--shadow);
+      display:flex;
+      flex-direction:column;
+      min-height: 640px;
+    }
+
+    .sideInner{
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      height:100%;
+    }
+
+    .block{
+      border: 2px solid var(--line2);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .blockTitle{
+      font-weight:1000;
+      font-size: 22px;
+      margin: 0 0 8px 0;
+      user-select:none;
+    }
+
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+    .btn{
+      appearance:none;
+      border:2px solid var(--line2);
+      background: rgba(255,255,255,.06);
+      color:var(--fg);
+      border-radius: 10px;
+      padding: 10px 10px;
+      font-weight:1000;
+      cursor:pointer;
+      user-select:none;
+      line-height:1;
+      transition: transform .08s ease, filter .15s ease, border-color .15s ease;
+    }
+    .btn:hover{ filter:brightness(1.07); border-color: var(--line); }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn.plus{
+      width:44px; height:44px;
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size: 26px;
+      padding:0;
+    }
+    .btn.small{ padding:8px 10px; border-radius: 9px; font-size: 14px; }
+    .btn.danger{ border-color: rgba(255,77,109,.45); background: rgba(255,77,109,.12); }
+    .btn.ok{ border-color: rgba(98,255,131,.45); background: rgba(98,255,131,.10); }
+    .btn.active{ border-color: rgba(98,255,131,.65); }
+
+    .select, .input{
+      font-size:16px; /* iOS: kein Zoom */
+      padding: 10px 10px;
+      border-radius: 10px;
+      border:2px solid var(--line2);
+      background: rgba(255,255,255,.04);
+      color: var(--fg);
+      outline:none;
+      min-width: 180px;
+    }
+    .input{ min-width: 0; width: 100%; }
+
+    .miniList{
       display:flex;
       flex-direction:column;
       gap:6px;
     }
-    .ping .top{display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:900;}
-    .ping .meta{color:var(--muted); font-size:.88rem; line-height:1.25; word-break:break-word;}
-    .ping .stats{
-      display:flex; flex-wrap:wrap; gap:6px;
-      font-size:.88rem;
-      color:rgba(255,255,255,.80);
+    .cityBtn{
+      text-align:left;
+      padding: 7px 10px;
+      border-radius: 9px;
+      border:2px solid var(--line2);
+      background: rgba(255,255,255,.05);
+      font-weight:1000;
+      cursor:pointer;
     }
-    .tag{
-      display:inline-flex; gap:6px; align-items:center;
-      padding:5px 8px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
+
+    .pingList{
+      max-height: 210px;
+      overflow:auto;
+      padding-right:4px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .pingItem{
+      border:2px solid var(--line2);
+      border-radius: 10px;
+      padding: 8px 8px;
+      background: rgba(255,255,255,.03);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      cursor:pointer;
+    }
+    .pingItem.selected{
+      border-color: rgba(98,255,131,.70);
+      background: rgba(98,255,131,.08);
+    }
+    .pingItem .left{
+      display:flex; flex-direction:column; gap:2px;
+      min-width:0;
+    }
+    .pingItem .name{
+      font-weight:1000;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .pingItem .meta{
+      font-size: 12px;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .statGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px;
+      margin-top: 8px;
+    }
+    .stat{
+      border:2px solid var(--line2);
+      border-radius: 10px;
+      padding: 8px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-weight:1000;
+      background: rgba(255,255,255,.03);
+    }
+    .stat .k{ color: var(--muted); font-weight:900; }
+    .stat .v{ font-size: 14px; }
+
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      line-height:1.25;
     }
 
     .aiBox{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.05);
-      border-radius:14px;
-      padding:10px 12px;
+      border:2px solid var(--line2);
+      border-radius: 10px;
+      padding: 8px;
+      background: rgba(255,255,255,.03);
+      min-height: 80px;
       white-space:pre-wrap;
-      line-height:1.35;
-      min-height: 170px;
-      max-height: 280px;
+      font-size: 13px;
+      line-height:1.3;
       overflow:auto;
+      max-height: 180px;
     }
-    .aiBox.muted{color:var(--muted);}
-    .sep{height:1px; background:rgba(255,255,255,.08); margin:2px 0;}
-    .notice{
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.04);
-      border-radius:14px;
-      padding:10px 12px;
-      color:var(--muted);
-      line-height:1.35;
-      font-size:.9rem;
+
+    .threeNext{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
     }
-    .notice.ok{background:var(--ok); color:rgba(255,255,255,.88); border-color:rgba(62,227,140,.20);}
-    .notice.warn{background:var(--warn); color:rgba(255,255,255,.88); border-color:rgba(255,210,77,.18);}
+    .candRow{
+      border:2px solid rgba(86,167,255,.40);
+      border-radius:10px;
+      padding: 6px 8px;
+      font-weight:1000;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      background: rgba(86,167,255,.08);
+    }
+    .candRow .r{ color: rgba(86,167,255,.95); }
+    .candRow .c{ font-size: 12px; color: var(--muted); font-weight:900; }
+
+    .footerStats{
+      margin-top:auto;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
 
     /* Modal */
     .modalBackdrop{
-      position:fixed; inset:0;
-      background: rgba(0,0,0,.55);
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.65);
       display:none;
       align-items:center;
       justify-content:center;
-      padding:14px;
-      z-index:9999;
+      padding: 14px;
+      z-index: 9999;
     }
-    .modalBackdrop.show{display:flex;}
+    .modalBackdrop.show{ display:flex; }
     .modal{
       width:min(560px, 100%);
-      background: rgba(10,14,26,.96);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:18px;
-      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      border: 3px solid var(--line);
+      border-radius: 12px;
+      background:#070707;
+      box-shadow: 0 24px 90px rgba(0,0,0,.75);
       overflow:hidden;
     }
     .modalHead{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      padding:12px 14px;
-      border-bottom:1px solid rgba(255,255,255,.10);
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom: 2px solid var(--line2);
+      font-weight:1000;
+      font-size: 18px;
     }
-    .modalHead .h{font-weight:900;}
-    .modalBody{padding:12px 14px 14px; display:flex; flex-direction:column; gap:10px;}
-    .modalActions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+    .modalBody{ padding: 12px; display:flex; flex-direction:column; gap:10px; }
+    textarea.input{ resize: vertical; min-height: 92px; }
 
-    @media (max-width: 980px){
-      .grid{grid-template-columns: 1fr;}
-      #map{height: 54vh; min-height: 360px;}
-      .side{min-height:auto;}
+    @media (max-width: 1100px){
+      .layout{ grid-template-columns: 1fr; }
+      .side{ min-height: auto; }
+      #map{ min-height: 420px; }
+      .mapCard{ min-height: 420px; }
     }
-  
-    body.modalLock{overflow:hidden; position:fixed; width:100%;}
-</style></head>
+  </style>
+</head>
+
 <body>
-  <div class="shell">
-    <div class="topbar">
-      <div class="title">
-        <h1>Mr. X – Standort-Analyse</h1>
-        <div class="sub">Polygon = Spielfeld · Pings importieren/eingeben · Übersicht + KI</div>
-      </div>
-      <div class="actions">
-        <a class="btn" href="/home">⬅️ Home</a>
-        <button class="btn danger" id="btnReset" title="Alles löschen">🧨 Reset</button>
-      </div>
-    </div>
+  <div class="title">Mister X</div>
 
-    <div class="grid">
-      <!-- MAP -->
-      <div class="card">
-        <div class="cardHeader">
-          <div>
-            <div class="h">Karte</div>
-            <div class="hint">1) Spielfeld einzeichnen · 2) Ping einfügen</div>
-          </div>
-          <div class="row">
-            <span class="chip" id="chipArea"><small>Spielfeld:</small> <span id="areaState">—</span></span>
-            <span class="chip"><small>Pings:</small> <span id="pingCount">0</span></span>
-          </div>
+  <div class="wrap">
+    <div class="layout">
+      <!-- LEFT: MAP -->
+      <div class="mapCard">
+        <div class="legend">
+          <div class="legRow"><div class="sq blue"></div><div class="legText blue">aktuelle position</div></div>
+          <div class="legRow"><div class="sq green"></div><div class="legText green">letzter ping</div></div>
         </div>
         <div id="map"></div>
+        <div class="mapLabel">Karte</div>
       </div>
 
-      <!-- SIDE -->
-      <div class="card side">
-        <div class="cardHeader">
-          <div>
-            <div class="h">Übersicht</div>
-            <div class="hint">Du kannst Pings reinschreiben</div>
-          </div>
-          <button class="btn icon" id="btnCollapse" title="Ein-/Ausklappen">▾</button>
-        </div>
+      <!-- RIGHT: PANEL -->
+      <div class="side">
+        <div class="sideInner">
 
-        <div class="sideBody" id="sideBody">
-          <div class="row">
-            <div class="field">
-              <label>Spielfeld</label>
-              <select id="fieldOnlySelect"></select>
+          <!-- City presets (wie im Mockup links vom Panel) -->
+          <div class="block">
+            <div class="row" style="justify-content:space-between">
+              <div class="hint" style="font-weight:1000; font-size:14px;">Schnell-Zentrieren</div>
+              <button class="btn small" id="btnHome">⬅️ Home</button>
             </div>
-            <button class="btn" id="btnFieldNew" title="Neues Spielfeld zeichnen">➕ Neu</button>
+            <div class="row" style="margin-top:8px;">
+              <button class="cityBtn" data-city="frankfurt">Frankfurt</button>
+              <button class="cityBtn" data-city="stuttgart">Stuttgart</button>
+              <button class="cityBtn" data-city="hannover">Hannover</button>
+              <button class="cityBtn" data-city="heidelberg">Heidelberg</button>
+            </div>
           </div>
 
-<div class="list" id="pingList"></div>
+          <!-- Spielfeld -->
+          <div class="block">
+            <div class="blockTitle">Spielfeld</div>
+            <div class="row">
+              <button class="btn plus" id="btnFieldNew" title="Spielfeld zeichnen">+</button>
+              <select class="select" id="fieldSelect"></select>
+              <button class="btn small" id="btnFieldSave" title="Aktuelles Spielfeld speichern">💾</button>
+              <button class="btn small danger" id="btnFieldDelete" title="Spielfeld löschen">🗑️</button>
+            </div>
+            <div class="hint" style="margin-top:6px;">➕ = Polygon zeichnen. Dropdown = Spielfeld auswählen.</div>
+          </div>
 
-          <div class="sep"></div>
+          <!-- Ping -->
+          <div class="block">
+            <div class="blockTitle">Ping</div>
+            <div class="row">
+              <button class="btn plus" id="btnPingAdd" title="Ping hinzufügen">+</button>
+              <button class="btn small" id="btnPingUseMyPos" title="Aktuelle Geräte-Position als Ping">📍</button>
+              <button class="btn small danger" id="btnResetAll" title="Alles löschen">Reset</button>
+            </div>
 
-          <div style="font-weight:900">KI-Analyse</div>
-          <div class="aiBox muted" id="aiOut">Noch keine Analyse. Zeichne ein Spielfeld und füge 1–2 Pings ein.</div>
+            <div class="row" style="margin-top:10px; justify-content:space-between;">
+              <div class="hint" style="font-weight:1000;">Ping auswählen und löschen<br>oder Koordinaten ändern</div>
+              <div class="row">
+                <button class="btn small" id="btnPingEdit">Koordinaten</button>
+                <button class="btn small danger" id="btnPingDelete">🗑️</button>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:8px;">
+              <input class="input" id="editLat" placeholder="lat" inputmode="decimal" />
+              <input class="input" id="editLng" placeholder="lng" inputmode="decimal" />
+            </div>
+            <div class="row" style="justify-content:flex-end; margin-top:6px;">
+              <button class="btn small ok" id="btnPingApply">✅</button>
+              <button class="btn small danger" id="btnPingCancel">✖</button>
+            </div>
+
+            <div class="pingList" id="pingList" style="margin-top:8px;"></div>
+          </div>
+
+          <!-- Informationen -->
+          <div class="block">
+            <div class="blockTitle">Informationen</div>
+
+            <div class="row" style="justify-content:space-between;">
+              <button class="btn" id="btnAnalyze">Alle <span id="intervalLabel">10</span>s Aktualisieren</button>
+              <div class="row">
+                <button class="btn small" data-int="5">5 s</button>
+                <button class="btn small active" data-int="10">10 s</button>
+                <button class="btn small" data-int="30">30 s</button>
+                <button class="btn small" data-int="60">60 s</button>
+              </div>
+            </div>
+
+            <div class="statGrid">
+              <div class="stat"><span class="k">Distanz</span><span class="v" id="statDist">—</span></div>
+              <div class="stat"><span class="k">Zeit</span><span class="v" id="statTime">—</span></div>
+              <div class="stat"><span class="k">Tempo</span><span class="v" id="statSpeed">—</span></div>
+              <div class="stat"><span class="k">Richtung</span><span class="v" id="statBear">—</span></div>
+            </div>
+
+            <div class="row" style="margin-top:10px;">
+              <div class="hint" style="font-weight:1000; color:var(--blue);">KI sucht die 3 nächsten</div>
+            </div>
+            <div class="threeNext" id="threeNext"></div>
+
+            <div class="hint" style="margin-top:8px;">
+              ÖPNV (Bahn/Bus) ist hier nur als UI vorbereitet – ohne Haltestellen-API bleiben das Platzhalter.
+            </div>
+          </div>
+
+          <!-- KI Textbox -->
+          <div class="block">
+            <div class="blockTitle">KI</div>
+            <div class="aiBox" id="aiOut">Noch keine Analyse. Zeichne ein Spielfeld und füge Pings ein.</div>
+          </div>
+
+          <!-- Footer stats (wie im Mockup: Erklärungen) -->
+          <div class="footerStats block">
+            <div class="hint">
+              • Distanz/Tempo/Zeit berechnet aus den letzten 2 Pings.<br>
+              • Kreis + Kandidaten: maximale Reichweite in der Zeitspanne.<br>
+              • Grün = letzter Ping, Blau = aktuelle Position (wenn gesetzt).
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Paste / Manual Entry -->
+  <!-- MODAL: Ping einfügen -->
   <div class="modalBackdrop" id="modalBackdrop">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal" role="dialog" aria-modal="true">
       <div class="modalHead">
-        <div class="h" id="modalTitle">Ping einfügen</div>
-        <button class="btn icon" id="btnModalClose" title="Schließen">✕</button>
+        <div>Ping einfügen</div>
+        <button class="btn small danger" id="btnModalClose">X</button>
       </div>
       <div class="modalBody">
-        <div class="notice">
-          Du kannst hier alles reinwerfen:<br>
-          • <b>lat,lng</b> (z.B. <code>49.0123, 8.4045</code>)<br>
-          • Google Maps Link (enthält oft <code>@lat,lng</code>)<br>
-          • WhatsApp Text mit Koordinaten<br><br>
-          Optional: Zeit (wenn du’s weißt). Wenn leer → jetzt.
+        <div class="hint">
+          Erlaubt: <b>lat,lng</b> · Google-Maps-Link (enthält oft @lat,lng) · WhatsApp-Text mit Koordinaten.
         </div>
-
-        <div class="field">
-          <label>Ping Text / Link</label>
-          <textarea id="pasteText" rows="4" placeholder="Koordinaten oder Google-Maps-Link hier rein…"></textarea>
-        </div>
-<div class="modalActions">
-          <button class="btn" id="btnPasteParse">✅ Übernehmen</button>
+        <textarea class="input" id="pasteText" placeholder="z.B. 49.0123, 8.4045 oder Link…"></textarea>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="btn ok" id="btnPasteParse">✅ Übernehmen</button>
           <button class="btn danger" id="btnPasteCancel">Abbrechen</button>
         </div>
       </div>
@@ -324,7 +506,6 @@
   </div>
 
 <script>
-
 /* =========================
    AUTH (wie bei Home)
 ========================= */
@@ -340,32 +521,37 @@ window.addEventListener("pageshow", (e) => { if (e.persisted) enforceAuth(); });
 enforceAuth();
 
 /* =========================
-   STATE (localStorage MVP)
+   STATE (localStorage)
 ========================= */
-const LS_KEY = "mrx_state_v2";
-const LS_FIELDS_KEY = "mrx_fields_v1";
+const LS_KEY = "mrx_state_v3";
+const LS_FIELDS_KEY = "mrx_fields_v2";
+
 function loadState(){
-  const def = { area:null, pings:[], windowSec:300 };
+  const def = {
+    area: null,           // GeoJSON Feature
+    pings: [],            // [{id,t,lat,lng}]
+    currentPos: null,     // {lat,lng,t}
+    intervalSec: 10,
+    auto: false
+  };
   try{
     const raw = JSON.parse(localStorage.getItem(LS_KEY) || "null");
     if (!raw) return def;
     def.area = raw.area || null;
-    def.windowSec = Number(raw.windowSec || def.windowSec);
+    def.pings = Array.isArray(raw.pings) ? raw.pings : [];
+    def.currentPos = raw.currentPos || null;
+    def.intervalSec = Number(raw.intervalSec || 10);
+    def.auto = !!raw.auto;
     return def;
   }catch{
     return def;
   }
 }
 function saveState(){
-  // Wir merken uns absichtlich NICHT die Pings (nur Spielfeld + Settings)
-  const slim = { area: state.area || null, windowSec: Number(state.windowSec || 300) };
-  localStorage.setItem(LS_KEY, JSON.stringify(slim));
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
 }
 
-
 let state = loadState();
-
-let fields = loadFields();
 
 function loadFields(){
   try{
@@ -376,77 +562,16 @@ function loadFields(){
 function saveFields(){
   localStorage.setItem(LS_FIELDS_KEY, JSON.stringify(fields));
 }
+let fields = loadFields();
+
 function makeId(){
-  return "f_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-}
-function refreshFieldOnlySelect(){
-  const sel = document.getElementById("fieldOnlySelect");
-  if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = "";
-
-  const opt0 = document.createElement("option");
-  opt0.value = "";
-  opt0.textContent = "— Spielfeld wählen —";
-  sel.appendChild(opt0);
-
-  fields
-    .slice()
-    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
-    .forEach(f=>{
-      const o = document.createElement("option");
-      o.value = f.id;
-      o.textContent = f.name || ("Spielfeld " + f.id.slice(-4));
-      sel.appendChild(o);
-    });
-
-  if (cur) sel.value = cur;
-}
-function applyFieldById(id){
-  const f = fields.find(x=>x.id===id);
-  if (!f) return false;
-
-  state.area = f.area || null;
-  state.pings = [];
-
-  drawnItems.clearLayers();
-  if (state.area){
-    try{
-      const layer = L.geoJSON(state.area);
-      layer.eachLayer(l=>drawnItems.addLayer(l));
-    }catch{}
-  }
-
-  saveState();
-  renderAll(true);
-  return true;
-}
-function clearForNewField(){
-  state.area = null;
-  state.pings = [];
-  drawnItems.clearLayers();
-  saveState();
-  renderAll(true);
+  return "id_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-/* =========================
-   UI refs
-========================= */
-const elAreaState = document.getElementById("areaState");
-const elPingCount = document.getElementById("pingCount");
-const elPingList  = document.getElementById("pingList");
-const elAiOut     = document.getElementById("aiOut");
-const elWindowSec = document.getElementById("windowSec");
-const chipArea    = document.getElementById("chipArea");
-const elOverview  = document.getElementById("overviewBox");
-
-/* Modal refs */
-const modalBackdrop = document.getElementById("modalBackdrop");
-const pasteText = document.getElementById("pasteText");
 /* =========================
    MAP
 ========================= */
-const map = L.map("map", { zoomControl: true }).setView([49.013, 8.404], 13);
+const map = L.map("map", { zoomControl:true }).setView([49.013, 8.404], 13);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: "© OpenStreetMap"
@@ -457,6 +582,7 @@ map.addLayer(drawnItems);
 
 const pingLayer = new L.LayerGroup().addTo(map);
 const candidateLayer = new L.LayerGroup().addTo(map);
+const currentPosLayer = new L.LayerGroup().addTo(map);
 let reachableCircle = null;
 
 const drawControl = new L.Control.Draw({
@@ -476,41 +602,49 @@ map.on(L.Draw.Event.CREATED, function (e) {
   state.pings = [];
   saveState();
   renderAll(true);
-  setTimeout(()=>{
-    const ok = confirm("Spielfeld als Vorlage speichern?");
-    if (!ok) return;
-    const name = (prompt("Name für das Spielfeld:", "Spielfeld") || "").trim();
-    if (!name) return;
-    fields.push({ id: makeId(), name, area: state.area, createdAt: Date.now() });
-    saveFields();
-    refreshFieldOnlySelect();
-  }, 0);
 });
 map.on("draw:edited", () => {
   const layers = drawnItems.getLayers();
   if (layers.length) {
     state.area = layers[0].toGeoJSON();
-    state.pings = [];
     saveState();
     renderAll(true);
   }
 });
 map.on("draw:deleted", () => {
   state.area = null;
-  state.pings = [];
   saveState();
   renderAll(true);
 });
 
 /* =========================
-   HELPERS
+   UI refs
 ========================= */
-function fmt(n, d=5){ if (!Number.isFinite(n)) return "—"; return Number(n).toFixed(d); }
+const elFieldSelect = document.getElementById("fieldSelect");
+const elPingList = document.getElementById("pingList");
+const elAiOut = document.getElementById("aiOut");
+
+const elDist = document.getElementById("statDist");
+const elTime = document.getElementById("statTime");
+const elSpeed = document.getElementById("statSpeed");
+const elBear = document.getElementById("statBear");
+
+const elIntervalLabel = document.getElementById("intervalLabel");
+const elThreeNext = document.getElementById("threeNext");
+
+const editLat = document.getElementById("editLat");
+const editLng = document.getElementById("editLng");
+
+let selectedPingId = null;
+let editMode = false;
+let autoTimer = null;
+
+/* =========================
+   Helpers
+========================= */
+function fmt(n, d=5){ return Number.isFinite(n) ? Number(n).toFixed(d) : "—"; }
 function nowMs(){ return Date.now(); }
-function timeLabel(ms){
-  const d = new Date(ms);
-  return d.toLocaleString("de-DE", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
-}
+
 function haversineMeters(a, b){
   const R=6371000, toRad=x=>x*Math.PI/180;
   const dLat=toRad(b.lat-a.lat), dLng=toRad(b.lng-a.lng);
@@ -535,300 +669,84 @@ function destPoint(a, brngDeg, distM){
   const lon2=lon1 + Math.atan2(Math.sin(brng)*Math.sin(dr)*Math.cos(lat1), Math.cos(dr)-Math.sin(lat1)*Math.sin(lat2));
   return { lat: toDeg(lat2), lng: ((toDeg(lon2)+540)%360)-180 };
 }
-function areaPolygon(){
+
+function areaFeature(){
   if (!state.area) return null;
   try{
     return state.area.type==="Feature" ? state.area : { type:"Feature", geometry: state.area, properties:{} };
   }catch{ return null; }
 }
 function pointInArea(lat,lng){
-  const poly=areaPolygon();
+  const poly=areaFeature();
   if (!poly) return true;
   try{ return turf.booleanPointInPolygon(turf.point([lng,lat]), poly); }catch{ return true; }
 }
-function clampIntoArea(from,p){
-  if (pointInArea(p.lat,p.lng)) return p;
-  const brng=bearingDeg(from,p);
-  let dist=haversineMeters(from,p);
-  for (let i=0;i<12;i++){
-    dist*=0.75;
-    const cand=destPoint(from, brng, dist);
-    if (pointInArea(cand.lat,cand.lng)) return cand;
-  }
-  return p;
-}
 
 /* =========================
-   OVERVIEW (Stats)
+   Spielfeld (Vorlagen)
 ========================= */
-function computeOverview(){
-  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
-  if (pings.length===0){
-    return { text:"Übersicht: Noch keine Pings.", cls:"ok" };
-  }
-  if (pings.length===1){
-    return { text:"Übersicht: 1 Ping vorhanden. Setze/importiere einen zweiten für Richtung & Tempo.", cls:"ok" };
-  }
-  const last=pings[pings.length-1], prev=pings[pings.length-2];
-  const d=haversineMeters(prev,last);
-  const dt=Math.max(1, (last.t-prev.t)/1000);
-  const spd=d/dt;
-  const br=bearingDeg(prev,last);
+function refreshFieldSelect(){
+  const cur = elFieldSelect.value;
+  elFieldSelect.innerHTML = "";
 
-  const windowS=Number(elWindowSec.value||"300");
-  const predictDist=spd*windowS;
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "Spielfeld auswählen";
+  elFieldSelect.appendChild(opt0);
 
-  let warn="";
-  if (dt < 60) warn=" (Achtung: sehr kurzer Zeitabstand)";
-  if (dt > 900) warn=" (Achtung: großer Zeitabstand)";
-  return {
-    text:`Übersicht: Letzte Strecke ≈ ${Math.round(d)}m in ≈ ${Math.round(dt)}s → ≈ ${spd.toFixed(2)} m/s · Richtung ≈ ${Math.round(br)}° · In ${windowS/60}min bei gleichem Tempo ≈ ${Math.round(predictDist)}m.${warn}`,
-    cls: warn ? "warn" : "ok"
-  };
+  fields
+    .slice()
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+    .forEach(f=>{
+      const o = document.createElement("option");
+      o.value = f.id;
+      o.textContent = f.name || ("Spielfeld " + f.id.slice(-4));
+      elFieldSelect.appendChild(o);
+    });
+
+  if (cur) elFieldSelect.value = cur;
 }
 
-/* =========================
-   RENDER
-========================= */
-function renderAreaOnMap(){
-  drawnItems.clearLayers();
-  if (!state.area) return;
-  const layer=L.geoJSON(state.area);
-  layer.eachLayer(l => drawnItems.addLayer(l));
-  const b=layer.getBounds();
-  if (b.isValid()) map.fitBounds(b.pad(0.12));
+function applyFieldById(id){
+  const f = fields.find(x=>x.id===id);
+  if (!f) return;
+  state.area = f.area || null;
+  state.pings = [];
+  selectedPingId = null;
+  saveState();
+  renderAll(true);
 }
-function renderPingsOnMap(){
-  pingLayer.clearLayers();
-  const pings=[...state.pings].sort((a,b)=>b.t-a.t);
-  pings.forEach((p,idx)=>{
-    const isLatest=idx===0;
-    const m=L.circleMarker([p.lat,p.lng], { radius:isLatest?9:7, weight:2, opacity:1, fillOpacity:0.85 }).addTo(pingLayer);
-    m.bindPopup(`<b>${isLatest?"Letzter Ping":"Ping"}</b><br>${timeLabel(p.t)}<br>${fmt(p.lat)} , ${fmt(p.lng)}`);
-  });
-}
-function renderPingList(){
-  const pings=[...state.pings].sort((a,b)=>b.t-a.t);
-  elPingList.innerHTML="";
-  if (!pings.length){
-    elPingList.innerHTML=`<div class="ping"><div class="meta">Noch keine Pings.</div></div>`;
+
+function saveCurrentField(){
+  if (!state.area){
+    alert("Kein Spielfeld vorhanden. Zeichne zuerst ein Polygon.");
     return;
   }
-  // For stats per row: compare to next (older) ping
-  const chron=[...state.pings].sort((a,b)=>a.t-b.t);
-  const idxByT=new Map(chron.map((p,i)=>[p.t,i]));
-
-  pings.forEach((p,idx)=>{
-    const div=document.createElement("div");
-    div.className="ping";
-
-    const iChron=idxByT.get(p.t);
-    let statsHtml=`<span class="tag">📌 <b>Ping</b></span>`;
-    if (iChron!=null && iChron>0){
-      const prev=chron[iChron-1];
-      const d=haversineMeters(prev,p);
-      const dt=Math.max(1,(p.t-prev.t)/1000);
-      const spd=d/dt;
-      const br=bearingDeg(prev,p);
-      statsHtml += ` <span class="tag">📏 ${Math.round(d)}m</span>`;
-      statsHtml += ` <span class="tag">⏱️ ${Math.round(dt)}s</span>`;
-      statsHtml += ` <span class="tag">🏃 ${spd.toFixed(2)} m/s</span>`;
-      statsHtml += ` <span class="tag">🧭 ${Math.round(br)}°</span>`;
-    } else {
-      statsHtml += ` <span class="tag">— erster Ping</span>`;
-    }
-
-    div.innerHTML=`
-      <div class="top">
-        <span>${idx===0?"📌 Letzter Ping":"📍 Ping"}</span>
-        <span class="row" style="gap:6px">
-          <button class="btn small" data-zoom="${p.t}">🔎</button>
-          <button class="btn small danger" data-del="${p.t}">Löschen</button>
-        </span>
-      </div>
-      <div class="meta">${timeLabel(p.t)} · ${fmt(p.lat)} , ${fmt(p.lng)}</div>
-      <div class="stats">${statsHtml}</div>
-    `;
-    elPingList.appendChild(div);
-  });
-
-  elPingList.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const t=Number(btn.getAttribute("data-del"));
-      state.pings=state.pings.filter(x=>x.t!==t);
-      saveState();
-      renderAll(true);
-    });
-  });
-  elPingList.querySelectorAll("[data-zoom]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const t=Number(btn.getAttribute("data-zoom"));
-      const p=state.pings.find(x=>x.t===t);
-      if (!p) return;
-      map.setView([p.lat,p.lng], Math.max(map.getZoom(), 16), { animate:true });
-    });
-  });
+  const name = (prompt("Name für das Spielfeld:", "Spielfeld") || "").trim();
+  if (!name) return;
+  fields.unshift({ id: makeId(), name, area: state.area, createdAt: Date.now() }); // neu oben
+  saveFields();
+  refreshFieldSelect();
+  elFieldSelect.value = fields[0].id;
 }
-function renderChips(){
-  elPingCount.textContent=String(state.pings.length);
-  if (state.area){ elAreaState.textContent="gesetzt"; chipArea.style.borderColor="rgba(62,227,140,0.35)"; }
-  else { elAreaState.textContent="fehlt"; chipArea.style.borderColor="rgba(255,255,255,0.10)"; }
-}
-function renderOverview(){
-  const o=computeOverview();
-  elOverview.classList.remove("ok","warn");
-  elOverview.classList.add(o.cls);
-  elOverview.innerHTML = `<b>Übersicht:</b> ${o.text.replace(/^Übersicht:\s*/,"")}`;
-}
-function clearOverlays(){
-  candidateLayer.clearLayers();
-  if (reachableCircle){ map.removeLayer(reachableCircle); reachableCircle=null; }
-}
-function renderAll(redrawOverlay=false){
-  null.value=""||"";
-  renderChips();
-  renderAreaOnMap();
-  renderPingsOnMap();
-  renderPingList();
-  renderOverview();
-  if (redrawOverlay) drawPredictionOverlay();
+
+function deleteSelectedField(){
+  const id = elFieldSelect.value || "";
+  if (!id) return alert("Wähle ein Spielfeld im Dropdown.");
+  const f = fields.find(x=>x.id===id);
+  if (!f) return;
+  const ok = confirm(`Spielfeld "${f.name}" löschen?`);
+  if (!ok) return;
+  fields = fields.filter(x=>x.id!==id);
+  saveFields();
+  refreshFieldSelect();
+  elFieldSelect.value = "";
 }
 
 /* =========================
-   CANDIDATES / OVERLAY
+   Pings
 ========================= */
-function computeCandidates(){
-  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
-  const last=pings[pings.length-1];
-  const prev=pings.length>=2 ? pings[pings.length-2] : null;
-
-  const speedSet=1.4;
-  const windowS=Number(elWindowSec.value||"300");
-  const distMax=Math.max(30, speedSet*windowS);
-
-  let baseBearing=0;
-  let effSpeed=null;
-  if (prev){
-    baseBearing=bearingDeg(prev,last);
-    const d=haversineMeters(prev,last);
-    const dt=Math.max(1,(last.t-prev.t)/1000);
-    effSpeed=d/dt;
-  }
-  const angles = prev ? [0, 25, -25, 55, -55, 180] : [0, 45, -45, 90, -90, 180];
-  let dBase = prev && effSpeed ? Math.min(distMax, Math.max(60, effSpeed * windowS * 0.95)) : distMax * 0.85;
-
-  const out=[];
-  for (let i=0;i<angles.length;i++){
-    const brng=(baseBearing+angles[i]+360)%360;
-    let p=destPoint(last, brng, dBase);
-    p=clampIntoArea(last,p);
-    if (!pointInArea(p.lat,p.lng) && state.area) continue;
-    out.push({ ...p, note: prev ? `Richtung ${Math.round(brng)}°` : `Richtung ${Math.round(brng)}° (ohne Verlauf)` });
-  }
-  let tries=0;
-  while(out.length<6 && tries<12){
-    tries++; dBase*=0.78;
-    const brng=(baseBearing + (tries%2?35:-35) + 360)%360;
-    let p=destPoint(last, brng, dBase);
-    p=clampIntoArea(last,p);
-    if (pointInArea(p.lat,p.lng)) out.push({ ...p, note:`Kurzstrecke ${Math.round(dBase)}m` });
-  }
-  return out.slice(0,6);
-}
-function drawPredictionOverlay(){
-  clearOverlays();
-  const last=state.pings.length ? [...state.pings].sort((a,b)=>b.t-a.t)[0] : null;
-  if (!last) return;
-
-  const speedSet=1.4;
-  const windowS=Number(elWindowSec.value||"300");
-  const radius=Math.max(30, speedSet*windowS);
-
-  reachableCircle=L.circle([last.lat,last.lng], { radius, weight:2, opacity:1, fillOpacity:0.10 }).addTo(map);
-
-  const candidates=computeCandidates();
-  candidates.forEach((c,i)=>{
-    const m=L.circleMarker([c.lat,c.lng], { radius:7, weight:2, fillOpacity:0.85 }).addTo(candidateLayer);
-    m.bindTooltip(String(i+1), { permanent:true, direction:"center" });
-    m.bindPopup(`<b>Kandidat ${i+1}</b><br>${fmt(c.lat)} , ${fmt(c.lng)}<br><small>${c.note||""}</small>`);
-  });
-}
-
-/* =========================
-   AI
-========================= */
-function buildAiPrompt(){
-  const poly=areaPolygon();
-  const pings=[...state.pings].sort((a,b)=>a.t-b.t);
-  const candidates=computeCandidates();
-
-  const last=pings[pings.length-1]||null;
-  const prev=pings.length>=2 ? pings[pings.length-2] : null;
-
-  let d=null, brng=null, dt=null, spd=null;
-  if (last && prev){
-    d=haversineMeters(prev,last);
-    dt=Math.max(1,(last.t-prev.t)/1000);
-    brng=bearingDeg(prev,last);
-    spd=d/dt;
-  }
-
-  const speedSet=1.4;
-  const windowS=Number(elWindowSec.value||"300");
-
-  return [
-`Du bist ein Helfer für ein Live-Spiel "Mr. X".`,
-`Aufgabe: Bewerte die wahrscheinlichsten nächsten Positionen in den nächsten ${windowS/60} Minuten.`,
-`Nutze nur Pings + Kandidaten + Spielfeld-Polygon. Keine Fantasie-Orte.`,
-`Gib am Ende:`,
-`1) Top-6 Kandidaten (1..6) mit 1 Satz Begründung je Punkt.`,
-`2) Profil (max 6 Bulletpoints).`,
-`3) Verfolger-Taktik (max 5 Bulletpoints).`,
-``,
-`Daten:`,
-`- Spielname: ${""||"(ohne)"}`,
-`- Geh-Tempo gesetzt: ${speedSet} m/s`,
-`- Spielfeld-Polygon: ${poly ? JSON.stringify(poly.geometry) : "nicht gesetzt"}`,
-`- Pings: ${JSON.stringify(pings.map(p=>({t:p.t, lat:p.lat, lng:p.lng, acc:undefined||null})))}`,
-(prev && last ? `- Letzte Bewegung: Distanz≈${Math.round(d)}m, Zeit≈${Math.round(dt)}s, Speed≈${spd.toFixed(2)}m/s, Bearing≈${Math.round(brng)}°` : `- Letzte Bewegung: nur 1 Ping`),
-`- Kandidaten (zu ranken): ${JSON.stringify(candidates.map((c,i)=>({k:i+1, lat:c.lat, lng:c.lng, note:c.note||""})))}`,
-``,
-`Wichtig: Wenn Polygon fehlt, sag kurz "Polygon fehlt".`,
-  ].join("\n");
-}
-
-async function runAi(){
-  if (!state.pings.length){
-    elAiOut.classList.add("muted");
-    elAiOut.textContent="Keine Pings vorhanden.";
-    return;
-  }
-  elAiOut.classList.remove("muted");
-  elAiOut.textContent="Analysiere…";
-  const prompt=buildAiPrompt();
-
-  try{
-    const r=await fetch("/api/ai", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      credentials:"include",
-      body: JSON.stringify({ prompt })
-    });
-    const j=await r.json().catch(()=>null);
-    if (!r.ok || !j){
-      elAiOut.textContent="KI-Fehler: " + (j?.error ? JSON.stringify(j) : `HTTP ${r.status}`);
-      return;
-    }
-    elAiOut.textContent = j.text || "(leer)";
-  }catch(e){
-    elAiOut.textContent="KI-Fehler: " + String(e?.message || e);
-  }
-}
-
-/* =========================
-   PING ACTIONS
-========================= */
-function addPing(lat, lng){
+function addPing(lat, lng, t=null){
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
   if (state.area && !pointInArea(lat,lng)){
@@ -836,67 +754,351 @@ function addPing(lat, lng){
     return;
   }
 
-  const t = nowMs();
-  state.pings.push({ t, lat:Number(lat), lng:Number(lng) });
+  const id = makeId();
+  const ts = t ?? (nowMs() + Math.floor(Math.random()*9));
+  state.pings.push({ id, t: ts, lat:Number(lat), lng:Number(lng) });
 
-  // dedupe same timestamp (keep latest)
-  const seen=new Set();
-  state.pings = state.pings
-    .sort((a,b)=>a.t-b.t)
-    .filter(p=>{
-      if (seen.has(p.t)) return false;
-      seen.add(p.t); return true;
-    })
-    .slice(-80);
-
+  // max 120
+  state.pings = state.pings.sort((a,b)=>a.t-b.t).slice(-120);
+  selectedPingId = id;
   saveState();
   renderAll(true);
 }
 
-
-let manualMode=false;
-
-
-document.getElementById("btnAnalyze").addEventListener("click", ()=>{
-  drawPredictionOverlay();
-  runAi();
-});
-
-let _scrollY = 0;
-function lockScroll(){
-  _scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-  document.body.classList.add("modalLock");
-  document.body.style.top = `-${_scrollY}px`;
+function deleteSelectedPing(){
+  if (!selectedPingId) return;
+  state.pings = state.pings.filter(p=>p.id!==selectedPingId);
+  selectedPingId = state.pings.length ? state.pings[state.pings.length-1].id : null;
+  saveState();
+  renderAll(true);
 }
-function unlockScroll(){
-  document.body.classList.remove("modalLock");
-  const top = document.body.style.top;
-  document.body.style.top = "";
-  const y = top ? -parseInt(top, 10) : _scrollY;
-  window.scrollTo(0, y || 0);
+
+function startEditSelectedPing(){
+  if (!selectedPingId) return;
+  const p = state.pings.find(x=>x.id===selectedPingId);
+  if (!p) return;
+  editMode = true;
+  editLat.value = String(p.lat);
+  editLng.value = String(p.lng);
 }
+
+function cancelEdit(){
+  editMode = false;
+  editLat.value = "";
+  editLng.value = "";
+}
+
+function applyEdit(){
+  if (!selectedPingId) return;
+  const p = state.pings.find(x=>x.id===selectedPingId);
+  if (!p) return;
+
+  const lat = Number(String(editLat.value||"").replace(",", "."));
+  const lng = Number(String(editLng.value||"").replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat<-90 || lat>90 || lng<-180 || lng>180){
+    alert("Ungültige Koordinaten.");
+    return;
+  }
+  if (state.area && !pointInArea(lat,lng)){
+    alert("Koordinaten liegen außerhalb des Spielfelds.");
+    return;
+  }
+
+  p.lat = lat;
+  p.lng = lng;
+  saveState();
+  cancelEdit();
+  renderAll(true);
+}
+
+/* =========================
+   Current position (blau)
+========================= */
+function setCurrentPos(lat,lng){
+  state.currentPos = { lat:Number(lat), lng:Number(lng), t: nowMs() };
+  saveState();
+  renderAll(false);
+}
+
+async function captureMyPos(){
+  if (!navigator.geolocation){
+    alert("Geolocation nicht verfügbar.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      setCurrentPos(lat,lng);
+      addPing(lat,lng);
+      map.setView([lat,lng], Math.max(map.getZoom(), 16), { animate:true });
+    },
+    (err)=> alert("Position nicht verfügbar: " + (err?.message || err)),
+    { enableHighAccuracy:true, timeout: 12000, maximumAge: 2000 }
+  );
+}
+
+/* =========================
+   Overlay / Kandidaten
+========================= */
+function clearOverlays(){
+  candidateLayer.clearLayers();
+  if (reachableCircle){ map.removeLayer(reachableCircle); reachableCircle=null; }
+}
+
+function computeCandidates(){
+  const pings = state.pings.slice().sort((a,b)=>a.t-b.t);
+  if (!pings.length) return [];
+
+  const last = pings[pings.length-1];
+  const prev = pings.length>=2 ? pings[pings.length-2] : null;
+
+  const windowS = Number(state.intervalSec || 10) * 30; // grob: 30 Updates ≈ "Zeitfenster" (Mockup)
+  const fallbackSpeed = 1.4; // m/s
+  let speed = fallbackSpeed;
+  let baseBearing = 0;
+
+  if (prev){
+    const d = haversineMeters(prev,last);
+    const dt = Math.max(1, (last.t - prev.t)/1000);
+    speed = Math.max(0.4, Math.min(6.0, d/dt)); // clamp
+    baseBearing = bearingDeg(prev,last);
+  }
+
+  const maxDist = Math.max(60, speed * windowS);
+  const angles = prev ? [0, 20, -20, 45, -45, 180] : [0, 45, -45, 90, -90, 180];
+
+  const out = [];
+  for (let i=0;i<angles.length;i++){
+    const br = (baseBearing + angles[i] + 360) % 360;
+    const p = destPoint(last, br, maxDist * (i===0 ? 1.0 : 0.75));
+    if (state.area && !pointInArea(p.lat,p.lng)) continue;
+    out.push({ k: out.length+1, lat:p.lat, lng:p.lng, br });
+    if (out.length>=6) break;
+  }
+  // fallback wenn Polygon alle rauskickt
+  if (!out.length){
+    out.push({ k:1, lat:last.lat, lng:last.lng, br:0 });
+  }
+  return out.slice(0,6);
+}
+
+function drawPredictionOverlay(){
+  clearOverlays();
+  const pings = state.pings.slice().sort((a,b)=>a.t-b.t);
+  if (!pings.length) return;
+
+  const last = pings[pings.length-1];
+  const cand = computeCandidates();
+
+  // Kreis
+  const radiusM = 650; // optisch wie Mockup
+  reachableCircle = L.circle([last.lat,last.lng], { radius: radiusM, weight:2, opacity:0.9, fillOpacity:0.08 }).addTo(map);
+
+  // Kandidatenpunkte
+  cand.forEach((c,i)=>{
+    const m = L.circleMarker([c.lat,c.lng], { radius:7, weight:2, opacity:1, fillOpacity:0.85 }).addTo(candidateLayer);
+    m.bindTooltip(String(i+1), { permanent:true, direction:"center" });
+    m.bindPopup(`<b>Kandidat ${i+1}</b><br>${fmt(c.lat)} , ${fmt(c.lng)}<br><small>Richtung ${Math.round(c.br)}°</small>`);
+  });
+}
+
+/* =========================
+   Render
+========================= */
+function renderArea(){
+  drawnItems.clearLayers();
+  if (!state.area) return;
+  const layer = L.geoJSON(state.area);
+  layer.eachLayer(l=> drawnItems.addLayer(l));
+  try{
+    const b = layer.getBounds();
+    if (b.isValid()) map.fitBounds(b.pad(0.12));
+  }catch(_){}
+}
+
+function renderPings(){
+  pingLayer.clearLayers();
+  const pings = state.pings.slice().sort((a,b)=>a.t-b.t);
+  const last = pings.length ? pings[pings.length-1] : null;
+
+  pings.forEach(p=>{
+    const isLast = last && p.id===last.id;
+    const m = L.circleMarker([p.lat,p.lng], {
+      radius: isLast ? 10 : 8,
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.9
+    }).addTo(pingLayer);
+    // Farblook: letzter Ping grün, sonst rot
+    m.setStyle({ color: isLast ? "#62ff83" : "#ff4d6d", fillColor: isLast ? "#62ff83" : "#ff4d6d" });
+    m.on("click", ()=>{
+      selectedPingId = p.id;
+      renderPingList();
+    });
+  });
+}
+
+function renderCurrentPos(){
+  currentPosLayer.clearLayers();
+  if (!state.currentPos) return;
+  const p = state.currentPos;
+  const m = L.circleMarker([p.lat,p.lng], { radius:9, weight:2, opacity:1, fillOpacity:0.9 }).addTo(currentPosLayer);
+  m.setStyle({ color: "#56a7ff", fillColor:"#56a7ff" });
+}
+
+function renderPingList(){
+  const pings = state.pings.slice().sort((a,b)=>b.t-a.t);
+  elPingList.innerHTML = "";
+
+  if (!pings.length){
+    elPingList.innerHTML = `<div class="hint">Noch keine Pings.</div>`;
+    return;
+  }
+
+  pings.forEach((p,idx)=>{
+    const div = document.createElement("div");
+    div.className = "pingItem" + (p.id===selectedPingId ? " selected" : "");
+    div.innerHTML = `
+      <div class="left">
+        <div class="name">${idx===0 ? "Ping (letzter)" : "Ping " + (pings.length-idx)}</div>
+        <div class="meta">${fmt(p.lat)}, ${fmt(p.lng)}</div>
+      </div>
+      <button class="btn small" data-zoom="${p.id}">🔎</button>
+    `;
+    div.addEventListener("click", (e)=>{
+      if (e.target && e.target.matches("[data-zoom]")) return;
+      selectedPingId = p.id;
+      renderPingList();
+    });
+    elPingList.appendChild(div);
+  });
+
+  elPingList.querySelectorAll("[data-zoom]").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const id = btn.getAttribute("data-zoom");
+      const p = state.pings.find(x=>x.id===id);
+      if (!p) return;
+      map.setView([p.lat,p.lng], Math.max(map.getZoom(), 16), { animate:true });
+    });
+  });
+}
+
+function renderStatsAndThree(){
+  const pings = state.pings.slice().sort((a,b)=>a.t-b.t);
+  if (pings.length<2){
+    elDist.textContent = "—";
+    elTime.textContent = "—";
+    elSpeed.textContent = "—";
+    elBear.textContent = "—";
+  } else {
+    const a = pings[pings.length-2];
+    const b = pings[pings.length-1];
+    const dM = haversineMeters(a,b);
+    const dtS = Math.max(1, (b.t-a.t)/1000);
+    const spd = dM/dtS; // m/s
+    const kmh = spd*3.6;
+    const br = bearingDeg(a,b);
+
+    elDist.textContent = (dM/1000).toFixed(2) + " km";
+    elTime.textContent = Math.round(dtS/60) + " min";
+    elSpeed.textContent = kmh.toFixed(1) + " km/h";
+    elBear.textContent = Math.round(br) + "°";
+  }
+
+  const cand = computeCandidates();
+  const top3 = cand.slice(0,3);
+
+  elThreeNext.innerHTML = "";
+  if (!top3.length){
+    elThreeNext.innerHTML = `<div class="hint">Keine Kandidaten.</div>`;
+  } else {
+    top3.forEach((c,i)=>{
+      const row = document.createElement("div");
+      row.className = "candRow";
+      row.innerHTML = `
+        <div class="r">${i+1}.</div>
+        <div class="c">${fmt(c.lat)}, ${fmt(c.lng)}</div>
+        <button class="btn small" data-goto="${i}">↗</button>
+      `;
+      row.querySelector("[data-goto]").addEventListener("click", ()=>{
+        map.setView([c.lat,c.lng], Math.max(map.getZoom(), 16), { animate:true });
+      });
+      elThreeNext.appendChild(row);
+    });
+  }
+}
+
+function renderAll(redrawOverlay){
+  renderArea();
+  renderPings();
+  renderCurrentPos();
+  renderPingList();
+  renderStatsAndThree();
+  if (redrawOverlay) drawPredictionOverlay();
+}
+
+/* =========================
+   AI (optional, wenn /api/ai existiert)
+========================= */
+function buildAiPrompt(){
+  const poly = areaFeature();
+  const pings = state.pings.slice().sort((a,b)=>a.t-b.t).map(p=>({ t:p.t, lat:p.lat, lng:p.lng }));
+  const cand = computeCandidates().map(c=>({ k:c.k, lat:c.lat, lng:c.lng, note:`Richtung ${Math.round(c.br)}°` }));
+  return [
+    `Du bist ein Helfer für ein Live-Spiel "Mr. X".`,
+    `Bewerte die wahrscheinlichsten nächsten Positionen anhand von Pings + Kandidaten + Spielfeld.`,
+    `Gib: (1) Ranking Kandidaten 1..${cand.length} mit 1 Satz Begründung; (2) kurze Taktik für Verfolger.`,
+    ``,
+    `Spielfeld-Polygon: ${poly ? JSON.stringify(poly.geometry) : "nicht gesetzt"}`,
+    `Pings: ${JSON.stringify(pings)}`,
+    `Kandidaten: ${JSON.stringify(cand)}`
+  ].join("\n");
+}
+
+async function runAi(){
+  if (!state.pings.length){
+    elAiOut.textContent = "Keine Pings vorhanden.";
+    return;
+  }
+  elAiOut.textContent = "Analysiere…";
+  try{
+    const r = await fetch("/api/ai", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      credentials:"include",
+      body: JSON.stringify({ prompt: buildAiPrompt() })
+    });
+    const j = await r.json().catch(()=>null);
+    if (!r.ok || !j){
+      elAiOut.textContent = "KI nicht verfügbar (API-Fehler).";
+      return;
+    }
+    elAiOut.textContent = j.text || "(leer)";
+  }catch(_){
+    elAiOut.textContent = "KI nicht verfügbar (keine Verbindung).";
+  }
+}
+
+/* =========================
+   Ping Modal parse
+========================= */
+const modalBackdrop = document.getElementById("modalBackdrop");
+const pasteText = document.getElementById("pasteText");
 
 function openModal(){
-  pasteText.value="";
+  pasteText.value = "";
   modalBackdrop.classList.add("show");
-  lockScroll();
   setTimeout(()=>pasteText.focus(), 0);
 }
 function closeModal(){
   modalBackdrop.classList.remove("show");
-  unlockScroll();
 }
-
-document.getElementById("btnInsert").addEventListener("click", openModal);
-document.getElementById("btnModalClose").addEventListener("click", closeModal);
-document.getElementById("btnPasteCancel").addEventListener("click", closeModal);
-modalBackdrop.addEventListener("touchmove", (e)=>{ if (modalBackdrop.classList.contains("show")) e.preventDefault(); }, { passive:false });
-modalBackdrop.addEventListener("click", (e)=>{ if (e.target===modalBackdrop) closeModal(); });
 
 function parseLatLngFromText(text){
   const t0 = String(text||"").trim();
   if (!t0) return null;
-
   const t = t0.replace(/;/g, ",").replace(/\s+/g, " ");
 
   let m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
@@ -911,106 +1113,134 @@ function parseLatLngFromText(text){
   m = t.match(/(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/);
   if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
 
-  m = t.match(/lat[^0-9-]*(-?\d+(?:\.\d+)?)[^0-9-]+lng[^0-9-]*(-?\d+(?:\.\d+)?)/i);
-  if (m) return { lat: Number(m[1]), lng: Number(m[2]) };
-
   return null;
 }
-
-function isValidLatLng(ll){
-  return ll && Number.isFinite(ll.lat) && Number.isFinite(ll.lng) && ll.lat>=-90 && ll.lat<=90 && ll.lng>=-180 && ll.lng<=180;
-}
-
-async function resolveLatLng(text){
-  // 1) Direkt aus Text/Link extrahieren
-  const direct = parseLatLngFromText(text);
-  if (isValidLatLng(direct)) return direct;
-
-  // 2) Kurzlink (maps.app.goo.gl) über Worker auflösen
-  const urlMatch = String(text||"").match(/https?:\/\/\S+/);
-  if (!urlMatch) return null;
-
-  try{
-    const r = await fetch("/api/resolve-maps?url=" + encodeURIComponent(urlMatch[0]), { credentials:"include" });
-    const j = await r.json().catch(()=>null);
-    if (j && j.ok) {
-      const ll = { lat: Number(j.lat), lng: Number(j.lng) };
-      if (isValidLatLng(ll)) return ll;
-    }
-  }catch(_){}
-  return null;
-}
-
-
-
-document.getElementById("btnPasteParse").addEventListener("click", async ()=>{
-  const text = pasteText.value || "";
-  const ll = await resolveLatLng(text);
-
-  if (!ll){
-    alert("Konnte keine Koordinaten finden. Tipp: Bei iOS-Maps Kurzlinks (maps.app.goo.gl) geht’s jetzt auch – Link einfach reinkopieren.");
-    return;
-  }
-
-  addPing(ll.lat, ll.lng);
-
-  // direkt auf den Ping springen
-  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 16), { animate:true });
-
-  closeModal();
-});
-
 
 /* =========================
-   RESET / COLLAPSE
+   Auto refresh
 ========================= */
-document.getElementById("btnReset").addEventListener("click", ()=>{
-  const ok = confirm("Alles löschen? (Polygon + Pings + KI-Text)");
-  if (!ok) return;
-  state = { name:"", area:null, pings:[] };
+function applyIntervalUI(){
+  elIntervalLabel.textContent = String(state.intervalSec || 10);
+  document.querySelectorAll("[data-int]").forEach(b=>{
+    b.classList.toggle("active", Number(b.getAttribute("data-int")) === Number(state.intervalSec||10));
+  });
+}
+
+function stopAuto(){
+  if (autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  state.auto = false;
   saveState();
-  elAiOut.classList.add("muted");
-  elAiOut.textContent="Noch keine Analyse. Zeichne ein Spielfeld und füge 1–2 Pings ein.";
+}
+
+function startAuto(){
+  stopAuto();
+  state.auto = true;
+  saveState();
+  autoTimer = setInterval(()=>{
+    drawPredictionOverlay();
+    runAi();
+  }, Number(state.intervalSec||10)*1000);
+}
+
+function toggleAutoNow(){
+  if (autoTimer) stopAuto();
+  else startAuto();
+}
+
+/* =========================
+   Events
+========================= */
+document.getElementById("btnHome").addEventListener("click", ()=> location.href="/home");
+
+document.getElementById("btnFieldNew").addEventListener("click", ()=>{
+  alert("Jetzt Polygon zeichnen (links oben auf der Karte das Polygon-Tool).");
+});
+
+document.getElementById("btnFieldSave").addEventListener("click", saveCurrentField);
+document.getElementById("btnFieldDelete").addEventListener("click", deleteSelectedField);
+
+elFieldSelect.addEventListener("change", ()=>{
+  const id = elFieldSelect.value || "";
+  if (id) applyFieldById(id);
+});
+
+document.getElementById("btnPingAdd").addEventListener("click", openModal);
+document.getElementById("btnPingUseMyPos").addEventListener("click", captureMyPos);
+
+document.getElementById("btnResetAll").addEventListener("click", ()=>{
+  const ok = confirm("Alles löschen? (Spielfeld + Pings + KI)");
+  if (!ok) return;
+  state.area = null;
+  state.pings = [];
+  state.currentPos = null;
+  selectedPingId = null;
+  saveState();
   clearOverlays();
+  elAiOut.textContent = "Noch keine Analyse. Zeichne ein Spielfeld und füge Pings ein.";
   renderAll(true);
 });
 
-// Spielfeld Auswahl / Neu
-refreshFieldOnlySelect();
-const fieldSel = document.getElementById("fieldOnlySelect");
-const btnFieldNew = document.getElementById("btnFieldNew");
-if (fieldSel){
-  fieldSel.addEventListener("change", ()=>{
-    const id = fieldSel.value || "";
-    if (id) applyFieldById(id);
-  });
-}
-if (btnFieldNew){
-  btnFieldNew.addEventListener("click", ()=>{
-    clearForNewField();
-    alert("Jetzt Spielfeld einzeichnen (Polygon).");
-  });
-}
+document.getElementById("btnPingDelete").addEventListener("click", deleteSelectedPing);
+document.getElementById("btnPingEdit").addEventListener("click", startEditSelectedPing);
+document.getElementById("btnPingCancel").addEventListener("click", cancelEdit);
+document.getElementById("btnPingApply").addEventListener("click", applyEdit);
 
-
-let collapsed=false;
-document.getElementById("btnCollapse").addEventListener("click", ()=>{
-  collapsed=!collapsed;
-  document.getElementById("sideBody").style.display = collapsed ? "none" : "";
-  document.getElementById("btnCollapse").textContent = collapsed ? "▸" : "▾";
+document.getElementById("btnAnalyze").addEventListener("click", ()=>{
+  // wie Mockup: Button triggert Analyse + Overlay; wenn Auto aktiv -> togglen
+  drawPredictionOverlay();
+  runAi();
 });
 
-/* Name sync */
-null.addEventListener("input", ()=>{
+document.querySelectorAll("[data-int]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    const s = Number(b.getAttribute("data-int"));
+    state.intervalSec = s;
+    saveState();
+    applyIntervalUI();
+    if (autoTimer) startAuto(); // neu takten
   });
+});
 
-/* Overlay update on param change */
-[({value:'1.4'}), elWindowSec].forEach(el => el.addEventListener("change", ()=> drawPredictionOverlay()));
+document.getElementById("btnModalClose").addEventListener("click", closeModal);
+document.getElementById("btnPasteCancel").addEventListener("click", closeModal);
+modalBackdrop.addEventListener("click", (e)=>{ if (e.target===modalBackdrop) closeModal(); });
 
-/* Initial */
+document.getElementById("btnPasteParse").addEventListener("click", ()=>{
+  const ll = parseLatLngFromText(pasteText.value || "");
+  if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)){
+    alert("Konnte keine Koordinaten finden.");
+    return;
+  }
+  addPing(ll.lat, ll.lng);
+  map.setView([ll.lat, ll.lng], Math.max(map.getZoom(), 16), { animate:true });
+  closeModal();
+});
+
+/* City preset actions */
+const cityCoords = {
+  frankfurt: [50.1109, 8.6821],
+  stuttgart: [48.7758, 9.1829],
+  hannover: [52.3759, 9.7320],
+  heidelberg: [49.3988, 8.6724]
+};
+document.querySelectorAll("[data-city]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const key = btn.getAttribute("data-city");
+    const c = cityCoords[key];
+    if (!c) return;
+    map.setView(c, 12, { animate:true });
+  });
+});
+
+/* =========================
+   Init
+========================= */
+refreshFieldSelect();
+applyIntervalUI();
+
+// Re-render saved state
 renderAll(true);
-
-
+if (state.auto) startAuto();
 </script>
 </body>
 </html>
