@@ -1,15 +1,15 @@
 // src/webcam.js
 // ✅ Kostenlos + stabil über verschiedene Netze (auch Mobile Daten) – ohne WebRTC
-// Prinzip: Sender streamt JPEG-Frames -> WebSocket -> Durable Object (STREAM) -> Zuschauer bekommen Frames.
-// Zusätzlich: Lobby-Liste aktiver Gruppen (LOBBY DO) für "LIVE"-Übersicht.
+// ✅ Mit Gruppenliste: Besucher sehen aktive "LIVE"-Gruppen und können nur zuschauen.
+// ✅ Pro Gruppe nur 1 Sender (weitere Sender werden abgelehnt)
 //
-// Routen (im Worker vor dem Login-Gate):
+// Worker-Routen (müssen im src/worker.js VOR dem Login-Gate abgefangen werden):
 // - GET  /webcam-live                 -> Lobby UI (aktive Gruppen + neue Gruppe)
 // - GET  /webcam-live/room            -> Room UI (send/watch)
 // - GET  /webcam-live/groups          -> JSON Liste aktiver Gruppen
 // - WS   /webcam-live/ws?room=NAME    -> STREAM WebSocket (Frames + Control)
 //
-// Bindings (wrangler.jsonc):
+// wrangler.jsonc:
 // durable_objects.bindings: [{name:"LOBBY", class_name:"LOBBY"}, {name:"STREAM", class_name:"STREAM"}]
 // migrations (Free plan): new_sqlite_classes für beide Klassen
 
@@ -32,23 +32,26 @@ export class LOBBY {
       const rooms = (await this.state.storage.get(key)) || {};
       const now = Date.now();
       let changed = false;
+
       for (const [name, info] of Object.entries(rooms)) {
         if (!info || typeof info !== "object") { delete rooms[name]; changed = true; continue; }
         if (!info.senderOnline) continue;
-        if ((now - (info.lastSeen || 0)) > 120000) { // 2 min stale -> mark offline
+        if ((now - (info.lastSeen || 0)) > 120000) { // 2 min stale -> offline
           info.senderOnline = false;
           info.viewers = info.viewers || 0;
           changed = true;
         }
       }
+
       if (changed) await this.state.storage.put(key, rooms);
       return rooms;
     };
 
+    // GET /groups -> list active rooms
     if (path.endsWith("/groups") && request.method === "GET") {
       const rooms = await loadRooms();
       const list = Object.entries(rooms)
-        .filter(([_, r]) => r?.senderOnline)
+        .filter(([_, r]) => r && r.senderOnline)
         .map(([name, r]) => ({
           room: name,
           viewers: r.viewers || 0,
@@ -61,6 +64,7 @@ export class LOBBY {
       });
     }
 
+    // internal: POST /touch {room, senderOnline, viewers}
     if (path.endsWith("/touch") && request.method === "POST") {
       let body = null;
       try { body = await request.json(); } catch {}
@@ -69,12 +73,14 @@ export class LOBBY {
 
       const rooms = (await this.state.storage.get(key)) || {};
       const prev = rooms[room] || {};
+
       rooms[room] = {
         room,
         senderOnline: body?.senderOnline === true,
         viewers: Number.isFinite(body?.viewers) ? Math.max(0, body.viewers) : (prev.viewers || 0),
         lastSeen: Date.now(),
       };
+
       await this.state.storage.put(key, rooms);
       return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
     }
@@ -93,8 +99,7 @@ export class STREAM {
 
     this.senderId = null;
     this.clients = new Map(); // id -> { ws, role }
-    this.lastFrame = null; // ArrayBuffer
-    this.lastFrameAt = 0;
+    this.lastFrame = null; // ArrayBuffer (JPEG)
   }
 
   async fetch(request) {
@@ -135,6 +140,7 @@ export class STREAM {
 
     sendText(server, { type: "hello", id });
 
+    // Keepalive ping (hilft auf manchen Mobilfunknetzen)
     const pingTimer = setInterval(() => {
       if (server.readyState !== 1) return;
       sendText(server, { type: "ping" });
@@ -154,6 +160,7 @@ export class STREAM {
       const c = this.clients.get(id);
       if (!c) return;
 
+      // Text messages
       if (typeof evt.data === "string") {
         let msg = null;
         try { msg = JSON.parse(evt.data); } catch { return; }
@@ -163,6 +170,7 @@ export class STREAM {
           const role = msg.role === "send" ? "send" : "watch";
 
           if (role === "send") {
+            // only one sender allowed
             if (this.senderId && this.senderId !== id && this.clients.has(this.senderId)) {
               sendText(server, { type: "role_denied", reason: "sender_exists" });
               return;
@@ -175,6 +183,7 @@ export class STREAM {
             return;
           }
 
+          // watch
           c.role = "watch";
           this.clients.set(id, c);
           sendText(server, { type: "role_ok", role: "watch" });
@@ -187,6 +196,7 @@ export class STREAM {
         return;
       }
 
+      // Binary frame
       if (!(evt.data instanceof ArrayBuffer)) return;
 
       if (id !== this.senderId) {
@@ -195,7 +205,6 @@ export class STREAM {
       }
 
       this.lastFrame = evt.data;
-      this.lastFrameAt = Date.now();
 
       for (const [oid, other] of this.clients.entries()) {
         if (oid === id) continue;
@@ -212,7 +221,7 @@ export class STREAM {
 }
 
 // ---------------------------
-// UI HTML
+// UI HTML (wichtig: keine ${} in Template-Strings!)
 // ---------------------------
 const HTML_LOBBY = `<!doctype html>
 <html lang="de">
@@ -259,45 +268,53 @@ const HTML_LOBBY = `<!doctype html>
   </div>
 
 <script>
-(() => {
-  const listEl = document.getElementById("list");
-  const roomEl = document.getElementById("room");
-  const createBtn = document.getElementById("create");
+(function () {
+  var listEl = document.getElementById("list");
+  var roomEl = document.getElementById("room");
+  var createBtn = document.getElementById("create");
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
+
+  function render(rooms) {
+    if (!rooms || !rooms.length) {
+      listEl.innerHTML = '<div class="small">Keine aktiven Gruppen.</div>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < rooms.length; i++) {
+      var r = rooms[i];
+      var room = escapeHtml(r.room);
+      var viewers = Number(r.viewers || 0);
+      html += ''
+        + '<div class="item">'
+        +   '<div>'
+        +     '<div><b>' + room + '</b> <span class="badge">LIVE</span></div>'
+        +     '<div class="small">Zuschauer: ' + viewers + '</div>'
+        +   '</div>'
+        +   '<div>'
+        +     '<button onclick="location.href=\\'/webcam-live/room?room=' + encodeURIComponent(room) + '&mode=watch\\'">Zuschauen</button>'
+        +   '</div>'
+        + '</div>';
+    }
+    listEl.innerHTML = html;
   }
 
   async function load() {
     try {
-      const r = await fetch("/webcam-live/groups", { cache: "no-store" });
-      const j = await r.json();
-      const rooms = j.rooms || [];
-      if (!rooms.length) {
-        listEl.innerHTML = '<div class="small">Keine aktiven Gruppen.</div>';
-        return;
-      }
-      listEl.innerHTML = rooms.map(x => {
-        const room = escapeHtml(x.room);
-        const viewers = Number(x.viewers || 0);
-        return `
-          <div class="item">
-            <div>
-              <div><b>${room}</b> <span class="badge">LIVE</span></div>
-              <div class="small">Zuschauer: ${viewers}</div>
-            </div>
-            <div>
-              <button onclick="location.href='/webcam-live/room?room=${encodeURIComponent(room)}&mode=watch'">Zuschauen</button>
-            </div>
-          </div>`;
-      }).join("");
+      var r = await fetch("/webcam-live/groups", { cache: "no-store" });
+      var j = await r.json();
+      render(j.rooms || []);
     } catch (e) {
       listEl.innerHTML = '<div class="small">Fehler beim Laden.</div>';
     }
   }
 
-  createBtn.onclick = () => {
-    const room = (roomEl.value || "").trim();
+  createBtn.onclick = function () {
+    var room = (roomEl.value || "").trim();
     if (!room) return alert("Gruppenname fehlt");
     location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send";
   };
@@ -387,24 +404,24 @@ const HTML_ROOM = `<!doctype html>
   </div>
 
 <script>
-(() => {
-  const $ = (id) => document.getElementById(id);
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
 
-  const statusEl = $("status");
-  const logEl = $("log");
-  const localV = $("local");
-  const remoteImg = $("remote");
-  const btnGo = $("btnGo");
-  const btnHang = $("btnHang");
-  const fpsEl = $("fps");
-  const wEl = $("w");
-  const qEl = $("q");
-  const localBox = $("localBox");
-  const senderSettings = $("senderSettings");
+  var statusEl = $("status");
+  var logEl = $("log");
+  var localV = $("local");
+  var remoteImg = $("remote");
+  var btnGo = $("btnGo");
+  var btnHang = $("btnHang");
+  var fpsEl = $("fps");
+  var wEl = $("w");
+  var qEl = $("q");
+  var localBox = $("localBox");
+  var senderSettings = $("senderSettings");
 
-  const params = new URLSearchParams(location.search);
-  const room = (params.get("room") || "").trim() || "default";
-  const mode = (params.get("mode") || "watch") === "send" ? "send" : "watch";
+  var params = new URLSearchParams(location.search);
+  var room = (params.get("room") || "").trim() || "default";
+  var mode = (params.get("mode") || "watch") === "send" ? "send" : "watch";
 
   $("roomName").textContent = room;
   $("modeName").textContent = mode;
@@ -414,28 +431,32 @@ const HTML_ROOM = `<!doctype html>
     senderSettings.style.display = "none";
   }
 
-  const log = (...a) => {
-    const line = a.map(x => typeof x === "string" ? x : JSON.stringify(x)).join(" ");
-    logEl.textContent += line + "\n";
+  function log() {
+    var line = "";
+    for (var i = 0; i < arguments.length; i++) {
+      var x = arguments[i];
+      line += (typeof x === "string" ? x : JSON.stringify(x)) + " ";
+    }
+    logEl.textContent += line.trim() + "\\n";
     logEl.scrollTop = logEl.scrollHeight;
-  };
+  }
 
-  let ws = null;
-  let localStream = null;
-  let running = false;
-  let lastUrl = null;
+  var ws = null;
+  var localStream = null;
+  var running = false;
+  var lastUrl = null;
 
   function setStatus(s) { statusEl.textContent = s; }
 
   function wsUrl() {
-    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    var proto = location.protocol === "https:" ? "wss:" : "ws:";
     return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room);
   }
 
   function setRemoteFromBuffer(buf) {
     try {
-      const blob = new Blob([buf], { type: "image/jpeg" });
-      const url = URL.createObjectURL(blob);
+      var blob = new Blob([buf], { type: "image/jpeg" });
+      var url = URL.createObjectURL(blob);
       remoteImg.src = url;
       if (lastUrl) URL.revokeObjectURL(lastUrl);
       lastUrl = url;
@@ -443,10 +464,10 @@ const HTML_ROOM = `<!doctype html>
   }
 
   async function startSenderLoop() {
-    const width = Math.max(160, Math.min(1280, parseInt(wEl.value || "640", 10) || 640));
-    const fps = Math.max(1, Math.min(15, parseInt(fpsEl.value || "4", 10) || 4));
-    const quality = Math.max(0.3, Math.min(0.95, parseFloat(qEl.value || "0.7") || 0.7));
-    const intervalMs = Math.round(1000 / fps);
+    var width = Math.max(160, Math.min(1280, parseInt(wEl.value || "640", 10) || 640));
+    var fps = Math.max(1, Math.min(15, parseInt(fpsEl.value || "4", 10) || 4));
+    var quality = Math.max(0.3, Math.min(0.95, parseFloat(qEl.value || "0.7") || 0.7));
+    var intervalMs = Math.round(1000 / fps);
 
     localStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
@@ -454,28 +475,30 @@ const HTML_ROOM = `<!doctype html>
     });
     localV.srcObject = localStream;
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d", { alpha: false });
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d", { alpha: false });
 
-    await new Promise((res) => {
+    await new Promise(function (res) {
       if (localV.readyState >= 2) return res();
-      localV.onloadedmetadata = () => res();
+      localV.onloadedmetadata = function () { res(); };
     });
 
-    const srcW = localV.videoWidth || 1280;
-    const srcH = localV.videoHeight || 720;
-    const height = Math.round(width * (srcH / srcW));
+    var srcW = localV.videoWidth || 1280;
+    var srcH = localV.videoHeight || 720;
+    var height = Math.round(width * (srcH / srcW));
     canvas.width = width;
     canvas.height = height;
 
     log("send:", fps, "fps", width + "x" + height, "q=" + quality);
 
-    const blobToArrayBuffer = (blob) => new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = reject;
-      r.readAsArrayBuffer(blob);
-    });
+    function blobToArrayBuffer(blob) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function () { resolve(r.result); };
+        r.onerror = reject;
+        r.readAsArrayBuffer(blob);
+      });
+    }
 
     running = true;
 
@@ -485,9 +508,9 @@ const HTML_ROOM = `<!doctype html>
 
       try {
         ctx.drawImage(localV, 0, 0, width, height);
-        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        var blob = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/jpeg", quality); });
         if (blob) {
-          const buf = await blobToArrayBuffer(blob);
+          var buf = await blobToArrayBuffer(blob);
           ws.send(buf);
         }
       } catch {}
@@ -499,7 +522,8 @@ const HTML_ROOM = `<!doctype html>
   function stopSender() {
     running = false;
     if (localStream) {
-      for (const t of localStream.getTracks()) try { t.stop(); } catch {}
+      var tracks = localStream.getTracks();
+      for (var i = 0; i < tracks.length; i++) { try { tracks[i].stop(); } catch {} }
     }
     localStream = null;
     localV.srcObject = null;
@@ -516,18 +540,18 @@ const HTML_ROOM = `<!doctype html>
     ws = new WebSocket(wsUrl());
     ws.binaryType = "arraybuffer";
 
-    ws.onopen = () => {
+    ws.onopen = function () {
       setStatus("connected");
       ws.send(JSON.stringify({ type: "role", role: mode }));
       log("WS open");
     };
 
-    ws.onclose = () => { setStatus("offline"); log("WS close"); };
-    ws.onerror = () => { log("WS error"); };
+    ws.onclose = function () { setStatus("offline"); log("WS close"); };
+    ws.onerror = function () { log("WS error"); };
 
-    ws.onmessage = async (evt) => {
+    ws.onmessage = async function (evt) {
       if (typeof evt.data === "string") {
-        let msg = null;
+        var msg = null;
         try { msg = JSON.parse(evt.data); } catch { return; }
 
         if (msg.type === "role_ok") {
@@ -558,10 +582,11 @@ const HTML_ROOM = `<!doctype html>
     };
   }
 
-  btnGo.onclick = () => connect();
-  btnHang.onclick = () => { stopSender(); cleanupWs(); setStatus("offline"); };
+  btnGo.onclick = function () { connect(); };
+  btnHang.onclick = function () { stopSender(); cleanupWs(); setStatus("offline"); };
 
-  setInterval(() => {
+  // Auto-Reconnect
+  setInterval(function () {
     if (!ws) return;
     if (ws.readyState === 2 || ws.readyState === 3) {
       log("reconnect...");
@@ -608,6 +633,7 @@ export async function handleWebcamLive(req, env) {
     });
   }
 
+  // default lobby UI
   return new Response(HTML_LOBBY, {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   });
