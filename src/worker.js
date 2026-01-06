@@ -254,6 +254,7 @@ function pickProfileId(url, body) {
 // Web Push (Cloudflare Workers) via @pushforge/builder
 // Env:
 // - VAPID_PRIVATE_KEY: JSON string of a JWK (private)
+// - VAPID_PUBLIC_KEY: base64url public key (NOT secret, used by frontend subscribe)
 // - VAPID_SUBJECT: e.g. "mailto:you@example.com" or "https://your-domain"
 // D1 table: push_subscriptions(id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)
 // We store ONLY one subscription with id="primary" (your phone PWA).
@@ -361,10 +362,30 @@ async function handleApi(req, env) {
 
     
     // --- PUSH: expose public key for the frontend (NOT secret) ---
+    // Note: depending on how you store variables (Secrets Store vs Wrangler secrets),
+    // the binding name must still be exactly VAPID_PUBLIC_KEY.
     if (path === "/api/push/publicKey" && req.method === "GET") {
-      const pk = String(env.VAPID_PUBLIC_KEY || "").trim();
+      const pk =
+        requireEnv(env, "VAPID_PUBLIC_KEY") ||
+        requireEnv(env, "VAPID_PUBLICKEY") ||
+        requireEnv(env, "VAPID_PUBKEY") ||
+        requireEnv(env, "VAPID_PUBLIC");
       if (!pk) return json({ ok: false, error: "missing_vapid_public_key" }, 500);
       return json({ ok: true, publicKey: pk });
+    }
+
+    // --- PUSH: quick debug (helps to see what env vars are actually available at runtime) ---
+    if (path === "/api/push/debug" && req.method === "GET") {
+      const pk = requireEnv(env, "VAPID_PUBLIC_KEY");
+      const sk = requireEnv(env, "VAPID_PRIVATE_KEY");
+      const subj = requireEnv(env, "VAPID_SUBJECT");
+      return json({
+        ok: true,
+        hasPublicKey: !!pk,
+        publicKeyPrefix: pk ? pk.slice(0, 12) : null,
+        hasPrivateKey: !!sk,
+        hasSubject: !!subj,
+      }, 200, { "Cache-Control": "no-store" });
     }
 
 // --- PUSH: send a push to your stored phone subscription ---
