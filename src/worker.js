@@ -662,17 +662,22 @@ export default {
       const path = url.pathname;
 
       // ✅ WEBCAM LIVE (stabil + Gruppen) – MUSS VOR LOGIN-GATE!
-      if (
-        path === "/webcam-live" ||
-        path === "/webcam-live/" ||
-        path === "/webcam-live/room" ||
-        path === "/webcam-live/groups" ||
-        path === "/webcam-live/ws"
-      ) {
-        return handleWebcamLive(req, env);
-      }
+// Unterstütze sowohl /webcam-live/* als auch kurze Aliases (/room, /ws, /groups),
+// damit du Links wie /room?room=... verwenden kannst ohne dass eine alte Version geladen wird.
+if (
+  path === "/webcam-live" ||
+  path === "/webcam-live/" ||
+  path === "/webcam-live/room" ||
+  path === "/webcam-live/groups" ||
+  path === "/webcam-live/ws" ||
+  path === "/room" ||
+  path === "/groups" ||
+  path === "/ws"
+) {
+  return handleWebcamLive(req, env);
+}
 
-      let assetPath = path;
+let assetPath = path;
 
       if (path === "/home") assetPath = "/home.html";
       if (path === "/packliste") assetPath = "/packliste.html";
