@@ -847,7 +847,7 @@
             changed = true;
 
             const whenTxt = task.time ? (task.time + " Uhr") : "";
-            showNotify("⏰ To-Do Erinnerung", (task.title || "Aufgabe") + (whenTxt ? " • " + whenTxt : ""), "todo_rem_" + task.id);
+            showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_rem_" + task.id);
           }
         });
 
@@ -877,7 +877,7 @@
 
         showConfirm("Erinnerung setzen für: " + fmtDateTime(next) + " ?", ()=>{
           setTaskReminder(task, next);
-          showNotify("✅ Erinnerung gesetzt", (task.title || "Aufgabe") + " • " + fmtDateTime(next), "todo_set_" + task.id);
+          showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_set_" + task.id);
         });
       }
 
