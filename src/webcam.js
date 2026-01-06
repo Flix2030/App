@@ -595,11 +595,26 @@ const HTML_ROOM = `<!doctype html>
   var running = false;
   var lastUrl = null;
 
-  function refreshGrantList(list){
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+    });
+  }
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/\s+/g, " ").trim();
+  }
+
+  function refreshGrantList(list) {
     if (!grantSelect) return;
     var me = name;
-    var opts = (list || []).filter(function(x){ return x && x !== me; });
-    grantSelect.innerHTML = opts.map(function(n){ return "<option value=\"" + n.replace(/"/g,"&quot;") + "\">" + n + "</option>"; }).join("") || "<option value=\"\">(keine)</option>";
+    var opts = (list || []).filter(function (x) { return x && x !== me; });
+    if (!opts.length) {
+      grantSelect.innerHTML = "<option value=''>(keine)</option>";
+      return;
+    }
+    grantSelect.innerHTML = opts.map(function (n) {
+      return "<option value='" + escapeAttr(n) + "'>" + escapeHtml(n) + "</option>";
+    }).join("");
   }
 
   if (adminPanel) {
