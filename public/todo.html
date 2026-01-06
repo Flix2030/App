@@ -553,7 +553,7 @@
           <span id="sync-text" style="color:rgba(255,255,255,0.80);font-weight:900;font-size:12px;">Lade…</span>
         </div>
       </div>
-      <a class="back-link" id="top-home-link" href="/home">&#x2B05; Home</a>
+      <a class="back-link" id="top-home-link" href="/home" aria-label="Home">🏠</a>
     </div>
 
     <div class="toolbar">
@@ -608,15 +608,15 @@
       <div style="display:flex; flex-direction:column; gap:14px;">
 
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <div style="font-weight:900;">Push-Erinnerungen</div>
-          <label class="setting-row" style="display:flex;align-items:center;gap:10px;cursor:pointer;"><input type="checkbox" id="push-receive-toggle" /><span>Benachrichtigungen erhalten</span></label>
-        </div>
-        <div style="color:rgba(255,255,255,0.70); font-size:12px; line-height:1.35; margin-top:-6px;">
-          Aktivier das <b>nur auf deinem Handy</b> (in der installierten PWA). Danach kommen Erinnerungen immer dort an.
+          <div style="font-weight:900;">Push</div>
+          <label class="switch" aria-label="Push">
+            <input id="push-receive-toggle" type="checkbox">
+            <span class="slider-round"></span>
+          </label>
         </div>
 
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <div style="font-weight:900;">Fertige nach unten</div>
+          <div style="font-weight:900;">Unten</div>
           <label class="switch" aria-label="Fertige nach unten">
             <input id="done-bottom-toggle" type="checkbox">
             <span class="slider-round"></span>
@@ -624,7 +624,7 @@
         </div>
 
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-          <div style="font-weight:900;">Abhaken mit Kästchen</div>
+          <div style="font-weight:900;">Kästchen</div>
           <label class="switch" aria-label="Abhaken mit Kästchen">
             <input id="checkbox-toggle" type="checkbox">
             <span class="slider-round"></span>
@@ -1020,7 +1020,7 @@
             task.remindEnabled = false;
             changed = true;
 
-            const whenTxt = task.time ? (task.time + " Uhr") : "";
+            const whenTxt = task.time ? (task.time) : "";
             showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_rem_" + task.id);
           }
         });
@@ -1249,24 +1249,24 @@ if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"]
         const bTime = document.getElementById("open-time");
         const bPerson = document.getElementById("open-person");
 
-        const dayText = draft.days && draft.days.length ? fmtDays(draft.days) : "Tage";
-        bDays.textContent = dayText || "Tage";
+        const dayText = (draft.days && draft.days.length) ? fmtDays(draft.days) : "📅";
+        bDays.textContent = dayText || "📅";
 
-        let timeText = "Zeit";
-        if (draft.timeMode === "none") timeText = "Keine Zeit";
-        if (draft.timeMode === "at" && normalizeTime(draft.time)) timeText = normalizeTime(draft.time) + " Uhr";
+        let timeText = "⏰";
+        if (draft.timeMode === "none") timeText = "⏰✕";
+        if (draft.timeMode === "at" && normalizeTime(draft.time)) timeText = normalizeTime(draft.time);
         if (draft.timeMode === "range" && normalizeTime(draft.from) && normalizeTime(draft.to)) timeText = normalizeTime(draft.from) + "–" + normalizeTime(draft.to);
         bTime.textContent = timeText;
 
-        bPerson.textContent = draft.person ? draft.person : "Benutzer";
+        bPerson.textContent = draft.person ? draft.person : "👤";
 
         // preview pills
         if (!draftPreview) return;
         const pills = [];
         if (draft.days && draft.days.length) pills.push(`<span class="tag">${escapeHtml(fmtDays(draft.days))}</span>`);
-        if (draft.timeMode === "range" && draft.from && draft.to) pills.push(`<span class="tag">${escapeHtml(draft.from)}–${escapeHtml(draft.to)} Uhr</span>`);
-        else if (draft.timeMode === "at" && draft.time) pills.push(`<span class="tag">${escapeHtml(normalizeTime(draft.time))} Uhr</span>`);
-        else if (draft.timeMode === "none") pills.push(`<span class="tag warn">ohne Zeit</span>`);
+        if (draft.timeMode === "range" && draft.from && draft.to) pills.push(`<span class="tag">${escapeHtml(draft.from)}–${escapeHtml(draft.to)}</span>`);
+        else if (draft.timeMode === "at" && draft.time) pills.push(`<span class="tag">${escapeHtml(normalizeTime(draft.time))}</span>`);
+        else if (draft.timeMode === "none") pills.push(`<span class="tag warn">ohne</span>`);
         if (draft.person) pills.push(`<span class="tag">${escapeHtml(draft.person)}</span>`);
         draftPreview.innerHTML = pills.join("");
       }
@@ -1633,14 +1633,33 @@ function promptText(msg, placeholder, onOk){
           t.time = normalizeTime(t.time) || "13:00";
           if (typeof t.person !== "string") t.person = String(t.person ?? "");
           t.done = !!t.done;
+          if (t.done && !t.doneAt) t.doneAt = new Date().toISOString();
+          if (!t.done) t.doneAt = null;
           ensureRemindShape(t);
           return t;
         });
       }
 
+      // auto-delete completed tasks after 1 day
+      function cleanupDoneTasks(){
+        const now = Date.now();
+        const dayMs = 24 * 60 * 60 * 1000;
+        const beforeLen = (data.tasks||[]).length;
+        data.tasks = (data.tasks||[]).filter(t=>{
+          if (!t || !t.done) return true;
+          if (!t.doneAt) return true;
+          const ts = Date.parse(t.doneAt);
+          if (!isFinite(ts)) return true;
+          return (now - ts) < dayMs;
+        });
+        return (data.tasks||[]).length !== beforeLen;
+      }
+
+
       // ===== Render =====
       function render(){
         ensureDataShape();
+        if (cleanupDoneTasks()) scheduleSave();
 
         const doneBottom = !!data.settings.doneBottom;
         const checkboxMode = !!data.settings.checkbox;
@@ -1699,6 +1718,7 @@ function promptText(msg, placeholder, onOk){
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
               task.done = cb.checked;
+              task.doneAt = task.done ? new Date().toISOString() : null;
               if (task.done) clearTaskReminder(task);
               scheduleSave();
               render();
@@ -1707,6 +1727,7 @@ function promptText(msg, placeholder, onOk){
           } else {
             li.addEventListener("click", ()=>{
               task.done = !task.done;
+              task.doneAt = task.done ? new Date().toISOString() : null;
               if (task.done) clearTaskReminder(task);
               scheduleSave();
               render();
@@ -1761,8 +1782,8 @@ function promptText(msg, placeholder, onOk){
         const from = normalizeTime(draft.from || "");
         const to = normalizeTime(draft.to || "");
 
-        // Pflicht: Titel + Tage
-        if (!title || !days.length) return;
+        // Pflicht: Titel
+        if (!title) return;
 
         // mindestens Zeit ODER Person
         const hasTime = (timeMode === "at" && !!time) || (timeMode === "range" && !!from && !!to);
