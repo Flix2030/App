@@ -545,7 +545,7 @@
     .task-cb{
       width:36px;
       height:36px;
-      transform:scale(1.2);
+      transform:scale(1.3);
       cursor:pointer;
       accent-color: var(--accent);
     }
@@ -948,12 +948,12 @@
             try{
               await ensurePushSubscribed(deviceId); // registers + enables
               await setServerPushEnabled(deviceId, true);
-              showNotify("Erinnerung", "Benachrichtigungen sind aktiv.", "push_on");
+              showNotify("To-Do", "Benachrichtigungen sind aktiv.", "push_on");
             }catch(e){
               cb.checked = false;
               try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
               const msg = (e && e.message) ? String(e.message) : "";
-              showNotify("Hinweis", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
+              showNotify("To-Do", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
             }finally{
               cb.disabled = false;
             }
