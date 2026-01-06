@@ -359,10 +359,18 @@ async function handleApi(req, env) {
       return json({ ok: true });
     }
 
-    // --- PUSH: send a push to your stored phone subscription ---
+    
+    // --- PUSH: expose public key for the frontend (NOT secret) ---
+    if (path === "/api/push/publicKey" && req.method === "GET") {
+      const pk = String(env.VAPID_PUBLIC_KEY || "").trim();
+      if (!pk) return json({ ok: false, error: "missing_vapid_public_key" }, 500);
+      return json({ ok: true, publicKey: pk });
+    }
+
+// --- PUSH: send a push to your stored phone subscription ---
     if (path === "/api/push/send" && req.method === "POST") {
       const body = await safeReadJson(req);
-      const todoName = String(body?.name || body?.todoName || "").trim();
+      const todoName = String(body?.name || body?.todoName || body?.body || body?.message || "").trim();
       if (!todoName) return json({ error: "name_required" }, 400);
 
       const sub = await d1GetPrimarySubscription(env);

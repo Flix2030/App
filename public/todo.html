@@ -562,7 +562,6 @@
         <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
       </div>
       <div class="right">
-        <button id="push-enable-btn" class="btn btn-small btn-secondary" type="button">🔔 Push aktivieren</button>
         <button id="open-settings-btn" class="btn btn-small btn-secondary">⚙️ Einstellungen</button>
       </div>
     </div>
@@ -605,7 +604,17 @@
 
       <h3 style="margin:0 0 12px;">Einstellungen</h3>
 
+      
       <div style="display:flex; flex-direction:column; gap:14px;">
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font-weight:900;">Push-Erinnerungen</div>
+          <button id="push-enable-btn" class="btn btn-small btn-secondary" type="button">🔔 Push aktivieren</button>
+        </div>
+        <div style="color:rgba(255,255,255,0.70); font-size:12px; line-height:1.35; margin-top:-6px;">
+          Aktivier das <b>nur auf deinem Handy</b> (in der installierten PWA). Danach kommen Erinnerungen immer dort an.
+        </div>
+
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <div style="font-weight:900;">Fertige nach unten</div>
           <label class="switch" aria-label="Fertige nach unten">
@@ -786,8 +795,20 @@
 
       // ===== Cloudflare Web Push (send to your phone PWA) =====
       // Set your VAPID PUBLIC key (Worker generates the matching private key)
-      const VAPID_PUBLIC_KEY = "BGB3TgbJzhDhLSfxcjzu-64YeCPqDMecZ7xgVPudpACpqIZ6hlLnVmz6DJT2WMnHPIijO_UW4GW1uBDslMshAOw";
+      let VAPID_PUBLIC_KEY = "";
       let pushReady = false;
+
+      async function fetchVapidPublicKey(){
+        try{
+          const r = await fetch("/api/push/publicKey", { credentials: "include" });
+          const j = await r.json().catch(()=>null);
+          if (r.ok && j && j.ok === true && typeof j.publicKey === "string" && j.publicKey.trim()){
+            VAPID_PUBLIC_KEY = j.publicKey.trim();
+            return VAPID_PUBLIC_KEY;
+          }
+        }catch(e){}
+        return "";
+      }
 
       function urlBase64ToUint8Array(base64String){
         const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -812,7 +833,10 @@
 
       async function ensurePushSubscribed(){
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("push_not_supported");
-        if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes("__VAPID")) throw new Error("missing_vapid_public_key");
+        if (!VAPID_PUBLIC_KEY){
+          await fetchVapidPublicKey();
+        }
+        if (!VAPID_PUBLIC_KEY) throw new Error("missing_vapid_public_key");
 
         const permOk = await ensureNotifyPermission();
         if (!permOk) throw new Error("notify_denied");
@@ -877,7 +901,8 @@
             btn.textContent = "✅ Push aktiv";
           }catch(e){
             btn.textContent = old;
-            showNotify("Hinweis", "Push konnte nicht aktiviert werden.", "push_fail");
+            const msg = (e && e.message) ? String(e.message) : "";
+            showNotify("Hinweis", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
           }finally{
             btn.disabled = false;
           }
@@ -1588,80 +1613,8 @@ function promptText(msg, placeholder, onOk){
           const li = document.createElement("li");
           li.className = "task-item" + (isDone(task) ? " task-done" : "");
 
-          // checkbox or click anywhere
-          const cb = document.createElement("input");
-          cb.type = "checkbox";
-          cb.className = "task-check";
-          cb.checked = isDone(task);
-
-          const main = document.createElement("div");
-          main.className = "task-main";
-          main.innerHTML = `
-            <div class="task-title">${escapeHtml(task.title || "Aufgabe")}</div>
-            <div class="task-meta">
-              <span class="tag">${escapeHtml(fmtDays(task.days)) || "—"}</span>
-              <span class="tag">${escapeHtml(task.time)} Uhr</span>
-              ${task.person ? `<span class="tag">${escapeHtml(task.person)}</span>` : ""}
-            </div>
-          `;
-
-          const actions = document.createElement("div");
-          actions.className = "actions";
-
-          // Reminder button (always visible)
-          const remindBtn = document.createElement("button");
-          remindBtn.className = "btn btn-small btn-secondary";
-          remindBtn.textContent = "Erinnern";
-          remindBtn.addEventListener("click",(e)=>{
-            e.stopPropagation();
-            remindTask(task);
-          });
-          actions.appendChild(remindBtn);
-
-          if (editMode){
-            const editBtn = document.createElement("button");
-            editBtn.className = "btn btn-small btn-secondary";
-            editBtn.textContent = "Bearbeiten";
-            editBtn.addEventListener("click",(e)=>{
-              e.stopPropagation();
-              showTaskEditor(task, (upd)=>{
-                task.title = upd.title;
-                task.time = upd.time;
-                task.person = upd.person;
-                task.days = upd.days;
-                scheduleSave();
-                render();
-              });
-            });
-            actions.appendChild(editBtn);
-
-            const delBtn = document.createElement("button");
-            delBtn.className = "btn btn-small btn-secondary";
-            delBtn.textContent = "Entfernen";
-            delBtn.addEventListener("click",(e)=>{
-              e.stopPropagation();
-              showConfirm(`Aufgabe "${task.title}" entfernen?`, ()=>{
-                data.tasks = (data.tasks||[]).filter(t=>t.id!==task.id);
-                scheduleSave();
-                render();
-              });
-            });
-            actions.appendChild(delBtn);
-          }
-
-          li.appendChild(cb);
-          li.appendChild(main);
-          li.appendChild(actions);
-
-          const toggleDone = ()=>{
-            task.done = !task.done;
-            if (task.done) clearTaskReminder(task);
-            cb.checked = task.done;
-            li.classList.toggle("task-done", task.done);
-            scheduleSave();
-            render();
-          };
-
+          // checkbox mode: show checkbox only if enabled
+          let cb = null;
           if (checkboxMode){
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
@@ -1670,18 +1623,13 @@ function promptText(msg, placeholder, onOk){
               scheduleSave();
               render();
             });
-            // in checkboxMode: click on row toggles too (nice), but not required:
+          } else {
             li.addEventListener("click", ()=>{
               task.done = !task.done;
-            if (task.done) clearTaskReminder(task);
+              if (task.done) clearTaskReminder(task);
               scheduleSave();
               render();
             });
-          } else {
-            // no checkbox mode -> whole row toggles; checkbox is just a visual toggle
-            cb.addEventListener("click",(e)=> e.stopPropagation());
-            cb.addEventListener("change", toggleDone);
-            li.addEventListener("click", toggleDone);
           }
 
           ul.appendChild(li);
