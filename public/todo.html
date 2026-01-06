@@ -549,6 +549,38 @@
       cursor:pointer;
       accent-color: var(--accent);
     }
+
+/* In-App Banner (Duolingo-Style, ohne 'from') */
+.inapp-banner{
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20,28,46,0.95);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 18px;
+  padding: 14px 18px;
+  min-width: 260px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  z-index: 99999;
+  animation: slideDown 0.25s ease;
+}
+.inapp-banner h4{
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+.inapp-banner p{
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+@keyframes slideDown{
+  from{ transform: translate(-50%, -20px); opacity:0; }
+  to{ transform: translate(-50%, 0); opacity:1; }
+}
+
 </style>
 
 </head>
@@ -2014,5 +2046,29 @@ document.getElementById("edit-mode-toggle").addEventListener("click", function()
       document.addEventListener("DOMContentLoaded", init);
     })();
   </script>
+
+<div id="inapp-banner" class="inapp-banner" style="display:none">
+  <h4 id="banner-title">To-Do</h4>
+  <p id="banner-text">sasa</p>
+</div>
+
 </body>
+
+<script>
+function showInAppBanner(title, text){
+  const box = document.getElementById("inapp-banner");
+  const t = document.getElementById("banner-title");
+  const p = document.getElementById("banner-text");
+  if(!box) return;
+
+  t.textContent = title || "To-Do";
+  p.textContent = text || "";
+
+  box.style.display = "block";
+  setTimeout(()=>{
+    box.style.display = "none";
+  }, 3500);
+}
+</script>
+
 </html>
