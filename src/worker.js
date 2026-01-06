@@ -1,5 +1,7 @@
 // worker.js (vollständig) — FIXED (Groq Debug + besseres Error-Logging + profileId fix)
 
+import { buildPushHTTPRequest } from "@pushforge/builder";
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -247,6 +249,83 @@ function pickProfileId(url, body) {
   );
 }
 
+
+// --------------------
+// Web Push (Cloudflare Workers) via @pushforge/builder
+// Env:
+// - VAPID_PRIVATE_KEY: JSON string of a JWK (private)
+// - VAPID_SUBJECT: e.g. "mailto:you@example.com" or "https://your-domain"
+// D1 table: push_subscriptions(id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)
+// We store ONLY one subscription with id="primary" (your phone PWA).
+// --------------------
+function requireEnv(env, key){
+  const v = env[key];
+  return (typeof v === "string" && v.trim()) ? v.trim() : null;
+}
+
+async function d1GetPrimarySubscription(env){
+  if (!env.DB) return null;
+  const row = await env.DB.prepare(
+    "SELECT json FROM push_subscriptions WHERE id = 'primary' LIMIT 1"
+  ).first();
+  if (!row?.json) return null;
+  try { return JSON.parse(row.json); } catch { return null; }
+}
+
+async function d1UpsertPrimarySubscription(env, subscription){
+  if (!env.DB) throw new Error("DB not bound");
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO push_subscriptions (id, json, updated_at) VALUES ('primary', ?, ?) " +
+    "ON CONFLICT(id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+  ).bind(JSON.stringify(subscription), now).run();
+}
+
+async function d1DeletePrimarySubscription(env){
+  if (!env.DB) return;
+  await env.DB.prepare("DELETE FROM push_subscriptions WHERE id='primary'").run();
+}
+
+async function sendWebPush(env, subscription, todoName){
+  const vapidPrivate = requireEnv(env, "VAPID_PRIVATE_KEY");
+  const vapidSubject = requireEnv(env, "VAPID_SUBJECT");
+  if (!vapidPrivate || !vapidSubject) throw new Error("missing_vapid_env");
+
+  // VAPID_PRIVATE_KEY is expected to be a JSON-encoded JWK (private key)
+  const privateJWK = JSON.parse(vapidPrivate);
+
+  const payload = JSON.stringify({
+    title: "Erinnerung",
+    body: String(todoName || "").trim() || "To-Do",
+    url: "/todo"
+  });
+
+  const { endpoint, headers, body } = await buildPushHTTPRequest(
+    privateJWK,
+    {
+      payload,
+      ttl: 60 * 60 * 24, // 24h
+      urgency: "normal",
+    },
+    subscription,
+    vapidSubject
+  );
+
+  const res = await fetch(endpoint, { method: "POST", headers, body });
+
+  // Expired / gone subscription -> delete so you can re-register on the phone
+  if (res.status === 404 || res.status === 410) {
+    await d1DeletePrimarySubscription(env);
+  }
+
+  if (!res.ok) {
+    const t = await res.text().catch(()=> "");
+    throw new Error("push_failed_" + res.status + "_" + t.slice(0,200));
+  }
+
+  return true;
+}
+
 async function handleApi(req, env) {
   try {
     const url = new URL(req.url);
@@ -264,6 +343,38 @@ async function handleApi(req, env) {
         hasDB: !!env.DB,
         time: new Date().toISOString(),
       });
+    }
+
+    // --- PUSH: register subscription (run ONLY on your phone PWA) ---
+    if (path === "/api/push/register" && req.method === "POST") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const body = await safeReadJson(req);
+      const sub = body?.subscription;
+
+      if (!sub || typeof sub !== "object") return json({ error: "subscription_required" }, 400);
+      if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) return json({ error: "bad_subscription" }, 400);
+
+      await d1UpsertPrimarySubscription(env, sub);
+      return json({ ok: true });
+    }
+
+    // --- PUSH: send a push to your stored phone subscription ---
+    if (path === "/api/push/send" && req.method === "POST") {
+      const body = await safeReadJson(req);
+      const todoName = String(body?.name || body?.todoName || "").trim();
+      if (!todoName) return json({ error: "name_required" }, 400);
+
+      const sub = await d1GetPrimarySubscription(env);
+      if (!sub) return json({ error: "no_subscription_registered" }, 400);
+
+      try {
+        await sendWebPush(env, sub, todoName);
+        return json({ ok: true });
+      } catch (e) {
+        console.log("PUSH_SEND_ERROR", String(e?.message || e));
+        return json({ ok: false, error: "push_send_failed", message: String(e?.message || e) }, 500);
+      }
     }
 
     if (path === "/api/register" && req.method === "POST") {
@@ -786,6 +897,18 @@ let assetPath = path;
       if (path === "/login") {
         return env.ASSETS.fetch(new Request(url.origin + "/login.html", req));
       }
+
+      // ✅ Service Worker & PWA assets must be reachable WITHOUT login redirect
+      if (path === "/sw.js") {
+        return env.ASSETS.fetch(new Request(url.origin + "/sw.js", req));
+      }
+      if (path === "/manifest.webmanifest") {
+        return env.ASSETS.fetch(new Request(url.origin + "/manifest.webmanifest", req));
+      }
+      if (path === "/icon-192.png" || path === "/icon-512.png") {
+        return env.ASSETS.fetch(new Request(url.origin + path, req));
+      }
+
 
       const uid = await readToken(env, req);
       if (!uid) {
