@@ -580,7 +580,40 @@ async function handleApi(req, env) {
       return json({ ok: r.ok, status: r.status, body: t.slice(0, 800) }, 200, { "Cache-Control": "no-store" });
     }
 
-    // ===== Einkaufsliste API =====
+    
+    // ===== Lernen API (Profile + Whiteboards + Chat-Settings) =====
+    if (path.startsWith("/api/learn/")) {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      if (path === "/api/learn/data" && req.method === "GET") {
+        const row = await env.DB.prepare(
+          "SELECT json FROM learn_data WHERE user_id = ?"
+        ).bind(uid).first();
+
+        const data = row?.json ? JSON.parse(row.json) : { profiles: [] };
+        return json({ ok: true, data }, 200, { "Cache-Control": "no-store" });
+      }
+
+      if (path === "/api/learn/data" && req.method === "PUT") {
+        const body = await safeReadJson(req);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        const now = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO learn_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+          "ON CONFLICT(user_id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at"
+        ).bind(uid, JSON.stringify(body), now).run();
+
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      return json({ error: "not_found", path }, 404);
+    }
+
+// ===== Einkaufsliste API =====
     if (path.startsWith("/api/einkauf/")) {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
@@ -701,6 +734,12 @@ let assetPath = path;
       if (path === "/settings") assetPath = "/settings.html";
       if (path === "/einkaufsliste") assetPath = "/einkaufsliste.html";
       if (path === "/todo") assetPath = "/todo.html";
+      if (path === "/lernen") assetPath = "/lernen.html";
+      if (path === "/lernen/") assetPath = "/lernen.html";
+      if (path === "/lernen/ki") assetPath = "/lernen-ki.html";
+      if (path === "/lernen/whiteboard") assetPath = "/whiteboard.html";
+      if (path.startsWith("/lernen/whiteboard/")) assetPath = "/whiteboard.html";
+
 
       if (path.startsWith("/packliste/")) assetPath = "/packliste.html";
       if (path.startsWith("/einkaufsliste/")) assetPath = "/einkaufsliste.html";

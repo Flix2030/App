@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>KI-Abfragen</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    :root{--bg0:#05080f;--bg1:#070c16;--panel:rgba(17,24,39,.72);--border:rgba(255,255,255,.10);--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.62);--accent:#3b82f6;}
+    body{margin:0;color:var(--text);background:radial-gradient(1200px 800px at 20% 10%, #0b1632 0%, var(--bg0) 40%, var(--bg1) 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px 14px 40px;}
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+    .btn{border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
+    .btn:hover{background:rgba(255,255,255,.09)}
+    .panel{border:1px solid var(--border);background:var(--panel);border-radius:16px;backdrop-filter: blur(10px);overflow:hidden}
+    .top{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 12px;border-bottom:1px solid var(--border)}
+    .select{border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;min-width:220px}
+    .msgs{height:62vh;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .m{max-width:86%;padding:10px 12px;border-radius:14px;border:1px solid var(--border);white-space:pre-wrap;line-height:1.35}
+    .me{align-self:flex-end;background:rgba(59,130,246,.18)}
+    .ai{align-self:flex-start;background:rgba(255,255,255,.06)}
+    .bar{display:flex;gap:10px;padding:12px;border-top:1px solid var(--border)}
+    textarea{flex:1;resize:none;min-height:48px;max-height:180px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;outline:none}
+    .muted{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="font-weight:800;font-size:18px">🤖 KI-Abfragen</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="back">← Lernen</button>
+        <button class="btn" id="openBoard">🧾 Whiteboard wählen</button>
+      </div>
+    </header>
+
+    <div class="panel">
+      <div class="top">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="select" id="profileSelect"></select>
+          <span class="muted" id="hint">Die KI nutzt das ausgewählte Whiteboard als Grundlage.</span>
+        </div>
+        <select class="select" id="boardSelect" title="Whiteboard"></select>
+      </div>
+
+      <div class="msgs" id="msgs"></div>
+
+      <div class="bar">
+        <textarea id="input" placeholder="Schreibe z.B.: Frag mich 10 Fragen zu meinem Whiteboard (mit Lösungen am Ende)."></textarea>
+        <button class="btn" id="send">Senden</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = s=>document.querySelector(s);
+const msgs = $("#msgs");
+const input = $("#input");
+const profileSelect = $("#profileSelect");
+const boardSelect = $("#boardSelect");
+
+let state = { profiles: [] };
+let activeProfileId = localStorage.getItem("learn_active_profile") || null;
+let activeBoardId = localStorage.getItem("learn_active_board") || null;
+
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); }
+
+async function apiGet(){
+  const r = await fetch("/api/learn/data", { cache: "no-store" });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "api_error");
+  return j.data || {profiles:[]};
+}
+
+function ensureDefaults(data){
+  if(!data || typeof data!=="object") data = {profiles:[]};
+  if(!Array.isArray(data.profiles)) data.profiles = [];
+  if(data.profiles.length===0) data.profiles.push({ id: uid(), name:"Benutzer", boards:[], lastBoardId:null });
+  for(const p of data.profiles){ if(!Array.isArray(p.boards)) p.boards = []; }
+  return data;
+}
+
+function renderProfiles(){
+  profileSelect.innerHTML = "";
+  for(const p of state.profiles){
+    const opt = document.createElement("option");
+    opt.value = p.id; opt.textContent = p.name;
+    profileSelect.appendChild(opt);
+  }
+  if(!activeProfileId || !state.profiles.some(p=>p.id===activeProfileId)) activeProfileId = state.profiles[0].id;
+  profileSelect.value = activeProfileId;
+}
+
+function currentProfile(){
+  return state.profiles.find(p=>p.id===activeProfileId) || state.profiles[0];
+}
+
+function renderBoards(){
+  const p = currentProfile();
+  boardSelect.innerHTML = "";
+  const list = p.boards || [];
+  if(list.length===0){
+    const opt = document.createElement("option");
+    opt.value = ""; opt.textContent = "Kein Whiteboard";
+    boardSelect.appendChild(opt);
+    activeBoardId = "";
+    return;
+  }
+  for(const b of list){
+    const opt = document.createElement("option");
+    opt.value = b.id; opt.textContent = b.title || "Whiteboard";
+    boardSelect.appendChild(opt);
+  }
+  if(!activeBoardId || !list.some(b=>b.id===activeBoardId)) activeBoardId = p.lastBoardId || list[0].id;
+  boardSelect.value = activeBoardId;
+}
+
+function boardText(){
+  const p = currentProfile();
+  const b = (p.boards||[]).find(x=>x.id===activeBoardId);
+  if(!b) return "";
+  // simple extraction: all blocks content
+  const blocks = Array.isArray(b.blocks) ? b.blocks : [];
+  return blocks.map(bl=>{
+    if(bl.type==="text") return bl.text||"";
+    if(bl.type==="table") return (bl.cells||[]).map(r=>r.join("\t")).join("\n");
+    return "";
+  }).filter(Boolean).join("\n\n");
+}
+
+function addMsg(text, who){
+  const d = document.createElement("div");
+  d.className = "m " + (who==="me" ? "me" : "ai");
+  d.textContent = text;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function askAi(userText){
+  const context = boardText();
+  const prompt =
+`Du bist ein Lern-Tutor. Stelle mir Fragen (und warte auf Antworten), oder mache ein Quiz, je nachdem was ich will.
+Nutze als Stoff dieses Whiteboard (wenn vorhanden):
+---
+${context || "(kein Whiteboard ausgewählt)"}
+---
+
+Meine Anweisung:
+${userText}
+`;
+  const r = await fetch("/api/ai", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify({ prompt }) });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "ai_error");
+  return j.text || "";
+}
+
+$("#back").addEventListener("click", ()=>location.href="/lernen");
+$("#openBoard").addEventListener("click", ()=>location.href="/lernen/whiteboard");
+
+profileSelect.addEventListener("change", ()=>{
+  activeProfileId = profileSelect.value;
+  localStorage.setItem("learn_active_profile", activeProfileId);
+  renderBoards();
+});
+boardSelect.addEventListener("change", ()=>{
+  activeBoardId = boardSelect.value;
+  localStorage.setItem("learn_active_board", activeBoardId);
+});
+
+$("#send").addEventListener("click", async ()=>{
+  const t = input.value.trim();
+  if(!t) return;
+  input.value="";
+  addMsg(t,"me");
+  addMsg("…","ai");
+  const last = msgs.lastChild;
+  try{
+    const ans = await askAi(t);
+    last.textContent = ans || "(leer)";
+  }catch(e){
+    console.error(e);
+    last.textContent = "Fehler bei der KI.";
+  }
+});
+input.addEventListener("keydown",(e)=>{
+  if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("#send").click(); }
+});
+
+(async ()=>{
+  state = ensureDefaults(await apiGet());
+  renderProfiles();
+  renderBoards();
+  addMsg("Sag mir, was ich dich abfragen soll 🙂","ai");
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Whiteboards</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    :root{--bg0:#05080f;--bg1:#070c16;--panel:rgba(17,24,39,.72);--border:rgba(255,255,255,.10);--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.62);--accent:#3b82f6;}
+    body{margin:0;color:var(--text);background:radial-gradient(1200px 800px at 20% 10%, #0b1632 0%, var(--bg0) 40%, var(--bg1) 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    .wrap{max-width:1400px;margin:0 auto;padding:14px;}
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+    .btn{border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
+    .btn:hover{background:rgba(255,255,255,.09)}
+    .select{border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;min-width:220px}
+    .layout{display:grid;grid-template-columns: 280px 1fr 340px;gap:10px;align-items:start}
+    @media (max-width: 980px){ .layout{grid-template-columns: 1fr; } }
+    .panel{border:1px solid var(--border);background:var(--panel);border-radius:16px;backdrop-filter: blur(10px);overflow:hidden}
+    .panel h3{margin:0;padding:12px 12px;border-bottom:1px solid var(--border);font-size:14px;color:var(--muted);font-weight:700}
+    .list{padding:10px;display:flex;flex-direction:column;gap:8px}
+    .item{border:1px solid var(--border);background:rgba(255,255,255,.06);padding:10px;border-radius:14px;cursor:pointer}
+    .item.active{outline:2px solid rgba(59,130,246,.6)}
+    .item b{display:block;margin-bottom:4px}
+    .muted{color:var(--muted);font-size:12px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-bottom:1px solid var(--border)}
+    .stageWrap{height:74vh}
+    .stage{position:relative;height:100%;border-top:1px solid transparent;background:rgba(0,0,0,.20)}
+    .block{position:absolute;min-width:160px;min-height:90px;border:1px solid var(--border);background:rgba(255,255,255,.06);border-radius:14px;overflow:hidden}
+    .blockHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:move;background:rgba(0,0,0,.18)}
+    .blockHeader span{font-size:12px;color:var(--muted);font-weight:700}
+    .blockBody{padding:10px}
+    .editable{outline:none;white-space:pre-wrap;line-height:1.35}
+    table{border-collapse:collapse;width:100%}
+    td,th{border:1px solid rgba(255,255,255,.18);padding:6px;min-width:60px}
+    td{background:rgba(0,0,0,.15)}
+    .chat{height:74vh;display:flex;flex-direction:column}
+    .msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+    .m{max-width:92%;padding:9px 10px;border-radius:12px;border:1px solid var(--border);white-space:pre-wrap;line-height:1.35}
+    .me{align-self:flex-end;background:rgba(59,130,246,.18)}
+    .ai{align-self:flex-start;background:rgba(255,255,255,.06)}
+    .bar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}
+    textarea{flex:1;resize:none;min-height:44px;max-height:160px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;outline:none}
+    .small{font-size:12px;color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    input[type=file]{display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="row">
+        <button class="btn" id="back">← Lernen</button>
+        <select class="select" id="profileSelect"></select>
+        <button class="btn" id="newProfile">+ Benutzer</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="save">💾 Speichern</button>
+        <span class="small" id="status"></span>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="panel">
+        <h3>WHITEBOARDS</h3>
+        <div class="toolbar">
+          <button class="btn" id="newBoard">+ Whiteboard</button>
+          <button class="btn" id="renameBoard">✎</button>
+          <button class="btn" id="deleteBoard">🗑️</button>
+        </div>
+        <div class="list" id="boardList"></div>
+      </div>
+
+      <div class="panel">
+        <h3>BOARD</h3>
+        <div class="toolbar">
+          <button class="btn" id="addText">+ Text</button>
+          <button class="btn" id="addTable">+ Tabelle</button>
+          <button class="btn" id="clearSel">Auswahl löschen</button>
+        </div>
+        <div class="stageWrap">
+          <div class="stage" id="stage"></div>
+        </div>
+      </div>
+
+      <div class="panel chat">
+        <h3>KI</h3>
+        <div class="toolbar">
+          <button class="btn" id="attachBtn">📎 Datei</button>
+          <button class="btn" id="toBoard">⬅️ Auf Board</button>
+          <input type="file" id="file" />
+        </div>
+        <div class="msgs" id="msgs"></div>
+        <div class="bar">
+          <textarea id="input" placeholder="z.B.: Mach mir eine Lern-Zusammenfassung als Tabelle."></textarea>
+          <button class="btn" id="send">Senden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = s=>document.querySelector(s);
+const statusEl = $("#status");
+const profileSelect = $("#profileSelect");
+const boardList = $("#boardList");
+const stage = $("#stage");
+const msgs = $("#msgs");
+const input = $("#input");
+const fileInput = $("#file");
+
+let state = { profiles: [] };
+let activeProfileId = localStorage.getItem("learn_active_profile") || null;
+let activeBoardId = localStorage.getItem("learn_active_board") || null;
+let selectedBlockId = null;
+let lastAiAnswer = "";
+let attachedText = "";
+
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); }
+
+async function apiGet(){
+  const r = await fetch("/api/learn/data", { cache: "no-store" });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "api_error");
+  return j.data || {profiles:[]};
+}
+async function apiPut(data){
+  const r = await fetch("/api/learn/data", { method:"PUT", headers:{ "content-type":"application/json" }, body: JSON.stringify(data) });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "api_error");
+  return true;
+}
+function ensureDefaults(data){
+  if(!data || typeof data!=="object") data = {profiles:[]};
+  if(!Array.isArray(data.profiles)) data.profiles = [];
+  if(data.profiles.length===0){
+    data.profiles.push({ id: uid(), name:"Benutzer", boards:[], lastBoardId:null });
+  }
+  for(const p of data.profiles){
+    if(!p.id) p.id = uid();
+    if(!p.name) p.name = "Benutzer";
+    if(!Array.isArray(p.boards)) p.boards = [];
+    for(const b of p.boards){
+      if(!b.id) b.id = uid();
+      if(!b.title) b.title = "Whiteboard";
+      if(!Array.isArray(b.blocks)) b.blocks = [];
+    }
+  }
+  return data;
+}
+function setStatus(t){ statusEl.textContent = t||""; }
+
+function currentProfile(){
+  return state.profiles.find(p=>p.id===activeProfileId) || state.profiles[0];
+}
+function currentBoard(){
+  const p = currentProfile();
+  return (p.boards||[]).find(b=>b.id===activeBoardId) || null;
+}
+
+function renderProfiles(){
+  profileSelect.innerHTML = "";
+  for(const p of state.profiles){
+    const opt = document.createElement("option");
+    opt.value = p.id; opt.textContent = p.name;
+    profileSelect.appendChild(opt);
+  }
+  if(!activeProfileId || !state.profiles.some(p=>p.id===activeProfileId)) activeProfileId = state.profiles[0].id;
+  profileSelect.value = activeProfileId;
+}
+
+function renderBoardList(){
+  boardList.innerHTML = "";
+  const p = currentProfile();
+  const boards = p.boards || [];
+  if(boards.length===0){
+    const d = document.createElement("div");
+    d.className="muted";
+    d.textContent="Noch kein Whiteboard.";
+    boardList.appendChild(d);
+    activeBoardId = null;
+    localStorage.setItem("learn_active_board","");
+    renderStage();
+    return;
+  }
+  if(!activeBoardId || !boards.some(b=>b.id===activeBoardId)) activeBoardId = p.lastBoardId || boards[0].id;
+  p.lastBoardId = activeBoardId;
+  localStorage.setItem("learn_active_board", activeBoardId);
+
+  for(const b of boards){
+    const it = document.createElement("div");
+    it.className = "item" + (b.id===activeBoardId ? " active" : "");
+    it.innerHTML = "<b>"+escapeHtml(b.title || "Whiteboard")+"</b><div class='muted'>"+(b.blocks?.length||0)+" Blöcke</div>";
+    it.addEventListener("click", ()=>{
+      activeBoardId = b.id;
+      p.lastBoardId = b.id;
+      localStorage.setItem("learn_active_board", activeBoardId);
+      renderBoardList();
+      renderStage();
+    });
+    boardList.appendChild(it);
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>\"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+
+function renderStage(){
+  stage.innerHTML = "";
+  selectedBlockId = null;
+  const b = currentBoard();
+  if(!b) return;
+
+  for(const bl of b.blocks){
+    const el = document.createElement("div");
+    el.className = "block";
+    el.dataset.id = bl.id;
+    el.style.left = (bl.x||40) + "px";
+    el.style.top  = (bl.y||40) + "px";
+    el.style.width = (bl.w||260) + "px";
+    el.style.height = (bl.h||160) + "px";
+
+    const head = document.createElement("div");
+    head.className = "blockHeader";
+    head.innerHTML = "<span>"+(bl.type==="table" ? "TABELLE" : "TEXT")+"</span><button class='btn' style='padding:6px 8px;border-radius:10px'>✕</button>";
+    head.querySelector("button").addEventListener("click",(e)=>{ e.stopPropagation(); deleteBlock(bl.id); });
+
+    const body = document.createElement("div");
+    body.className = "blockBody";
+
+    if(bl.type==="table"){
+      const table = document.createElement("table");
+      const rows = bl.rows||3, cols = bl.cols||3;
+      if(!Array.isArray(bl.cells)) bl.cells = Array.from({length:rows},()=>Array.from({length:cols},()=> ""));
+      // normalize size
+      while(bl.cells.length<rows) bl.cells.push(Array.from({length:cols},()=> ""));
+      bl.cells = bl.cells.slice(0,rows).map(r=>{
+        const rr = Array.isArray(r)? r.slice(0,cols) : [];
+        while(rr.length<cols) rr.push("");
+        return rr;
+      });
+
+      for(let r=0;r<rows;r++){
+        const tr = document.createElement("tr");
+        for(let c=0;c<cols;c++){
+          const td = document.createElement("td");
+          td.contentEditable = "true";
+          td.className = "editable";
+          td.textContent = bl.cells[r][c] || "";
+          td.addEventListener("input", ()=>{ bl.cells[r][c] = td.textContent || ""; });
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      body.appendChild(table);
+    } else {
+      const ed = document.createElement("div");
+      ed.contentEditable = "true";
+      ed.className = "editable";
+      ed.textContent = bl.text || "";
+      ed.addEventListener("input", ()=>{ bl.text = ed.textContent || ""; });
+      body.appendChild(ed);
+    }
+
+    el.appendChild(head);
+    el.appendChild(body);
+
+    el.addEventListener("mousedown", ()=>{ selectedBlockId = bl.id; });
+
+    makeDraggable(el, head, bl);
+    stage.appendChild(el);
+  }
+}
+
+function makeDraggable(el, handle, bl){
+  let startX=0,startY=0,origX=0,origY=0,drag=false;
+
+  handle.addEventListener("mousedown",(e)=>{
+    drag=true;
+    startX=e.clientX; startY=e.clientY;
+    origX=bl.x||0; origY=bl.y||0;
+    e.preventDefault();
+  });
+
+  window.addEventListener("mousemove",(e)=>{
+    if(!drag) return;
+    const dx=e.clientX-startX;
+    const dy=e.clientY-startY;
+    bl.x = Math.max(0, origX+dx);
+    bl.y = Math.max(0, origY+dy);
+    el.style.left = bl.x+"px";
+    el.style.top  = bl.y+"px";
+  });
+
+  window.addEventListener("mouseup",()=>{ drag=false; });
+}
+
+function addTextBlock(text){
+  const b = currentBoard();
+  if(!b) return;
+  b.blocks.push({ id: uid(), type:"text", x:40, y:40, w:320, h:180, text: text || "Text…" });
+  renderBoardList();
+  renderStage();
+}
+function addTableBlock(rows, cols){
+  const b = currentBoard();
+  if(!b) return;
+  b.blocks.push({ id: uid(), type:"table", x:60, y:60, w:360, h:220, rows, cols, cells: Array.from({length:rows},()=>Array.from({length:cols},()=> "")) });
+  renderBoardList();
+  renderStage();
+}
+function deleteBlock(id){
+  const b = currentBoard();
+  if(!b) return;
+  b.blocks = (b.blocks||[]).filter(x=>x.id!==id);
+  renderBoardList();
+  renderStage();
+}
+function deleteSelected(){
+  if(!selectedBlockId) return;
+  deleteBlock(selectedBlockId);
+  selectedBlockId = null;
+}
+
+function addMsg(text, who){
+  const d = document.createElement("div");
+  d.className = "m " + (who==="me" ? "me" : "ai");
+  d.textContent = text;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function boardAsText(){
+  const b = currentBoard();
+  if(!b) return "";
+  const blocks = b.blocks||[];
+  return blocks.map(bl=>{
+    if(bl.type==="text") return bl.text||"";
+    if(bl.type==="table") return (bl.cells||[]).map(r=>r.join("\t")).join("\n");
+    return "";
+  }).filter(Boolean).join("\n\n");
+}
+
+async function askAi(userText){
+  const ctx = boardAsText();
+  const prompt =
+`Du bist eine Lern-KI. Antworte kurz, klar und schul-tauglich.
+Wenn ich um Tabellen bitte, gib eine einfache Tabelle als Text (mit \t getrennt) zurück.
+
+WHITEBOARD-INHALT:
+---
+${ctx || "(leer)"}
+---
+
+DATEI-INHALT (falls vorhanden):
+---
+${attachedText || "(keine Datei)"} 
+---
+
+AUFGABE:
+${userText}
+`;
+  const r = await fetch("/api/ai", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify({ prompt }) });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "ai_error");
+  return j.text || "";
+}
+
+async function saveAll(){
+  setStatus("Speichere…");
+  try{
+    await apiPut(state);
+    setStatus("Gespeichert ✅");
+    setTimeout(()=>setStatus(""),1200);
+  }catch(e){
+    console.error(e);
+    setStatus("Speichern fehlgeschlagen");
+  }
+}
+
+$("#back").addEventListener("click", ()=>location.href="/lernen");
+profileSelect.addEventListener("change", ()=>{
+  activeProfileId = profileSelect.value;
+  localStorage.setItem("learn_active_profile", activeProfileId);
+  renderBoardList();
+  renderStage();
+});
+$("#newProfile").addEventListener("click", async ()=>{
+  const name = prompt("Name für den Benutzer:");
+  if(!name) return;
+  state.profiles.unshift({ id: uid(), name: name.trim(), boards:[], lastBoardId:null });
+  activeProfileId = state.profiles[0].id;
+  localStorage.setItem("learn_active_profile", activeProfileId);
+  renderProfiles();
+  renderBoardList();
+  renderStage();
+  await saveAll();
+});
+
+$("#newBoard").addEventListener("click", ()=>{
+  const p = currentProfile();
+  const title = prompt("Name vom Whiteboard:", "Whiteboard");
+  if(!title) return;
+  const b = { id: uid(), title: title.trim(), blocks: [] };
+  p.boards.unshift(b);
+  activeBoardId = b.id;
+  p.lastBoardId = b.id;
+  localStorage.setItem("learn_active_board", activeBoardId);
+  renderBoardList();
+  renderStage();
+});
+
+$("#renameBoard").addEventListener("click", ()=>{
+  const b = currentBoard();
+  if(!b) return;
+  const t = prompt("Neuer Name:", b.title || "Whiteboard");
+  if(!t) return;
+  b.title = t.trim();
+  renderBoardList();
+});
+
+$("#deleteBoard").addEventListener("click", ()=>{
+  const p = currentProfile();
+  const b = currentBoard();
+  if(!b) return;
+  if(!confirm("Whiteboard löschen?")) return;
+  p.boards = (p.boards||[]).filter(x=>x.id!==b.id);
+  activeBoardId = p.boards[0]?.id || null;
+  p.lastBoardId = activeBoardId;
+  localStorage.setItem("learn_active_board", activeBoardId || "");
+  renderBoardList();
+  renderStage();
+});
+
+$("#addText").addEventListener("click", ()=>addTextBlock(""));
+$("#addTable").addEventListener("click", ()=>{
+  const rows = Math.max(1, Math.min(20, parseInt(prompt("Zeilen?", "4")||"4",10)));
+  const cols = Math.max(1, Math.min(12, parseInt(prompt("Spalten?", "3")||"3",10)));
+  addTableBlock(rows, cols);
+});
+$("#clearSel").addEventListener("click", deleteSelected);
+$("#save").addEventListener("click", saveAll);
+
+// File attach
+$("#attachBtn").addEventListener("click", ()=>fileInput.click());
+fileInput.addEventListener("change", async ()=>{
+  const f = fileInput.files && fileInput.files[0];
+  if(!f) return;
+  const txt = await f.text();
+  attachedText = txt.slice(0, 20000); // simple limit
+  addMsg("Datei hinzugefügt: " + f.name, "me");
+  fileInput.value = "";
+});
+
+// AI chat
+$("#send").addEventListener("click", async ()=>{
+  const t = input.value.trim();
+  if(!t) return;
+  input.value="";
+  addMsg(t,"me");
+  addMsg("…","ai");
+  const last = msgs.lastChild;
+  try{
+    const ans = await askAi(t);
+    last.textContent = ans || "(leer)";
+    lastAiAnswer = ans || "";
+  }catch(e){
+    console.error(e);
+    last.textContent = "Fehler bei der KI.";
+  }
+});
+input.addEventListener("keydown",(e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("#send").click(); } });
+
+$("#toBoard").addEventListener("click", ()=>{
+  if(!lastAiAnswer.trim()) return;
+  addTextBlock(lastAiAnswer.trim());
+});
+
+(async ()=>{
+  setStatus("Lade…");
+  state = ensureDefaults(await apiGet());
+  renderProfiles();
+  renderBoardList();
+  renderStage();
+  setStatus("");
+  addMsg("Schreib mir z.B. 'Mach daraus eine Lernzusammenfassung' 🙂","ai");
+})();
+</script>
+</body>
+</html>

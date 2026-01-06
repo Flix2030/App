@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lernen</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    :root{
+      --bg0:#05080f; --bg1:#070c16;
+      --panel:rgba(17,24,39,.72);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --accent:#3b82f6;
+    }
+    body{margin:0;color:var(--text);background:radial-gradient(1200px 800px at 20% 10%, #0b1632 0%, var(--bg0) 40%, var(--bg1) 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px 14px 40px;}
+    header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;}
+    .title{font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px;}
+    .chip{border:1px solid var(--border);background:rgba(255,255,255,.06);padding:8px 10px;border-radius:999px;color:var(--muted);font-size:13px;display:flex;gap:8px;align-items:center}
+    .btn{border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
+    .btn:hover{background:rgba(255,255,255,.09)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+    .card{border:1px solid var(--border);background:var(--panel);border-radius:16px;padding:14px;backdrop-filter: blur(10px);cursor:pointer;transition:.12s transform}
+    .card:hover{transform:translateY(-1px)}
+    .card h3{margin:0 0 6px 0;font-size:16px}
+    .card p{margin:0;color:var(--muted);font-size:13px;line-height:1.35}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .select{border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;min-width:220px}
+    .muted{color:var(--muted)}
+    .line{height:1px;background:rgba(255,255,255,.10);margin:14px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">📚 Lernen</div>
+      <div class="row">
+        <button class="btn" id="btnHome">← Home</button>
+        <span class="chip">Login aktiv</span>
+      </div>
+    </header>
+
+    <div class="row">
+      <select class="select" id="profileSelect"></select>
+      <button class="btn" id="btnNewProfile">+ Benutzer</button>
+      <button class="btn" id="btnRenameProfile">✎ Umbenennen</button>
+      <button class="btn" id="btnDeleteProfile">🗑️ Löschen</button>
+      <span class="muted" id="status"></span>
+    </div>
+
+    <div class="line"></div>
+
+    <div class="grid">
+      <div class="card" id="goVocab">
+        <h3>🧠 Vokabeln</h3>
+        <p>Wie Fix Learn: Ordner + Lernsets. (Du nutzt hier einfach die bestehende Seite <b>/vokabeln</b>.)</p>
+      </div>
+
+      <div class="card" id="goKi">
+        <h3>🤖 KI-Abfragen</h3>
+        <p>Die KI fragt dich ab. Mit Zugriff auf deine Whiteboards (pro Benutzer).</p>
+      </div>
+
+      <div class="card" id="goWhiteboard">
+        <h3>🧾 Whiteboards</h3>
+        <p>Mehrere Whiteboards pro Benutzer. Text-Blöcke + Tabellen. Mit KI: Inhalte aufs Whiteboard schreiben lassen.</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = (s)=>document.querySelector(s);
+const statusEl = $("#status");
+const profileSelect = $("#profileSelect");
+
+let state = { profiles: [] };
+let activeProfileId = null;
+
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); }
+
+async function apiGet(){
+  const r = await fetch("/api/learn/data", { cache: "no-store" });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "api_error");
+  return j.data || {profiles:[]};
+}
+async function apiPut(data){
+  const r = await fetch("/api/learn/data", { method:"PUT", headers:{ "content-type":"application/json" }, body: JSON.stringify(data) });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j?.error || "api_error");
+  return true;
+}
+
+function ensureDefaults(data){
+  if(!data || typeof data!=="object") data = {profiles:[]};
+  if(!Array.isArray(data.profiles)) data.profiles = [];
+  if(data.profiles.length===0){
+    const p = { id: uid(), name: "Benutzer", boards: [], boardFolder: [], lastBoardId: null };
+    data.profiles.push(p);
+  }
+  for(const p of data.profiles){
+    if(!p.id) p.id = uid();
+    if(!p.name) p.name = "Benutzer";
+    if(!Array.isArray(p.boards)) p.boards = [];
+    if(p.lastBoardId === undefined) p.lastBoardId = null;
+  }
+  return data;
+}
+
+function renderProfiles(){
+  profileSelect.innerHTML = "";
+  for(const p of state.profiles){
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.name;
+    profileSelect.appendChild(opt);
+  }
+  if(!activeProfileId) activeProfileId = state.profiles[0]?.id || null;
+  if(activeProfileId) profileSelect.value = activeProfileId;
+}
+
+function setStatus(t){ statusEl.textContent = t || ""; }
+
+function currentProfile(){
+  return state.profiles.find(p=>p.id===activeProfileId) || state.profiles[0];
+}
+
+async function load(){
+  try{
+    setStatus("Lade…");
+    state = ensureDefaults(await apiGet());
+    activeProfileId = localStorage.getItem("learn_active_profile") || state.profiles[0].id;
+    if(!state.profiles.some(p=>p.id===activeProfileId)) activeProfileId = state.profiles[0].id;
+    renderProfiles();
+    setStatus("");
+  }catch(e){
+    console.error(e);
+    setStatus("Fehler beim Laden");
+  }
+}
+
+profileSelect.addEventListener("change", ()=>{
+  activeProfileId = profileSelect.value;
+  localStorage.setItem("learn_active_profile", activeProfileId);
+});
+
+$("#btnHome").addEventListener("click", ()=>location.href="/home");
+$("#goVocab").addEventListener("click", ()=>location.href="/vokabeln");
+$("#goKi").addEventListener("click", ()=>location.href="/lernen/ki");
+$("#goWhiteboard").addEventListener("click", ()=>location.href="/lernen/whiteboard");
+
+$("#btnNewProfile").addEventListener("click", async ()=>{
+  const name = prompt("Name für den Benutzer:");
+  if(!name) return;
+  state.profiles.unshift({ id: uid(), name: name.trim(), boards: [], lastBoardId: null });
+  activeProfileId = state.profiles[0].id;
+  renderProfiles();
+  localStorage.setItem("learn_active_profile", activeProfileId);
+  await apiPut(state);
+});
+
+$("#btnRenameProfile").addEventListener("click", async ()=>{
+  const p = currentProfile();
+  const name = prompt("Neuer Name:", p.name);
+  if(!name) return;
+  p.name = name.trim();
+  renderProfiles();
+  await apiPut(state);
+});
+
+$("#btnDeleteProfile").addEventListener("click", async ()=>{
+  if(state.profiles.length<=1) return alert("Mindestens 1 Benutzer muss bleiben.");
+  const p = currentProfile();
+  if(!confirm("Benutzer wirklich löschen?")) return;
+  state.profiles = state.profiles.filter(x=>x.id!==p.id);
+  activeProfileId = state.profiles[0].id;
+  renderProfiles();
+  localStorage.setItem("learn_active_profile", activeProfileId);
+  await apiPut(state);
+});
+
+load();
+</script>
+</body>
+</html>
