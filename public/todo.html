@@ -1613,9 +1613,43 @@ function promptText(msg, placeholder, onOk){
           const li = document.createElement("li");
           li.className = "task-item" + (isDone(task) ? " task-done" : "");
 
+          // left side
+          const left = document.createElement("div");
+          left.style.display = "flex";
+          left.style.flexDirection = "column";
+          left.style.gap = "2px";
+          left.style.flex = "1 1 auto";
+
+          const titleEl = document.createElement("div");
+          titleEl.style.fontWeight = "900";
+          titleEl.textContent = task.title || "To-Do";
+          left.appendChild(titleEl);
+
+          const meta = document.createElement("div");
+          meta.style.opacity = "0.75";
+          meta.style.fontSize = "0.85rem";
+          const dayStr = (task.days||[]).map(d=>DAY_LABEL[d]||d).join(", ");
+          let timeStr = "";
+          if (task.timeMode === "at" && task.time) timeStr = " • " + task.time;
+          if (task.timeMode === "range" && (task.from || task.to)) timeStr = " • " + (task.from||"?") + "–" + (task.to||"?");
+          const personStr = task.person ? (" • " + task.person) : "";
+          meta.textContent = (dayStr || "") + timeStr + personStr;
+          left.appendChild(meta);
+
+          // right side actions
+          const actions = document.createElement("div");
+          actions.style.display = "flex";
+          actions.style.gap = "8px";
+          actions.style.alignItems = "center";
+          actions.style.flex = "0 0 auto";
+
           // checkbox mode: show checkbox only if enabled
           let cb = null;
           if (checkboxMode){
+            cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.className = "task-cb";
+            cb.checked = !!task.done;
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
               task.done = cb.checked;
@@ -1623,6 +1657,7 @@ function promptText(msg, placeholder, onOk){
               scheduleSave();
               render();
             });
+            actions.appendChild(cb);
           } else {
             li.addEventListener("click", ()=>{
               task.done = !task.done;
@@ -1631,6 +1666,39 @@ function promptText(msg, placeholder, onOk){
               render();
             });
           }
+
+          const remindBtn = document.createElement("button");
+          remindBtn.className = "btn btn-small btn-secondary";
+          remindBtn.type = "button";
+          remindBtn.textContent = "Erinnern";
+          remindBtn.addEventListener("click", async (e)=>{
+            e.stopPropagation();
+            const ok = await pushToPhone(task.title || "To-Do");
+            if (!ok){
+              // fallback: local notification (if allowed)
+              await showNotify("Erinnerung", (task.title || "To-Do"), "todo_rem_fallback_" + task.id);
+            }
+          });
+          actions.appendChild(remindBtn);
+
+          if (editMode){
+            const del = document.createElement("button");
+            del.className = "btn btn-small";
+            del.type = "button";
+            del.textContent = "✖";
+            del.style.borderColor = "rgba(255,77,109,0.35)";
+            del.style.background = "rgba(255,77,109,0.10)";
+            del.addEventListener("click",(e)=>{
+              e.stopPropagation();
+              data.tasks = (data.tasks||[]).filter(t=>t.id !== task.id);
+              scheduleSave();
+              render();
+            });
+            actions.appendChild(del);
+          }
+
+          li.appendChild(left);
+          li.appendChild(actions);
 
           ul.appendChild(li);
         });

@@ -254,11 +254,42 @@ function pickProfileId(url, body) {
 // Web Push (Cloudflare Workers) via @pushforge/builder
 // Env:
 // - VAPID_PRIVATE_KEY: JSON string of a JWK (private)
-// - VAPID_PUBLIC_KEY: base64url public key (NOT secret, used by frontend subscribe)
 // - VAPID_SUBJECT: e.g. "mailto:you@example.com" or "https://your-domain"
 // D1 table: push_subscriptions(id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)
 // We store ONLY one subscription with id="primary" (your phone PWA).
 // --------------------
+// --- base64url helpers (no padding) ---
+function b64urlToBytes(s){
+  s = String(s || "").trim().replace(/-/g, "+").replace(/_/g, "/");
+  // pad
+  while (s.length % 4) s += "=";
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function bytesToB64url(bytes){
+  let bin = "";
+  for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+  const b64 = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return b64;
+}
+function jwkFromWebPushKeys(publicKeyB64url, privateKeyB64url){
+  const pubBytes = b64urlToBytes(publicKeyB64url);
+  if (!(pubBytes && pubBytes.length === 65 && pubBytes[0] === 4)) throw new Error("bad_vapid_public_key");
+  const x = pubBytes.slice(1, 33);
+  const y = pubBytes.slice(33, 65);
+  const d = b64urlToBytes(privateKeyB64url);
+  if (!d || d.length !== 32) throw new Error("bad_vapid_private_key");
+  return {
+    kty: "EC",
+    crv: "P-256",
+    x: bytesToB64url(x),
+    y: bytesToB64url(y),
+    d: bytesToB64url(d)
+  };
+}
+
 function requireEnv(env, key){
   const v = env[key];
   return (typeof v === "string" && v.trim()) ? v.trim() : null;
@@ -292,8 +323,17 @@ async function sendWebPush(env, subscription, todoName){
   const vapidSubject = requireEnv(env, "VAPID_SUBJECT");
   if (!vapidPrivate || !vapidSubject) throw new Error("missing_vapid_env");
 
-  // VAPID_PRIVATE_KEY is expected to be a JSON-encoded JWK (private key)
-  const privateJWK = JSON.parse(vapidPrivate);
+  // VAPID keys can be provided either as:
+  // 1) JSON-encoded JWK (private)  -> {kty:'EC',crv:'P-256',x,y,d}
+  // 2) web-push style strings: VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY (base64url)
+  let privateJWK = null;
+  try{
+    privateJWK = JSON.parse(vapidPrivate);
+  }catch(_e){
+    const pub = requireEnv(env, "VAPID_PUBLIC_KEY");
+    if (!pub) throw new Error("missing_vapid_public_key");
+    privateJWK = jwkFromWebPushKeys(pub, vapidPrivate);
+  }
 
   const payload = JSON.stringify({
     title: "Erinnerung",
@@ -362,30 +402,10 @@ async function handleApi(req, env) {
 
     
     // --- PUSH: expose public key for the frontend (NOT secret) ---
-    // Note: depending on how you store variables (Secrets Store vs Wrangler secrets),
-    // the binding name must still be exactly VAPID_PUBLIC_KEY.
     if (path === "/api/push/publicKey" && req.method === "GET") {
-      const pk =
-        requireEnv(env, "VAPID_PUBLIC_KEY") ||
-        requireEnv(env, "VAPID_PUBLICKEY") ||
-        requireEnv(env, "VAPID_PUBKEY") ||
-        requireEnv(env, "VAPID_PUBLIC");
+      const pk = String(env.VAPID_PUBLIC_KEY || "").trim();
       if (!pk) return json({ ok: false, error: "missing_vapid_public_key" }, 500);
       return json({ ok: true, publicKey: pk });
-    }
-
-    // --- PUSH: quick debug (helps to see what env vars are actually available at runtime) ---
-    if (path === "/api/push/debug" && req.method === "GET") {
-      const pk = requireEnv(env, "VAPID_PUBLIC_KEY");
-      const sk = requireEnv(env, "VAPID_PRIVATE_KEY");
-      const subj = requireEnv(env, "VAPID_SUBJECT");
-      return json({
-        ok: true,
-        hasPublicKey: !!pk,
-        publicKeyPrefix: pk ? pk.slice(0, 12) : null,
-        hasPrivateKey: !!sk,
-        hasSubject: !!subj,
-      }, 200, { "Cache-Control": "no-store" });
     }
 
 // --- PUSH: send a push to your stored phone subscription ---
@@ -466,6 +486,14 @@ async function handleApi(req, env) {
     }
 
     if (path === "/api/me" && req.method === "GET") {
+
+      // PWA assets must be accessible without login (otherwise icons/manifest fail).
+      if (path === "/apple-touch-icon.png" || path === "/favicon.ico") {
+        return env.ASSETS.fetch(new Request(url.origin + path, req));
+      }
+      if (path.startsWith("/icons/")) {
+        return env.ASSETS.fetch(new Request(url.origin + path, req));
+      }
       const uid = await readToken(env, req);
       if (!uid) return json({ loggedIn: false }, 401);
       return json({ loggedIn: true, userId: uid });
