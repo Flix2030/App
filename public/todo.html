@@ -540,7 +540,17 @@
     }
     #person-modal .popup-close{ top: 12px; right: 12px; }
 
-  </style>
+  
+    /* größere Checkboxen */
+    .task-cb{
+      width:36px;
+      height:36px;
+      transform:scale(1.3);
+      cursor:pointer;
+      accent-color: var(--accent);
+    }
+</style>
+
 </head>
 
 <body>
@@ -1266,7 +1276,7 @@ if (!Array.isArray(data.settings.people)) data.settings.people = ["Mama","Papa"]
         if (draft.days && draft.days.length) pills.push(`<span class="tag">${escapeHtml(fmtDays(draft.days))}</span>`);
         if (draft.timeMode === "range" && draft.from && draft.to) pills.push(`<span class="tag">${escapeHtml(draft.from)}–${escapeHtml(draft.to)}</span>`);
         else if (draft.timeMode === "at" && draft.time) pills.push(`<span class="tag">${escapeHtml(normalizeTime(draft.time))}</span>`);
-        else if (draft.timeMode === "none") pills.push(`<span class="tag warn">ohne</span>`);
+        // kein "ohne"-Tag mehr anzeigen
         if (draft.person) pills.push(`<span class="tag">${escapeHtml(draft.person)}</span>`);
         draftPreview.innerHTML = pills.join("");
       }
