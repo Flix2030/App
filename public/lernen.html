@@ -97,13 +97,14 @@ function ensureDefaults(data){
   if(!data || typeof data!=="object") data = {profiles:[]};
   if(!Array.isArray(data.profiles)) data.profiles = [];
   if(data.profiles.length===0){
-    const p = { id: uid(), name: "Benutzer", boards: [], boardFolder: [], lastBoardId: null };
+    const p = { id: uid(), name: "Benutzer", boards: [{id:uid(), name:"Whiteboard 1", blocks:[]}], boardFolder: [], lastBoardId: null };
     data.profiles.push(p);
   }
   for(const p of data.profiles){
     if(!p.id) p.id = uid();
     if(!p.name) p.name = "Benutzer";
     if(!Array.isArray(p.boards)) p.boards = [];
+    if(p.boards.length===0) p.boards.push({id:uid(), name:"Whiteboard 1", blocks:[]});
     if(p.lastBoardId === undefined) p.lastBoardId = null;
   }
   return data;
@@ -137,7 +138,10 @@ async function load(){
     setStatus("");
   }catch(e){
     console.error(e);
-    setStatus("Fehler beim Laden");
+    state = ensureDefaults(null);
+    activeProfileId = state.profiles[0].id;
+    renderProfiles();
+    setStatus("Fehler beim Laden (API)");
   }
 }
 

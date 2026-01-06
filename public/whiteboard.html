@@ -139,10 +139,15 @@ function ensureDefaults(data){
     if(!p.id) p.id = uid();
     if(!p.name) p.name = "Benutzer";
     if(!Array.isArray(p.boards)) p.boards = [];
+    if(p.boards.length===0){
+      p.boards.push({ id: uid(), name:"Whiteboard 1", blocks:[], createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
+    }
     for(const b of p.boards){
       if(!b.id) b.id = uid();
-      if(!b.title) b.title = "Whiteboard";
+      if(!b.name) b.name = b.title || "Whiteboard";
       if(!Array.isArray(b.blocks)) b.blocks = [];
+      if(!b.createdAt) b.createdAt = new Date().toISOString();
+      if(!b.updatedAt) b.updatedAt = new Date().toISOString();
     }
   }
   return data;
@@ -478,7 +483,10 @@ $("#toBoard").addEventListener("click", ()=>{
 
 (async ()=>{
   setStatus("Lade…");
-  state = ensureDefaults(await apiGet());
+  let loaded=null;
+  try{ loaded = await apiGet(); }
+  catch(e){ console.error(e); setStatus("Fehler beim Laden (API)."); loaded = null; }
+  state = ensureDefaults(loaded);
   renderProfiles();
   renderBoardList();
   renderStage();

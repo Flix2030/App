@@ -75,8 +75,11 @@ async function apiGet(){
 function ensureDefaults(data){
   if(!data || typeof data!=="object") data = {profiles:[]};
   if(!Array.isArray(data.profiles)) data.profiles = [];
-  if(data.profiles.length===0) data.profiles.push({ id: uid(), name:"Benutzer", boards:[], lastBoardId:null });
-  for(const p of data.profiles){ if(!Array.isArray(p.boards)) p.boards = []; }
+  if(data.profiles.length===0) data.profiles.push({ id: uid(), name:"Benutzer", boards:[{id:uid(), name:"Whiteboard 1", blocks:[]}], lastBoardId:null });
+  for(const p of data.profiles){
+    if(!Array.isArray(p.boards)) p.boards = [];
+    if(p.boards.length===0) p.boards.push({id:uid(), name:"Whiteboard 1", blocks:[]});
+  }
   return data;
 }
 
@@ -187,7 +190,9 @@ input.addEventListener("keydown",(e)=>{
 });
 
 (async ()=>{
-  state = ensureDefaults(await apiGet());
+  let loaded=null;
+  try{ loaded = await apiGet(); }catch(e){ console.error(e); }
+  state = ensureDefaults(loaded);
   renderProfiles();
   renderBoards();
   addMsg("Sag mir, was ich dich abfragen soll 🙂","ai");

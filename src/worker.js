@@ -587,13 +587,38 @@ async function handleApi(req, env) {
 
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
+      try {
 
       if (path === "/api/learn/data" && req.method === "GET") {
         const row = await env.DB.prepare(
           "SELECT json FROM learn_data WHERE user_id = ?"
         ).bind(uid).first();
 
-        const data = row?.json ? JSON.parse(row.json) : { profiles: [] };
+        let data;
+        if (row?.json) {
+          data = JSON.parse(row.json);
+        } else {
+          // Erstes Mal: stabiler Default (damit Frontend nie crasht)
+          data = {
+            profiles: [
+              {
+                id: "p_default",
+                name: "Benutzer",
+                // optional: Vokabel-Ordner/Lernsets (später)
+                vocabFolders: [],
+                boards: [
+                  {
+                    id: "b_default",
+                    name: "Whiteboard 1",
+                    blocks: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  }
+                ]
+              }
+            ]
+          };
+        }
         return json({ ok: true, data }, 200, { "Cache-Control": "no-store" });
       }
 
@@ -611,6 +636,15 @@ async function handleApi(req, env) {
       }
 
       return json({ error: "not_found", path }, 404);
+      } catch (e) {
+        console.log("LEARN_API_ERROR", e && (e.stack || e.message || String(e)));
+        const msg = e?.message ? String(e.message) : String(e);
+        if (msg.includes("no such table") && msg.includes("learn_data")) {
+          return json({ error: "learn_table_missing", message: msg }, 500);
+        }
+        return json({ error: "learn_api_error", message: msg }, 500);
+      }
+
     }
 
 // ===== Einkaufsliste API =====
