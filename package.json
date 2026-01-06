@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@pushforge/builder": "^1.1.2"
+  }
+}
