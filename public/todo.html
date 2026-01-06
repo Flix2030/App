@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>To-Do</title>
+  <title>Aufgaben</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="theme-color" content="#000000">
@@ -557,7 +557,7 @@
   <div class="container">
     <div class="topbar">
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <h1>To-Do</h1>
+        <h1>Aufgaben</h1>
         <div class="sync-pill" id="sync-pill" title="Cloud Sync">
           <span class="progress-dot" id="sync-dot" style="width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,0.35);box-shadow:0 0 12px rgba(255,255,255,0.12);"></span>
           <span id="sync-text" style="color:rgba(255,255,255,0.80);font-weight:900;font-size:12px;">Lade…</span>
@@ -948,12 +948,13 @@
             try{
               await ensurePushSubscribed(deviceId); // registers + enables
               await setServerPushEnabled(deviceId, true);
-              showNotify("Erinnerung", "Benachrichtigungen sind aktiv.", "push_on");
+              showNotify("Aufgaben", "Erinnerung\nBenachrichtigungen sind aktiv.", "push_on");
             }catch(e){
               cb.checked = false;
               try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
               const msg = (e && e.message) ? String(e.message) : "";
-              showNotify("Hinweis", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
+              showNotify("Aufgaben", "Hinweis
+Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
             }finally{
               cb.disabled = false;
             }
@@ -1031,7 +1032,7 @@
             changed = true;
 
             const whenTxt = task.time ? (task.time) : "";
-            showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_rem_" + task.id);
+            showNotify("Aufgaben", "Erinnerung\n" + (task.title || "Aufgabe"), "todo_rem_" + task.id);
           }
         });
 
@@ -1057,16 +1058,18 @@
         // 1) Push to your phone (Cloudflare)
         pushToPhone(msg);
         // 2) Local fallback (if push not set)
-        showNotify("To-Do", "Erinnerung\n" + msg, "todo_rem_" + task.id);
+        showNotify("Aufgaben", "Erinnerung\n" + msg, "todo_rem_" + task.id);
       }
 
       async function notifyTaskCreated(task){
-        if (!task) return;
-        const msg = String(task.title || "Aufgabe");
-        // 1) Push to your phone (Cloudflare)
-        pushToPhone(msg);
-        // 2) Local fallback
-        await showNotify("Erinnerung", msg, "todo_created_" + task.id);
+          if (!task) return;
+          const msg = String(task.title || "Aufgabe");
+          const ok = await pushToPhone(msg);
+          if (!ok){
+            // Fallback: lokale Notification
+            await showNotify("Aufgaben", "Erinnerung
+" + msg, "todo_created_" + task.id);
+          }
       }
 
 
@@ -1753,7 +1756,7 @@ function promptText(msg, placeholder, onOk){
             const ok = await pushToPhone(task.title || "To-Do");
             if (!ok){
               // fallback: local notification (if allowed)
-              await showNotify("Erinnerung", (task.title || "To-Do"), "todo_rem_fallback_" + task.id);
+              await showNotify("Aufgaben", "Erinnerung\n" + (task.title || "Aufgabe"), "todo_rem_fallback_" + task.id);
             }
           });
           actions.appendChild(remindBtn);
