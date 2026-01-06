@@ -3,7 +3,22 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+const BUILD_ID = "FIXED2_20260106160916";
+
 import { handleWebcamLive, LOBBY as LOBBY_DO, STREAM as STREAM_DO } from "./webcam.js";
+
+function withNoStore(resp) {
+  try {
+    const h = new Headers(resp.headers);
+    h.set("cache-control", "no-store");
+    h.set("pragma", "no-cache");
+    h.set("expires", "0");
+    h.set("x-build-id", BUILD_ID);
+    return new Response(resp.body, { status: resp.status, statusText: resp.statusText, headers: h });
+  } catch (e) {
+    return resp;
+  }
+}
 
 // wrangler will die Klassen im entrypoint sehen:
 
@@ -674,8 +689,9 @@ if (
   path === "/groups" ||
   path === "/ws"
 ) {
-  return handleWebcamLive(req, env);
-}
+  const resp = await handleWebcamLive(req, env);
+        return withNoStore(resp);
+      }
 
 let assetPath = path;
 
