@@ -341,16 +341,24 @@ async function sendWebPush(env, subscription, todoName){
     url: "/todo"
   });
 
-  const { endpoint, headers, body } = await buildPushHTTPRequest(
+  // buildPushHTTPRequest API varies by version; object-form is most compatible.
+  const { endpoint, headers, body } = await buildPushHTTPRequest({
     privateJWK,
-    {
-      payload,
-      ttl: 60 * 60 * 24, // 24h
-      urgency: "normal",
-    },
     subscription,
-    vapidSubject
-  );
+    message: {
+      // PushForge accepts either an object payload or a stringified JSON; use object to avoid version quirks.
+      payload: {
+        title: "Erinnerung",
+        body: String(todoName || "").trim() || "To-Do",
+        url: "/todo",
+      },
+      options: {
+        ttl: 60 * 60 * 24, // 24h
+        urgency: "normal",
+      },
+      adminContact: vapidSubject,
+    },
+  });
 
   const res = await fetch(endpoint, { method: "POST", headers, body });
 
