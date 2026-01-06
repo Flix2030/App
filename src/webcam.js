@@ -490,7 +490,7 @@ const HTML_ROOM = `<!doctype html>
       var x = arguments[i];
       line += (typeof x === "string" ? x : JSON.stringify(x)) + " ";
     }
-    logEl.textContent += line.trim() + "\n";
+    logEl.textContent += line.trim() + "\\n";
     logEl.scrollTop = logEl.scrollHeight;
   }
 
@@ -505,6 +505,17 @@ const HTML_ROOM = `<!doctype html>
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room) + "&code=" + encodeURIComponent(code);
   }
+
+  // ✅ Globale Handler für die Buttons
+  window.__connectNow = function () {
+    try { log("click: verbinden"); connect(); }
+    catch (e) { alert("Connect-Fehler: " + (e && e.message ? e.message : e)); }
+  };
+  window.__disconnectNow = function () {
+    try { log("click: trennen"); stopSender(); cleanupWs(); setStatus("offline"); }
+    catch (e) {}
+  };
+
 
   function setRemoteFromBuffer(buf) {
     try {
