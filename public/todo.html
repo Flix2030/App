@@ -796,13 +796,8 @@
       let remindTimer = null;
 
       async function ensureNotifyPermission(){
-        if (!("Notification" in window)) return false;
-        if (Notification.permission === "granted") return true;
-        if (Notification.permission === "denied") return false;
-        try{
-          const p = await Notification.requestPermission();
-          return p === "granted";
-        }catch(e){
+        return false; // Banner-only
+      }catch(e){
           return false;
         }
       }
@@ -980,12 +975,12 @@
             try{
               await ensurePushSubscribed(deviceId); // registers + enables
               await setServerPushEnabled(deviceId, true);
-              showNotify("To-Do", "Benachrichtigungen sind aktiv.", "push_on");
+              showInAppBanner("To-Do", "Benachrichtigungen sind aktiv.");
             }catch(e){
               cb.checked = false;
               try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
               const msg = (e && e.message) ? String(e.message) : "";
-              showNotify("To-Do", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
+              showInAppBanner("To-Do", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":""));
             }finally{
               cb.disabled = false;
             }
@@ -1063,7 +1058,7 @@
             changed = true;
 
             const whenTxt = task.time ? (task.time) : "";
-            showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_rem_" + task.id);
+            showInAppBanner("Erinnerung", (task.title || "Aufgabe"));
           }
         });
 
@@ -1086,19 +1081,13 @@
       function remindTask(task){
         if (!task) return;
         const msg = String(task.title || "Aufgabe");
-        // 1) Push to your phone (Cloudflare)
-        pushToPhone(msg);
-        // 2) Local fallback (if push not set)
-        showNotify("Erinnerung", msg, "todo_rem_" + task.id);
+        showInAppBanner("Erinnerung", msg);
       }
 
       async function notifyTaskCreated(task){
         if (!task) return;
         const msg = String(task.title || "Aufgabe");
-        // 1) Push to your phone (Cloudflare)
-        pushToPhone(msg);
-        // 2) Local fallback
-        await showNotify("Erinnerung", msg, "todo_created_" + task.id);
+        showInAppBanner("To-Do", msg);
       }
 
 
@@ -1780,13 +1769,10 @@ function promptText(msg, placeholder, onOk){
           remindBtn.className = "btn btn-small btn-secondary";
           remindBtn.type = "button";
           remindBtn.textContent = "Erinnern";
-          remindBtn.addEventListener("click", async (e)=>{
+          remindBtn.addEventListener("click",(e)=>{
             e.stopPropagation();
-            const ok = await pushToPhone(task.title || "To-Do");
-            if (!ok){
-              // fallback: local notification (if allowed)
-              await showNotify("Erinnerung", (task.title || "To-Do"), "todo_rem_fallback_" + task.id);
-            }
+            // In-App Banner (ohne OS "from ...")
+            showInAppBanner("Erinnerung", (task.title || "To-Do"));
           });
           actions.appendChild(remindBtn);
 
