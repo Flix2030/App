@@ -711,6 +711,7 @@
       <div id="popup-days" class="days hidden" style="margin: 6px 0 10px;"></div>
       <input type="time" id="popup-input-time" class="hidden" />
       <input type="text" id="popup-input-person" class="hidden" placeholder="Person" />
+      <input type="password" id="popup-input-pin" class="hidden" inputmode="numeric" autocomplete="one-time-code" placeholder="PIN" />
 
       <div class="popup-buttons">
         <button id="popup-cancel" class="btn btn-small btn-secondary">Abbrechen</button>
@@ -735,6 +736,157 @@
 
       // Draft (Create)
       let draft = { title:"", days:[], timeMode:"at", time:"13:00", from:"", to:"", person:"" };
+
+      // ===== Notifications / Reminders =====
+      // Hinweis: Browser-Notifications brauchen einmalig eine Erlaubnis.
+      // In vielen Browsern funktionieren geplante Notifications nur, solange die App offen ist.
+      const REMIND_CHECK_MS = 25 * 1000; // polling while app is open
+      let remindTimer = null;
+
+      async function ensureNotifyPermission(){
+        if (!("Notification" in window)) return false;
+        if (Notification.permission === "granted") return true;
+        if (Notification.permission === "denied") return false;
+        try{
+          const p = await Notification.requestPermission();
+          return p === "granted";
+        }catch(e){
+          return false;
+        }
+      }
+
+      async function showNotify(title, body, tag){
+        const ok = await ensureNotifyPermission();
+        if (!ok) return false;
+
+        try{
+          // Prefer Service Worker notification if available (PWA nicer)
+          if ("serviceWorker" in navigator){
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg && reg.showNotification){
+              await reg.showNotification(title, {
+                body: body || "",
+                tag: tag || "todo",
+                renotify: true
+              });
+              return true;
+            }
+          }
+        }catch(e){ /* fallback below */ }
+
+        try{
+          new Notification(title, { body: body || "", tag: tag || "todo" });
+          return true;
+        }catch(e){
+          return false;
+        }
+      }
+
+      function pad2(n){ return String(n).padStart(2,"0"); }
+      function fmtDateTime(ms){
+        const d = new Date(ms);
+        return pad2(d.getDate()) + "." + pad2(d.getMonth()+1) + "." + d.getFullYear() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+      }
+
+      function parseTaskNextDueMs(task){
+        // Finds the next datetime in the future matching task.days + time.
+        // If no valid time -> returns null.
+        const days = Array.isArray(task.days) ? task.days : [];
+        if (!days.length) return null;
+
+        const mode = task.timeMode || "at";
+        let t = "";
+        if (mode === "range") t = normalizeTime(task.from || task.time || "");
+        else if (mode === "at") t = normalizeTime(task.time || "");
+        else t = "";
+
+        if (!t) return null;
+        const [hh, mm] = t.split(":").map(x=>parseInt(x,10));
+        if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+
+        const now = new Date();
+        // map our keys to JS getDay(): 0=So..6=Sa
+        const map = { so:0, mo:1, di:2, mi:3, do:4, fr:5, sa:6 };
+        const wanted = days.map(k=>map[k]).filter(x=>Number.isFinite(x));
+        if (!wanted.length) return null;
+
+        for (let i=0;i<14;i++){
+          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, hh, mm, 0, 0);
+          if (d.getTime() <= now.getTime()) continue;
+          if (wanted.includes(d.getDay())) return d.getTime();
+        }
+        return null;
+      }
+
+      function ensureRemindShape(task){
+        if (!task) return;
+        if (typeof task.remindAt !== "number") task.remindAt = 0; // ms timestamp
+        if (typeof task.remindEnabled !== "boolean") task.remindEnabled = false;
+        if (typeof task.remindLastFired !== "number") task.remindLastFired = 0;
+      }
+
+      function armReminderLoop(){
+        if (remindTimer) clearInterval(remindTimer);
+        remindTimer = setInterval(checkDueReminders, REMIND_CHECK_MS);
+      }
+
+      async function checkDueReminders(){
+        const now = Date.now();
+        let changed = false;
+
+        (data.tasks || []).forEach(task=>{
+          ensureRemindShape(task);
+          if (!task.remindEnabled) return;
+          if (task.done) return;
+
+          if (task.remindAt && task.remindAt <= now){
+            // fire once
+            if (now - (task.remindLastFired || 0) < 5000) return; // safety
+            task.remindLastFired = now;
+            task.remindEnabled = false;
+            changed = true;
+
+            const whenTxt = task.time ? (task.time + " Uhr") : "";
+            showNotify("⏰ To-Do Erinnerung", (task.title || "Aufgabe") + (whenTxt ? " • " + whenTxt : ""), "todo_rem_" + task.id);
+          }
+        });
+
+        if (changed) scheduleSave();
+      }
+
+      function setTaskReminder(task, whenMs){
+        ensureRemindShape(task);
+        task.remindAt = Math.max(0, Number(whenMs) || 0);
+        task.remindEnabled = !!task.remindAt;
+        scheduleSave();
+      }
+
+      function clearTaskReminder(task){
+        ensureRemindShape(task);
+        task.remindAt = 0;
+        task.remindEnabled = false;
+        scheduleSave();
+      }
+
+      function remindTask(task){
+        if (!task) return;
+
+        // default: next due time, else in 10 minutes
+        let next = parseTaskNextDueMs(task);
+        if (!next) next = Date.now() + 10*60*1000;
+
+        showConfirm("Erinnerung setzen für: " + fmtDateTime(next) + " ?", ()=>{
+          setTaskReminder(task, next);
+          showNotify("✅ Erinnerung gesetzt", (task.title || "Aufgabe") + " • " + fmtDateTime(next), "todo_set_" + task.id);
+        });
+      }
+
+      async function notifyTaskCreated(task){
+        if (!task) return;
+        const body = (task.title || "Aufgabe") + (task.person ? (" • " + task.person) : "");
+        await showNotify("📝 To-Do erstellt", body, "todo_created_" + task.id);
+      }
+
 
       // sync UI
       const syncDot = document.getElementById("sync-dot");
@@ -1309,6 +1461,7 @@ function promptText(msg, placeholder, onOk){
           t.time = normalizeTime(t.time) || "13:00";
           if (typeof t.person !== "string") t.person = String(t.person ?? "");
           t.done = !!t.done;
+          ensureRemindShape(t);
           return t;
         });
       }
@@ -1354,6 +1507,16 @@ function promptText(msg, placeholder, onOk){
           const actions = document.createElement("div");
           actions.className = "actions";
 
+          // Reminder button (always visible)
+          const remindBtn = document.createElement("button");
+          remindBtn.className = "btn btn-small btn-secondary";
+          remindBtn.textContent = "Erinnern";
+          remindBtn.addEventListener("click",(e)=>{
+            e.stopPropagation();
+            remindTask(task);
+          });
+          actions.appendChild(remindBtn);
+
           if (editMode){
             const editBtn = document.createElement("button");
             editBtn.className = "btn btn-small btn-secondary";
@@ -1387,10 +1550,11 @@ function promptText(msg, placeholder, onOk){
 
           li.appendChild(cb);
           li.appendChild(main);
-          if (editMode) li.appendChild(actions);
+          li.appendChild(actions);
 
           const toggleDone = ()=>{
             task.done = !task.done;
+            if (task.done) clearTaskReminder(task);
             cb.checked = task.done;
             li.classList.toggle("task-done", task.done);
             scheduleSave();
@@ -1401,12 +1565,14 @@ function promptText(msg, placeholder, onOk){
             cb.addEventListener("click",(e)=> e.stopPropagation());
             cb.addEventListener("change", ()=>{
               task.done = cb.checked;
+              if (task.done) clearTaskReminder(task);
               scheduleSave();
               render();
             });
             // in checkboxMode: click on row toggles too (nice), but not required:
             li.addEventListener("click", ()=>{
               task.done = !task.done;
+            if (task.done) clearTaskReminder(task);
               scheduleSave();
               render();
             });
@@ -1439,7 +1605,7 @@ function promptText(msg, placeholder, onOk){
         const hasTime = (timeMode === "at" && !!time) || (timeMode === "range" && !!from && !!to);
         if (!hasTime && !person) return;
 
-        data.tasks.unshift({
+        const newTask = {
           id: makeId("task"),
           title,
           days,
@@ -1451,7 +1617,11 @@ function promptText(msg, placeholder, onOk){
           done: false,
           doneAt: null,
           createdAt: new Date().toISOString()
-        });
+        };
+
+        data.tasks.unshift(newTask);
+        notifyTaskCreated(newTask);
+
 
         // reset draft minimal
         draft.title = "";
@@ -1642,6 +1812,8 @@ document.getElementById("edit-mode-toggle").addEventListener("click", function()
 
         bindUI();
         render();
+        armReminderLoop();
+        checkDueReminders();
       }
 
       document.addEventListener("DOMContentLoaded", init);
