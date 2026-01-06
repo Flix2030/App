@@ -549,38 +549,6 @@
       cursor:pointer;
       accent-color: var(--accent);
     }
-
-/* In-App Banner (Duolingo-Style, ohne 'from') */
-.inapp-banner{
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(20,28,46,0.95);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 18px;
-  padding: 14px 18px;
-  min-width: 260px;
-  max-width: 90vw;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.55);
-  z-index: 99999;
-  animation: slideDown 0.25s ease;
-}
-.inapp-banner h4{
-  margin: 0 0 4px;
-  font-size: 1.05rem;
-  font-weight: 900;
-}
-.inapp-banner p{
-  margin: 0;
-  font-size: 0.95rem;
-  opacity: 0.9;
-}
-@keyframes slideDown{
-  from{ transform: translate(-50%, -20px); opacity:0; }
-  to{ transform: translate(-50%, 0); opacity:1; }
-}
-
 </style>
 
 </head>
@@ -796,8 +764,15 @@
       let remindTimer = null;
 
       async function ensureNotifyPermission(){
-        return false; // Banner-only
-      }
+        if (!("Notification" in window)) return false;
+        if (Notification.permission === "granted") return true;
+        if (Notification.permission === "denied") return false;
+        try{
+          const p = await Notification.requestPermission();
+          return p === "granted";
+        }catch(e){
+          return false;
+        }
       }
 
       async function showNotify(title, body, tag){
@@ -973,12 +948,12 @@
             try{
               await ensurePushSubscribed(deviceId); // registers + enables
               await setServerPushEnabled(deviceId, true);
-              showInAppBanner("To-Do", "Benachrichtigungen sind aktiv.");
+              showNotify("Erinnerung", "Benachrichtigungen sind aktiv.", "push_on");
             }catch(e){
               cb.checked = false;
               try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
               const msg = (e && e.message) ? String(e.message) : "";
-              showInAppBanner("To-Do", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":""));
+              showNotify("Hinweis", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
             }finally{
               cb.disabled = false;
             }
@@ -1056,7 +1031,7 @@
             changed = true;
 
             const whenTxt = task.time ? (task.time) : "";
-            showInAppBanner("Erinnerung", (task.title || "Aufgabe"));
+            showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_rem_" + task.id);
           }
         });
 
@@ -1079,13 +1054,19 @@
       function remindTask(task){
         if (!task) return;
         const msg = String(task.title || "Aufgabe");
-        showInAppBanner("Erinnerung", msg);
+        // 1) Push to your phone (Cloudflare)
+        pushToPhone(msg);
+        // 2) Local fallback (if push not set)
+        showNotify("To-Do", "Erinnerung\n" + msg, "todo_rem_" + task.id);
       }
 
       async function notifyTaskCreated(task){
         if (!task) return;
         const msg = String(task.title || "Aufgabe");
-        showInAppBanner("To-Do", msg);
+        // 1) Push to your phone (Cloudflare)
+        pushToPhone(msg);
+        // 2) Local fallback
+        await showNotify("Erinnerung", msg, "todo_created_" + task.id);
       }
 
 
@@ -1767,10 +1748,13 @@ function promptText(msg, placeholder, onOk){
           remindBtn.className = "btn btn-small btn-secondary";
           remindBtn.type = "button";
           remindBtn.textContent = "Erinnern";
-          remindBtn.addEventListener("click",(e)=>{
+          remindBtn.addEventListener("click", async (e)=>{
             e.stopPropagation();
-            // In-App Banner (ohne OS "from ...")
-            showInAppBanner("Erinnerung", (task.title || "To-Do"));
+            const ok = await pushToPhone(task.title || "To-Do");
+            if (!ok){
+              // fallback: local notification (if allowed)
+              await showNotify("Erinnerung", (task.title || "To-Do"), "todo_rem_fallback_" + task.id);
+            }
           });
           actions.appendChild(remindBtn);
 
@@ -2030,29 +2014,5 @@ document.getElementById("edit-mode-toggle").addEventListener("click", function()
       document.addEventListener("DOMContentLoaded", init);
     })();
   </script>
-
-<div id="inapp-banner" class="inapp-banner" style="display:none">
-  <h4 id="banner-title">To-Do</h4>
-  <p id="banner-text">sasa</p>
-</div>
-
 </body>
-
-<script>
-function showInAppBanner(title, text){
-  const box = document.getElementById("inapp-banner");
-  const t = document.getElementById("banner-title");
-  const p = document.getElementById("banner-text");
-  if(!box) return;
-
-  t.textContent = title || "To-Do";
-  p.textContent = text || "";
-
-  box.style.display = "block";
-  setTimeout(()=>{
-    box.style.display = "none";
-  }, 3500);
-}
-</script>
-
 </html>
