@@ -386,7 +386,19 @@ async function handleApi(req, env) {
       });
     }
 
-    // --- PUSH: register subscription (run ONLY on your phone PWA) ---
+    
+    // --- PUSH: debug env/bindings (no secrets leaked) ---
+    if (path === "/api/push/debug" && req.method === "GET") {
+      return json({
+        ok: true,
+        hasDB: !!env.DB,
+        hasPublicKey: !!env.VAPID_PUBLIC_KEY,
+        hasPrivateKey: !!env.VAPID_PRIVATE_KEY,
+        hasSubject: !!env.VAPID_SUBJECT,
+      });
+    }
+
+// --- PUSH: register subscription (run ONLY on your phone PWA) ---
     if (path === "/api/push/register" && req.method === "POST") {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
@@ -962,12 +974,14 @@ let assetPath = path;
       if (path === "/manifest.webmanifest") {
         return env.ASSETS.fetch(new Request(url.origin + "/manifest.webmanifest", req));
       }
-      if (path === "/icon-192.png" || path === "/icon-512.png") {
+      if (path === "/apple-touch-icon.png" || path === "/favicon.ico") {
         return env.ASSETS.fetch(new Request(url.origin + path, req));
       }
-
-
-      const uid = await readToken(env, req);
+      // Some manifests reference /icons/icon-192.png etc.
+      if (path === "/icon-192.png" || path === "/icon-512.png" || path.startsWith("/icons/")) {
+        return env.ASSETS.fetch(new Request(url.origin + path, req));
+      }
+const uid = await readToken(env, req);
       if (!uid) {
         const loginUrl = new URL("/login", url.origin);
         loginUrl.searchParams.set("returnTo", path + url.search);
