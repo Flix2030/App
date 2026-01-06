@@ -508,7 +508,7 @@ const HTML_ROOM = `<!doctype html>
           <div class="small">Modus: <b id="modeName"></b></div>
         </div>
         <div style="max-width: 220px;">
-          <button onclick="location.href='/webcam-live'">← Zurück</button>
+          <button onclick="(function(){var b=location.pathname.indexOf('/webcam-live')===0?'/webcam-live':''; location.href=b||'/';})()">← Zurück</button>
         </div>
       </div>
 
@@ -658,7 +658,8 @@ function setStatus(s) { statusEl.textContent = s; }
 
   function wsUrl() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
-    return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room) + "&code=" + encodeURIComponent(code) + "&name=" + encodeURIComponent(name) + "&admin=" + (adminFlag ? "1" : "0");
+    var base = location.pathname.indexOf("/webcam-live") === 0 ? "/webcam-live" : "";
+    return proto + "//" + location.host + base + "/ws?room=" + encodeURIComponent(room) + "&code=" + encodeURIComponent(code) + "&name=" + encodeURIComponent(name) + "&admin=" + (adminFlag ? "1" : "0");
   }
 
   // ✅ Globale Handler für die Buttons
@@ -842,14 +843,14 @@ export async function handleWebcamLive(req, env) {
     const name = (url.searchParams.get("name") || "").trim();
     const admin = (url.searchParams.get("admin") || "0");
 
-  if (url.pathname === "/webcam-live/groups") {
+  if (url.pathname === "/webcam-live/groups" || url.pathname === "/groups") {
     if (!env.LOBBY) return new Response("Missing DO binding: LOBBY", { status: 500 });
     const lobbyId = env.LOBBY.idFromName("global");
     const lobby = env.LOBBY.get(lobbyId);
     return lobby.fetch(new Request("https://internal/webcam-live/groups", req));
   }
 
-  if (url.pathname === "/webcam-live/ws") {
+  if (url.pathname === "/webcam-live/ws" || url.pathname === "/ws") {
     if (!env.STREAM) return new Response("Missing DO binding: STREAM", { status: 500 });
     const room = roomFromReq(req);
     const id = env.STREAM.idFromName("room:" + room);
@@ -857,7 +858,7 @@ export async function handleWebcamLive(req, env) {
     return stub.fetch(req);
   }
 
-  if (url.pathname === "/webcam-live/room") {
+  if (url.pathname === "/webcam-live/room" || url.pathname === "/room") {
     return new Response(HTML_ROOM, {
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
     });
