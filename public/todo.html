@@ -953,8 +953,7 @@
               cb.checked = false;
               try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
               const msg = (e && e.message) ? String(e.message) : "";
-              showNotify("Aufgaben", "Hinweis
-Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
+              showNotify("Aufgaben", "Hinweis\nPush konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
             }finally{
               cb.disabled = false;
             }
@@ -1067,8 +1066,7 @@ Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
           const ok = await pushToPhone(msg);
           if (!ok){
             // Fallback: lokale Notification
-            await showNotify("Aufgaben", "Erinnerung
-" + msg, "todo_created_" + task.id);
+            await showNotify("Aufgaben", "Erinnerung\n" + msg, "todo_created_" + task.id);
           }
       }
 
