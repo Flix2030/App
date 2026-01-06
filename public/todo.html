@@ -609,7 +609,7 @@
 
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <div style="font-weight:900;">Push-Erinnerungen</div>
-          <button id="push-enable-btn" class="btn btn-small btn-secondary" type="button">🔔 Push aktivieren</button>
+          <label class="setting-row" style="display:flex;align-items:center;gap:10px;cursor:pointer;"><input type="checkbox" id="push-receive-toggle" /><span>Benachrichtigungen erhalten</span></label>
         </div>
         <div style="color:rgba(255,255,255,0.70); font-size:12px; line-height:1.35; margin-top:-6px;">
           Aktivier das <b>nur auf deinem Handy</b> (in der installierten PWA). Danach kommen Erinnerungen immer dort an.
@@ -831,7 +831,7 @@
         }
       }
 
-      async function ensurePushSubscribed(){
+      async function ensurePushSubscribed(deviceId){
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("push_not_supported");
         if (!VAPID_PUBLIC_KEY){
           await fetchVapidPublicKey();
@@ -857,7 +857,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ subscription: sub })
+          body: JSON.stringify({ subscription: sub, deviceId: String(deviceId||""), enabled: true })
         });
         const j = await r.json().catch(()=>null);
         if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "register_failed");
@@ -883,31 +883,77 @@
         }
       }
 
-      function bindPushButton(){
-        const btn = document.getElementById("push-enable-btn");
-        if (!btn) return;
+      function getOrCreateDeviceId(){
+        try{
+          const k = "todo_push_device_id";
+          let id = localStorage.getItem(k);
+          if (id && typeof id === "string" && id.length >= 8) return id;
+          // random but stable for this browser profile
+          id = "dev_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+          localStorage.setItem(k, id);
+          return id;
+        }catch{
+          return "dev_" + Math.random().toString(16).slice(2);
+        }
+      }
+
+      async function setServerPushEnabled(deviceId, enabled){
+        try{
+          const r = await fetch("/api/push/setEnabled", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ deviceId, enabled: !!enabled })
+          });
+          const j = await r.json().catch(()=>null);
+          return !!(r.ok && j && j.ok === true);
+        }catch{
+          return false;
+        }
+      }
+
+      function bindPushToggle(){
+        const cb = document.getElementById("push-receive-toggle");
+        if (!cb) return;
 
         if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)){
-          btn.style.display = "none";
+          cb.disabled = true;
+          cb.checked = false;
           return;
         }
 
-        btn.addEventListener("click", async ()=>{
-          btn.disabled = true;
-          const old = btn.textContent;
-          btn.textContent = "Aktiviere…";
-          try{
-            await ensurePushSubscribed();
-            btn.textContent = "✅ Push aktiv";
-          }catch(e){
-            btn.textContent = old;
-            const msg = (e && e.message) ? String(e.message) : "";
-            showNotify("Hinweis", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
-          }finally{
-            btn.disabled = false;
+        // load saved preference
+        try{
+          cb.checked = localStorage.getItem("todo_push_receive") === "1";
+        }catch{}
+
+        cb.addEventListener("change", async ()=>{
+          const want = !!cb.checked;
+          try{ localStorage.setItem("todo_push_receive", want ? "1" : "0"); }catch{}
+
+          const deviceId = getOrCreateDeviceId();
+
+          if (want){
+            cb.disabled = true;
+            try{
+              await ensurePushSubscribed(deviceId); // registers + enables
+              await setServerPushEnabled(deviceId, true);
+              showNotify("Erinnerung", "Benachrichtigungen sind aktiv.", "push_on");
+            }catch(e){
+              cb.checked = false;
+              try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
+              const msg = (e && e.message) ? String(e.message) : "";
+              showNotify("Hinweis", "Push konnte nicht aktiviert werden." + (msg? " ("+msg+")":"") , "push_fail");
+            }finally{
+              cb.disabled = false;
+            }
+          }else{
+            // disable on server (so broadcast won't include this device)
+            await setServerPushEnabled(deviceId, false);
           }
         });
       }
+
 
 
             function pad2(n){ return String(n).padStart(2,"0"); }
@@ -1776,7 +1822,7 @@ function promptText(msg, placeholder, onOk){
 
       // ===== Bind UI =====
       function bindUI(){
-        bindPushButton();
+        bindPushToggle();
         // Create (Objekt + Picker)
         document.getElementById("add-task-btn").addEventListener("click", createTaskFromDraft);
 

@@ -239,6 +239,16 @@ async function safeReadJson(req) {
   try { return await req.json(); } catch { return null; }
 }
 
+function simpleHash(str){
+  // Stable small id (non-crypto) for device fallback
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
 function pickProfileId(url, body) {
   // minimal-fix: profileId aus Query oder Body
   return (
@@ -296,22 +306,54 @@ function requireEnv(env, key){
 }
 
 async function d1GetPrimarySubscription(env){
-  if (!env.DB) return null;
-  const row = await env.DB.prepare(
-    "SELECT json FROM push_subscriptions WHERE id = 'primary' LIMIT 1"
-  ).first();
-  if (!row?.json) return null;
-  try { return JSON.parse(row.json); } catch { return null; }
+  // deprecated
+  return null;
 }
 
-async function d1UpsertPrimarySubscription(env, subscription){
+async function ensurePushTable(env){
   if (!env.DB) throw new Error("DB not bound");
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS push_subscriptions_v2 (" +
+      "device_id TEXT PRIMARY KEY, " +
+      "json TEXT NOT NULL, " +
+      "enabled INTEGER NOT NULL DEFAULT 1, " +
+      "updated_at TEXT NOT NULL" +
+    ")"
+  ).run();
+}
+
+async function d1UpsertSubscription(env, deviceId, subscription, enabled = 1){
+  await ensurePushTable(env);
   const now = new Date().toISOString();
   await env.DB.prepare(
-    "INSERT INTO push_subscriptions (id, json, updated_at) VALUES ('primary', ?, ?) " +
-    "ON CONFLICT(id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-  ).bind(JSON.stringify(subscription), now).run();
+    "INSERT INTO push_subscriptions_v2 (device_id, json, enabled, updated_at) VALUES (?, ?, ?, ?) " +
+    "ON CONFLICT(device_id) DO UPDATE SET json=excluded.json, enabled=excluded.enabled, updated_at=excluded.updated_at"
+  ).bind(deviceId, JSON.stringify(subscription), enabled ? 1 : 0, now).run();
 }
+
+async function d1SetSubscriptionEnabled(env, deviceId, enabled){
+  await ensurePushTable(env);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE push_subscriptions_v2 SET enabled = ?, updated_at = ? WHERE device_id = ?"
+  ).bind(enabled ? 1 : 0, now, deviceId).run();
+}
+
+async function d1ListEnabledSubscriptions(env){
+  await ensurePushTable(env);
+  const res = await env.DB.prepare(
+    "SELECT device_id, json FROM push_subscriptions_v2 WHERE enabled = 1"
+  ).all();
+  const out = [];
+  for (const row of (res?.results || [])){
+    try{
+      const sub = JSON.parse(row.json);
+      if (sub?.endpoint && sub?.keys?.p256dh && sub?.keys?.auth) out.push({ deviceId: row.device_id, subscription: sub });
+    }catch{}
+  }
+  return out;
+}
+
 
 async function d1DeletePrimarySubscription(env){
   if (!env.DB) return;
@@ -416,9 +458,24 @@ async function handleApi(req, env) {
       if (!sub || typeof sub !== "object") return json({ error: "subscription_required" }, 400);
       if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) return json({ error: "bad_subscription" }, 400);
 
-      await d1UpsertPrimarySubscription(env, sub);
-      return json({ ok: true });
+      const deviceId = String(body?.deviceId || body?.device_id || "").trim() || ("dev_" + simpleHash(sub.endpoint));
+      const enabled = body?.enabled === false ? 0 : 1;
+      await d1UpsertSubscription(env, deviceId, sub, enabled);
+      return json({ ok: true, deviceId });
     }
+
+
+    // --- PUSH: enable/disable notifications for this device ---
+    if (path === "/api/push/setEnabled" && req.method === "POST") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+      const body = await safeReadJson(req);
+      const deviceId = String(body?.deviceId || body?.device_id || "").trim();
+      if (!deviceId) return json({ error: "deviceId_required" }, 400);
+      const enabled = body?.enabled ? 1 : 0;
+      await d1SetSubscriptionEnabled(env, deviceId, enabled);
+      return json({ ok: true, deviceId, enabled: !!enabled });
+    }
+
 
     
     // --- PUSH: expose public key for the frontend (NOT secret) ---
@@ -428,18 +485,26 @@ async function handleApi(req, env) {
       return json({ ok: true, publicKey: pk });
     }
 
-// --- PUSH: send a push to your stored phone subscription ---
+// --- PUSH: send a push to all enabled subscriptions ---
     if (path === "/api/push/send" && req.method === "POST") {
       const body = await safeReadJson(req);
       const todoName = String(body?.name || body?.todoName || body?.body || body?.message || "").trim();
       if (!todoName) return json({ error: "name_required" }, 400);
 
-      const sub = await d1GetPrimarySubscription(env);
-      if (!sub) return json({ error: "no_subscription_registered" }, 400);
+      const subs = await d1ListEnabledSubscriptions(env);
+      if (!subs.length) return json({ error: "no_subscription_registered" }, 400);
 
       try {
-        await sendWebPush(env, sub, todoName);
-        return json({ ok: true });
+        let sent = 0;
+        for (const entry of subs) {
+          try {
+            await sendWebPush(env, entry.subscription, todoName);
+            sent++;
+          } catch (e) {
+            console.log("PUSH_SEND_ONE_FAIL", entry.deviceId, String(e?.message || e));
+          }
+        }
+        return json({ ok: true, sent, total: subs.length });
       } catch (e) {
         console.log("PUSH_SEND_ERROR", String(e?.message || e));
         return json({ ok: false, error: "push_send_failed", message: String(e?.message || e) }, 500);
