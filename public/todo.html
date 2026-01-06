@@ -562,6 +562,7 @@
         <button id="edit-mode-toggle" class="btn btn-small btn-secondary">Bearbeiten</button>
       </div>
       <div class="right">
+        <button id="push-enable-btn" class="btn btn-small btn-secondary" type="button">🔔 Push aktivieren</button>
         <button id="open-settings-btn" class="btn btn-small btn-secondary">⚙️ Einstellungen</button>
       </div>
     </div>
@@ -782,7 +783,109 @@
         }
       }
 
-      function pad2(n){ return String(n).padStart(2,"0"); }
+
+      // ===== Cloudflare Web Push (send to your phone PWA) =====
+      // Set your VAPID PUBLIC key (Worker generates the matching private key)
+      const VAPID_PUBLIC_KEY = "__VAPID_PUBLIC_KEY_HERE__";
+      let pushReady = false;
+
+      function urlBase64ToUint8Array(base64String){
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        let base64 = base64String + padding;
+        base64 = base64.replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+        return outputArray;
+      }
+
+      async function ensureServiceWorker(){
+        if (!("serviceWorker" in navigator)) return null;
+        try{
+          const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+          await navigator.serviceWorker.ready;
+          return reg;
+        }catch(e){
+          return null;
+        }
+      }
+
+      async function ensurePushSubscribed(){
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("push_not_supported");
+        if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes("__VAPID")) throw new Error("missing_vapid_public_key");
+
+        const permOk = await ensureNotifyPermission();
+        if (!permOk) throw new Error("notify_denied");
+
+        const reg = await ensureServiceWorker();
+        if (!reg) throw new Error("sw_failed");
+
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub){
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+        }
+
+        // Register subscription on Cloudflare (this is the "only my phone" target)
+        const r = await fetch("/api/push/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ subscription: sub })
+        });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "register_failed");
+
+        pushReady = true;
+        return true;
+      }
+
+      async function pushToPhone(message){
+        // Sends a push to THE subscription stored for your account/device.
+        try{
+          if (!pushReady) await ensurePushSubscribed();
+          const r = await fetch("/api/push/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ body: String(message || "") })
+          });
+          const j = await r.json().catch(()=>null);
+          return !!(r.ok && j && j.ok === true);
+        }catch(e){
+          return false;
+        }
+      }
+
+      function bindPushButton(){
+        const btn = document.getElementById("push-enable-btn");
+        if (!btn) return;
+
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)){
+          btn.style.display = "none";
+          return;
+        }
+
+        btn.addEventListener("click", async ()=>{
+          btn.disabled = true;
+          const old = btn.textContent;
+          btn.textContent = "Aktiviere…";
+          try{
+            await ensurePushSubscribed();
+            btn.textContent = "✅ Push aktiv";
+          }catch(e){
+            btn.textContent = old;
+            showNotify("Hinweis", "Push konnte nicht aktiviert werden.", "push_fail");
+          }finally{
+            btn.disabled = false;
+          }
+        });
+      }
+
+
+            function pad2(n){ return String(n).padStart(2,"0"); }
       function fmtDateTime(ms){
         const d = new Date(ms);
         return pad2(d.getDate()) + "." + pad2(d.getMonth()+1) + "." + d.getFullYear() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
@@ -867,24 +970,22 @@
         task.remindEnabled = false;
         scheduleSave();
       }
-
       function remindTask(task){
         if (!task) return;
-
-        // default: next due time, else in 10 minutes
-        let next = parseTaskNextDueMs(task);
-        if (!next) next = Date.now() + 10*60*1000;
-
-        showConfirm("Erinnerung setzen für: " + fmtDateTime(next) + " ?", ()=>{
-          setTaskReminder(task, next);
-          showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_set_" + task.id);
-        });
+        const msg = String(task.title || "Aufgabe");
+        // 1) Push to your phone (Cloudflare)
+        pushToPhone(msg);
+        // 2) Local fallback (if push not set)
+        showNotify("Erinnerung", msg, "todo_rem_" + task.id);
       }
 
       async function notifyTaskCreated(task){
         if (!task) return;
-        const body = (task.title || "Aufgabe") + (task.person ? (" • " + task.person) : "");
-        await showNotify("📝 To-Do erstellt", body, "todo_created_" + task.id);
+        const msg = String(task.title || "Aufgabe");
+        // 1) Push to your phone (Cloudflare)
+        pushToPhone(msg);
+        // 2) Local fallback
+        await showNotify("Erinnerung", msg, "todo_created_" + task.id);
       }
 
 
@@ -1659,6 +1760,7 @@ function promptText(msg, placeholder, onOk){
 
       // ===== Bind UI =====
       function bindUI(){
+        bindPushButton();
         // Create (Objekt + Picker)
         document.getElementById("add-task-btn").addEventListener("click", createTaskFromDraft);
 

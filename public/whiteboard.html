@@ -1,497 +1,1235 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Whiteboards</title>
-  <link rel="stylesheet" href="/app.css">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Lernen – Whiteboard</title>
   <style>
-    :root{--bg0:#05080f;--bg1:#070c16;--panel:rgba(17,24,39,.72);--border:rgba(255,255,255,.10);--text:rgba(255,255,255,.92);--muted:rgba(255,255,255,.62);--accent:#3b82f6;}
-    body{margin:0;color:var(--text);background:radial-gradient(1200px 800px at 20% 10%, #0b1632 0%, var(--bg0) 40%, var(--bg1) 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
-    .wrap{max-width:1400px;margin:0 auto;padding:14px;}
-    header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-    .btn{border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer}
-    .btn:hover{background:rgba(255,255,255,.09)}
-    .select{border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;min-width:220px}
-    .layout{display:grid;grid-template-columns: 280px 1fr 340px;gap:10px;align-items:start}
-    @media (max-width: 980px){ .layout{grid-template-columns: 1fr; } }
-    .panel{border:1px solid var(--border);background:var(--panel);border-radius:16px;backdrop-filter: blur(10px);overflow:hidden}
-    .panel h3{margin:0;padding:12px 12px;border-bottom:1px solid var(--border);font-size:14px;color:var(--muted);font-weight:700}
-    .list{padding:10px;display:flex;flex-direction:column;gap:8px}
-    .item{border:1px solid var(--border);background:rgba(255,255,255,.06);padding:10px;border-radius:14px;cursor:pointer}
-    .item.active{outline:2px solid rgba(59,130,246,.6)}
-    .item b{display:block;margin-bottom:4px}
-    .muted{color:var(--muted);font-size:12px}
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px;border-bottom:1px solid var(--border)}
-    .stageWrap{height:74vh}
-    .stage{position:relative;height:100%;border-top:1px solid transparent;background:rgba(0,0,0,.20)}
-    .block{position:absolute;min-width:160px;min-height:90px;border:1px solid var(--border);background:rgba(255,255,255,.06);border-radius:14px;overflow:hidden}
-    .blockHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:move;background:rgba(0,0,0,.18)}
-    .blockHeader span{font-size:12px;color:var(--muted);font-weight:700}
-    .blockBody{padding:10px}
-    .editable{outline:none;white-space:pre-wrap;line-height:1.35}
-    table{border-collapse:collapse;width:100%}
-    td,th{border:1px solid rgba(255,255,255,.18);padding:6px;min-width:60px}
-    td{background:rgba(0,0,0,.15)}
-    .chat{height:74vh;display:flex;flex-direction:column}
-    .msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
-    .m{max-width:92%;padding:9px 10px;border-radius:12px;border:1px solid var(--border);white-space:pre-wrap;line-height:1.35}
-    .me{align-self:flex-end;background:rgba(59,130,246,.18)}
-    .ai{align-self:flex-start;background:rgba(255,255,255,.06)}
-    .bar{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}
-    textarea{flex:1;resize:none;min-height:44px;max-height:160px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);padding:10px 12px;border-radius:12px;outline:none}
-    .small{font-size:12px;color:var(--muted)}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input[type=file]{display:none}
+    :root{
+      --bg:#0b0b0d;
+      --panel:#121218cc;
+      --panel2:#171720;
+      --text:#eaeaf2;
+      --muted:#a8a8b8;
+      --accent:#7c5cff;
+      --border:#2a2a38;
+      --shadow: 0 10px 30px rgba(0,0,0,.45);
+      --radius:16px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 900px at 50% 0%, #151526, var(--bg));
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      overflow:hidden;
+    }
+
+    /* top bar */
+    .topbar{
+      position:fixed; left:0; right:0; top:0;
+      padding: calc(10px + var(--safe-top)) 12px 10px;
+      display:flex; align-items:center; gap:10px;
+      background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0));
+      z-index:50;
+      pointer-events:none;
+    }
+    .topbar > *{pointer-events:auto;}
+    .btn{
+      border:1px solid var(--border);
+      background: rgba(18,18,24,.72);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      font-weight:700;
+    }
+    .btn:active{transform: translateY(1px);}
+    .btn.secondary{font-weight:700; color:var(--muted)}
+    .title{
+      flex:1;
+      min-width:0;
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--border);
+      background: rgba(18,18,24,.55);
+      box-shadow: var(--shadow);
+    }
+    .title b{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .title .pill{
+      margin-left:auto;
+      font-size:12px; color:var(--muted);
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background: rgba(0,0,0,.2);
+      white-space:nowrap;
+    }
+    select{
+      background: rgba(0,0,0,.25);
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius: 10px;
+      padding:8px 10px;
+      outline:none;
+    }
+
+    /* canvas */
+    #stage{
+      position:absolute; inset:0;
+      width:100vw; height:100vh;
+      display:block;
+    }
+
+    /* bottom toolbar */
+    .toolbar{
+      position:fixed;
+      left:10px; right:10px;
+      bottom: calc(10px + var(--safe-bottom));
+      z-index:60;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 10px;
+      border-radius: 18px;
+      background: rgba(16,16,22,.82);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .toolgroup{display:flex; gap:8px; align-items:center;}
+    .tool{
+      width:44px; height:44px;
+      display:grid; place-items:center;
+      border-radius: 14px;
+      border:1px solid transparent;
+      background: rgba(255,255,255,.06);
+      cursor:pointer;
+      user-select:none;
+      font-weight:900;
+      color: var(--text);
+    }
+    .tool.active{
+      border-color: rgba(124,92,255,.9);
+      box-shadow: 0 0 0 3px rgba(124,92,255,.15) inset;
+      background: rgba(124,92,255,.18);
+    }
+    .divider{width:1px; height:34px; background: var(--border); opacity:.9; margin:0 2px;}
+    .sizes button{
+      width:44px; height:44px;
+      border-radius:14px;
+      border:1px solid transparent;
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:900;
+    }
+    .sizes button.active{
+      border-color: rgba(124,92,255,.9);
+      background: rgba(124,92,255,.18);
+    }
+
+    /* color panel */
+    .colorPanel{
+      position:fixed;
+      right:14px;
+      bottom: calc(78px + var(--safe-bottom));
+      width: 220px;
+      background: rgba(16,16,22,.92);
+      border:1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 10px;
+      display:none;
+      z-index:70;
+      backdrop-filter: blur(10px);
+    }
+    .colorPanel.show{display:block;}
+    .swatches{
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:10px;
+      padding:8px 6px 10px;
+    }
+    .swatch{
+      width:30px; height:30px;
+      border-radius:999px;
+      border:2px solid rgba(255,255,255,.10);
+      cursor:pointer;
+    }
+    .swatch.selected{border-color: rgba(255,255,255,.8);}
+    .row{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding: 6px;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .row label{color:var(--muted); font-size:12px; font-weight:700;}
+    .row input[type="range"]{width: 120px;}
+    .row input[type="color"]{
+      width: 34px; height: 28px; border:none; background:transparent; padding:0;
+    }
+
+    /* inline editor */
+    #textEditor{
+      position:absolute;
+      display:none;
+      min-width: 80px;
+      max-width: min(720px, 92vw);
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(10,10,14,.9);
+      color: var(--text);
+      outline:none;
+      resize:none;
+      box-shadow: var(--shadow);
+      z-index:80;
+    }
+
+    /* help toast */
+    #toast{
+      position:fixed; left:50%; transform:translateX(-50%);
+      top: calc(64px + var(--safe-top));
+      background: rgba(16,16,22,.86);
+      border:1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      display:none;
+      z-index:90;
+    }
+    #toast.show{display:block;}
+
+    /* small screens */
+    @media (max-width: 520px){
+      .topbar{gap:8px; padding-left:10px; padding-right:10px;}
+      .title{padding:10px;}
+      .title .pill{display:none;}
+      .toolbar{left:8px; right:8px; gap:8px; padding:10px;}
+      .tool, .sizes button{width:42px; height:42px; border-radius: 13px;}
+      .colorPanel{right:10px; width: 210px;}
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="row">
-        <button class="btn" id="back">← Lernen</button>
-        <select class="select" id="profileSelect"></select>
-        <button class="btn" id="newProfile">+ Benutzer</button>
-      </div>
-      <div class="row">
-        <button class="btn" id="save">💾 Speichern</button>
-        <span class="small" id="status"></span>
-      </div>
-    </header>
+  <div class="topbar">
+    <button class="btn secondary" id="backBtn">← Zurück</button>
 
-    <div class="layout">
-      <div class="panel">
-        <h3>WHITEBOARDS</h3>
-        <div class="toolbar">
-          <button class="btn" id="newBoard">+ Whiteboard</button>
-          <button class="btn" id="renameBoard">✎</button>
-          <button class="btn" id="deleteBoard">🗑️</button>
-        </div>
-        <div class="list" id="boardList"></div>
-      </div>
+    <div class="title">
+      <b id="boardTitle">Whiteboard</b>
+      <select id="boardSelect" title="Whiteboard auswählen"></select>
+      <button class="btn" id="newBoardBtn" title="Neues Whiteboard">＋</button>
+      <span class="pill" id="statusPill">lokal</span>
+    </div>
 
-      <div class="panel">
-        <h3>BOARD</h3>
-        <div class="toolbar">
-          <button class="btn" id="addText">+ Text</button>
-          <button class="btn" id="addTable">+ Tabelle</button>
-          <button class="btn" id="clearSel">Auswahl löschen</button>
-        </div>
-        <div class="stageWrap">
-          <div class="stage" id="stage"></div>
-        </div>
-      </div>
+    <button class="btn" id="saveBtn">Speichern</button>
+  </div>
 
-      <div class="panel chat">
-        <h3>KI</h3>
-        <div class="toolbar">
-          <button class="btn" id="attachBtn">📎 Datei</button>
-          <button class="btn" id="toBoard">⬅️ Auf Board</button>
-          <input type="file" id="file" />
-        </div>
-        <div class="msgs" id="msgs"></div>
-        <div class="bar">
-          <textarea id="input" placeholder="z.B.: Mach mir eine Lern-Zusammenfassung als Tabelle."></textarea>
-          <button class="btn" id="send">Senden</button>
-        </div>
-      </div>
+  <canvas id="stage"></canvas>
+  <textarea id="textEditor" rows="1"></textarea>
+
+  <div class="colorPanel" id="colorPanel">
+    <div class="swatches" id="swatches"></div>
+    <div class="row">
+      <label>Strich</label>
+      <input id="strokeRange" type="range" min="1" max="18" value="3" />
+    </div>
+    <div class="row">
+      <label>Farbe</label>
+      <input id="colorPicker" type="color" value="#ff3bd4"/>
     </div>
   </div>
 
+  <div class="toolbar" role="toolbar" aria-label="Whiteboard Werkzeuge">
+    <div class="toolgroup">
+      <div class="tool active" data-tool="select" title="Auswählen (V)">↖</div>
+      <div class="tool" data-tool="hand" title="Freihand (P)">✎</div>
+      <div class="tool" data-tool="arrow" title="Pfeil (A)">↗</div>
+      <div class="tool" data-tool="rect" title="Kasten (R)">▭</div>
+      <div class="tool" data-tool="text" title="Text (T)">T</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toolgroup sizes" aria-label="Textgröße">
+      <button data-size="16" title="S">S</button>
+      <button data-size="22" class="active" title="M">M</button>
+      <button data-size="30" title="L">L</button>
+      <button data-size="40" title="XL">XL</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toolgroup">
+      <div class="tool" id="colorBtn" title="Farbe/Strich">🎨</div>
+      <div class="tool" id="groupBtn" title="Gruppieren">▦</div>
+      <div class="tool" id="ungroupBtn" title="Gruppe lösen">▤</div>
+      <div class="tool" id="deleteBtn" title="Löschen (Entf)">🗑</div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
 <script>
-const $ = s=>document.querySelector(s);
-const statusEl = $("#status");
-const profileSelect = $("#profileSelect");
-const boardList = $("#boardList");
-const stage = $("#stage");
-const msgs = $("#msgs");
-const input = $("#input");
-const fileInput = $("#file");
+(() => {
+  // ---------- helpers ----------
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const uid = () => "id_" + Math.random().toString(36).slice(2,10) + "_" + Date.now().toString(36);
+  const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
+  const nowISO = () => new Date().toISOString();
 
-let state = { profiles: [] };
-let activeProfileId = localStorage.getItem("learn_active_profile") || null;
-let activeBoardId = localStorage.getItem("learn_active_board") || null;
-let selectedBlockId = null;
-let lastAiAnswer = "";
-let attachedText = "";
-
-function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); }
-
-async function apiGet(){
-  const r = await fetch("/api/learn/data", { cache: "no-store" });
-  const j = await r.json();
-  if(!r.ok) throw new Error(j?.error || "api_error");
-  return j.data || {profiles:[]};
-}
-async function apiPut(data){
-  const r = await fetch("/api/learn/data", { method:"PUT", headers:{ "content-type":"application/json" }, body: JSON.stringify(data) });
-  const j = await r.json();
-  if(!r.ok) throw new Error(j?.error || "api_error");
-  return true;
-}
-function ensureDefaults(data){
-  if(!data || typeof data!=="object") data = {profiles:[]};
-  if(!Array.isArray(data.profiles)) data.profiles = [];
-  if(data.profiles.length===0){
-    data.profiles.push({ id: uid(), name:"Benutzer", boards:[], lastBoardId:null });
+  function showToast(msg, ms=1400){
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._tm);
+    showToast._tm = setTimeout(()=>t.classList.remove("show"), ms);
   }
-  for(const p of data.profiles){
-    if(!p.id) p.id = uid();
-    if(!p.name) p.name = "Benutzer";
-    if(!Array.isArray(p.boards)) p.boards = [];
-    if(p.boards.length===0){
-      p.boards.push({ id: uid(), name:"Whiteboard 1", blocks:[], createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
-    }
-    for(const b of p.boards){
-      if(!b.id) b.id = uid();
-      if(!b.name) b.name = b.title || "Whiteboard";
-      if(!Array.isArray(b.blocks)) b.blocks = [];
-      if(!b.createdAt) b.createdAt = new Date().toISOString();
-      if(!b.updatedAt) b.updatedAt = new Date().toISOString();
-    }
+
+  // ---------- API (same style as Packliste) ----------
+  async function apiGet(path){
+    const r = await fetch(path, { credentials:"include" });
+    const txt = await r.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; } catch(e){ data = { raw: txt }; }
+    if(!r.ok) throw Object.assign(new Error("HTTP "+r.status), {status:r.status, data});
+    return data;
   }
-  return data;
-}
-function setStatus(t){ statusEl.textContent = t||""; }
-
-function currentProfile(){
-  return state.profiles.find(p=>p.id===activeProfileId) || state.profiles[0];
-}
-function currentBoard(){
-  const p = currentProfile();
-  return (p.boards||[]).find(b=>b.id===activeBoardId) || null;
-}
-
-function renderProfiles(){
-  profileSelect.innerHTML = "";
-  for(const p of state.profiles){
-    const opt = document.createElement("option");
-    opt.value = p.id; opt.textContent = p.name;
-    profileSelect.appendChild(opt);
-  }
-  if(!activeProfileId || !state.profiles.some(p=>p.id===activeProfileId)) activeProfileId = state.profiles[0].id;
-  profileSelect.value = activeProfileId;
-}
-
-function renderBoardList(){
-  boardList.innerHTML = "";
-  const p = currentProfile();
-  const boards = p.boards || [];
-  if(boards.length===0){
-    const d = document.createElement("div");
-    d.className="muted";
-    d.textContent="Noch kein Whiteboard.";
-    boardList.appendChild(d);
-    activeBoardId = null;
-    localStorage.setItem("learn_active_board","");
-    renderStage();
-    return;
-  }
-  if(!activeBoardId || !boards.some(b=>b.id===activeBoardId)) activeBoardId = p.lastBoardId || boards[0].id;
-  p.lastBoardId = activeBoardId;
-  localStorage.setItem("learn_active_board", activeBoardId);
-
-  for(const b of boards){
-    const it = document.createElement("div");
-    it.className = "item" + (b.id===activeBoardId ? " active" : "");
-    it.innerHTML = "<b>"+escapeHtml(b.title || "Whiteboard")+"</b><div class='muted'>"+(b.blocks?.length||0)+" Blöcke</div>";
-    it.addEventListener("click", ()=>{
-      activeBoardId = b.id;
-      p.lastBoardId = b.id;
-      localStorage.setItem("learn_active_board", activeBoardId);
-      renderBoardList();
-      renderStage();
+  async function apiPut(path, body){
+    const r = await fetch(path, {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(body),
+      credentials:"include"
     });
-    boardList.appendChild(it);
+    const txt = await r.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; } catch(e){ data = { raw: txt }; }
+    if(!r.ok) throw Object.assign(new Error("HTTP "+r.status), {status:r.status, data});
+    return data;
   }
-}
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>\"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
-}
+  // ---------- state ----------
+  // Stored server-side per user_id:
+  // { version:1, boards:[{id,name,elements:[]}], activeBoardId, updatedAt }
+  const DEFAULT_COLORS = [
+    "#ffffff","#c9c9d6","#ff3bd4","#a855f7","#7c5cff",
+    "#3b82f6","#22c55e","#facc15","#fb923c","#ef4444",
+    "#14b8a6","#60a5fa","#f472b6","#10b981","#f97316"
+  ];
 
-function renderStage(){
-  stage.innerHTML = "";
-  selectedBlockId = null;
-  const b = currentBoard();
-  if(!b) return;
+  const state = {
+    userId: localStorage.getItem("learn_userId") || "u_default",
+    data: null,
+    activeBoardId: null,
+    tool: "select",
+    color: localStorage.getItem("wb_color") || "#ff3bd4",
+    stroke: Number(localStorage.getItem("wb_stroke") || 3),
+    fontSize: Number(localStorage.getItem("wb_fontSize") || 22),
+    isDirty: false
+  };
 
-  for(const bl of b.blocks){
-    const el = document.createElement("div");
-    el.className = "block";
-    el.dataset.id = bl.id;
-    el.style.left = (bl.x||40) + "px";
-    el.style.top  = (bl.y||40) + "px";
-    el.style.width = (bl.w||260) + "px";
-    el.style.height = (bl.h||160) + "px";
+  function ensureData(){
+    if(!state.data || typeof state.data !== "object"){
+      state.data = {
+        version: 1,
+        boards: [{ id: uid(), name: "Whiteboard 1", elements: [] }],
+        activeBoardId: null,
+        updatedAt: nowISO()
+      };
+    }
+    if(!Array.isArray(state.data.boards) || state.data.boards.length === 0){
+      state.data.boards = [{ id: uid(), name: "Whiteboard 1", elements: [] }];
+    }
+    if(!state.data.activeBoardId || !state.data.boards.find(b=>b.id===state.data.activeBoardId)){
+      state.data.activeBoardId = state.data.boards[0].id;
+    }
+    state.activeBoardId = state.data.activeBoardId;
+  }
 
-    const head = document.createElement("div");
-    head.className = "blockHeader";
-    head.innerHTML = "<span>"+(bl.type==="table" ? "TABELLE" : "TEXT")+"</span><button class='btn' style='padding:6px 8px;border-radius:10px'>✕</button>";
-    head.querySelector("button").addEventListener("click",(e)=>{ e.stopPropagation(); deleteBlock(bl.id); });
+  function currentBoard(){
+    ensureData();
+    return state.data.boards.find(b=>b.id===state.activeBoardId) || state.data.boards[0];
+  }
 
-    const body = document.createElement("div");
-    body.className = "blockBody";
+  // ---------- canvas & rendering ----------
+  const canvas = $("#stage");
+  const ctx = canvas.getContext("2d");
+  const DPR = () => Math.max(1, Math.min(2.5, window.devicePixelRatio || 1));
 
-    if(bl.type==="table"){
-      const table = document.createElement("table");
-      const rows = bl.rows||3, cols = bl.cols||3;
-      if(!Array.isArray(bl.cells)) bl.cells = Array.from({length:rows},()=>Array.from({length:cols},()=> ""));
-      // normalize size
-      while(bl.cells.length<rows) bl.cells.push(Array.from({length:cols},()=> ""));
-      bl.cells = bl.cells.slice(0,rows).map(r=>{
-        const rr = Array.isArray(r)? r.slice(0,cols) : [];
-        while(rr.length<cols) rr.push("");
-        return rr;
-      });
+  function resize(){
+    const dpr = DPR();
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+  window.addEventListener("resize", resize);
 
-      for(let r=0;r<rows;r++){
-        const tr = document.createElement("tr");
-        for(let c=0;c<cols;c++){
-          const td = document.createElement("td");
-          td.contentEditable = "true";
-          td.className = "editable";
-          td.textContent = bl.cells[r][c] || "";
-          td.addEventListener("input", ()=>{ bl.cells[r][c] = td.textContent || ""; });
-          tr.appendChild(td);
-        }
-        table.appendChild(tr);
+  // selection
+  let selectedIds = new Set();
+  let hoverId = null;
+
+  // interaction state
+  let pointerDown = false;
+  let startPt = null;
+  let dragMode = null; // "move" | "boxSelect" | "draw"
+  let tempEl = null;
+  let moveOrigin = null;
+  let movingSnapshot = null; // map id-> {x,y,...}
+  let lastPt = null;
+
+  // box selection rect
+  let selectRect = null;
+
+  function getPointerPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function markDirty(){
+    state.isDirty = true;
+    $("#statusPill").textContent = "ungespeichert";
+    $("#statusPill").style.color = "#facc15";
+  }
+  function markSaved(){
+    state.isDirty = false;
+    $("#statusPill").textContent = "gespeichert";
+    $("#statusPill").style.color = "var(--muted)";
+  }
+
+  // draw helpers
+  function setStroke(color, w){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }
+  function setFill(color){
+    ctx.fillStyle = color;
+  }
+
+  function drawArrowHead(x1,y1,x2,y2, color, w){
+    const ang = Math.atan2(y2-y1, x2-x1);
+    const len = Math.max(10, w*3.2);
+    ctx.save();
+    ctx.translate(x2,y2);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(-len, -len*0.55);
+    ctx.lineTo(-len, len*0.55);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function measureTextBox(text, fontSize){
+    ctx.save();
+    ctx.font = `${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    const lines = String(text||"").split("\n");
+    let w = 0;
+    for(const ln of lines) w = Math.max(w, ctx.measureText(ln).width);
+    const lineH = Math.round(fontSize*1.25);
+    const h = lines.length * lineH;
+    ctx.restore();
+    return {w, h, lineH};
+  }
+
+  function draw(){
+    ensureData();
+    const b = currentBoard();
+
+    // background
+    ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
+    // subtle dots grid
+    const g = 26;
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = "#ffffff";
+    for(let y=0; y<window.innerHeight; y+=g){
+      for(let x=0; x<window.innerWidth; x+=g){
+        ctx.fillRect(x, y, 1, 1);
       }
-      body.appendChild(table);
-    } else {
-      const ed = document.createElement("div");
-      ed.contentEditable = "true";
-      ed.className = "editable";
-      ed.textContent = bl.text || "";
-      ed.addEventListener("input", ()=>{ bl.text = ed.textContent || ""; });
-      body.appendChild(ed);
+    }
+    ctx.restore();
+
+    // elements
+    for(const el of b.elements){
+      const isSel = selectedIds.has(el.id);
+      renderElement(el, isSel);
     }
 
-    el.appendChild(head);
-    el.appendChild(body);
+    // temp element while drawing
+    if(tempEl){
+      renderElement(tempEl, false, true);
+    }
 
-    el.addEventListener("mousedown", ()=>{ selectedBlockId = bl.id; });
-
-    makeDraggable(el, head, bl);
-    stage.appendChild(el);
+    // box selection
+    if(selectRect){
+      ctx.save();
+      ctx.strokeStyle = "rgba(124,92,255,.9)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6,6]);
+      ctx.strokeRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
+      ctx.fillStyle = "rgba(124,92,255,.10)";
+      ctx.fillRect(selectRect.x, selectRect.y, selectRect.w, selectRect.h);
+      ctx.restore();
+    }
   }
-}
 
-function makeDraggable(el, handle, bl){
-  let startX=0,startY=0,origX=0,origY=0,drag=false;
+  function renderElement(el, isSelected, isTemp=false){
+    const color = el.color || "#fff";
+    const stroke = el.stroke || 3;
 
-  handle.addEventListener("mousedown",(e)=>{
-    drag=true;
-    startX=e.clientX; startY=e.clientY;
-    origX=bl.x||0; origY=bl.y||0;
-    e.preventDefault();
+    if(el.type === "rect"){
+      ctx.save();
+      const w = el.w || 10, h = el.h || 10;
+      setStroke(color, stroke);
+      ctx.globalAlpha = isTemp ? 0.85 : 1;
+      ctx.beginPath();
+      ctx.roundRect(el.x, el.y, w, h, 10);
+      ctx.stroke();
+      // selection outline
+      if(isSelected){
+        ctx.strokeStyle = "rgba(124,92,255,.95)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6,4]);
+        ctx.strokeRect(el.x-4, el.y-4, w+8, h+8);
+      }
+      ctx.restore();
+      return;
+    }
+
+    if(el.type === "arrow"){
+      ctx.save();
+      setStroke(color, stroke);
+      ctx.globalAlpha = isTemp ? 0.85 : 1;
+      ctx.beginPath();
+      ctx.moveTo(el.x1, el.y1);
+      ctx.lineTo(el.x2, el.y2);
+      ctx.stroke();
+      drawArrowHead(el.x1, el.y1, el.x2, el.y2, color, stroke);
+      if(isSelected){
+        ctx.strokeStyle = "rgba(124,92,255,.95)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6,4]);
+        const bb = boundsOf(el);
+        ctx.strokeRect(bb.x-4, bb.y-4, bb.w+8, bb.h+8);
+      }
+      ctx.restore();
+      return;
+    }
+
+    if(el.type === "path"){
+      ctx.save();
+      setStroke(color, stroke);
+      ctx.globalAlpha = isTemp ? 0.85 : 1;
+      const pts = el.points || [];
+      if(pts.length >= 2){
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      }
+      if(isSelected){
+        ctx.strokeStyle = "rgba(124,92,255,.95)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6,4]);
+        const bb = boundsOf(el);
+        ctx.strokeRect(bb.x-4, bb.y-4, bb.w+8, bb.h+8);
+      }
+      ctx.restore();
+      return;
+    }
+
+    if(el.type === "text"){
+      ctx.save();
+      const fs = el.fontSize || 22;
+      ctx.font = `${fs}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.textBaseline = "top";
+      ctx.fillStyle = color;
+      ctx.globalAlpha = isTemp ? 0.85 : 1;
+
+      const lines = String(el.text||"").split("\n");
+      const lineH = Math.round(fs*1.25);
+      let y = el.y;
+      for(const ln of lines){
+        ctx.fillText(ln, el.x, y);
+        y += lineH;
+      }
+      if(isSelected){
+        ctx.strokeStyle = "rgba(124,92,255,.95)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6,4]);
+        const bb = boundsOf(el);
+        ctx.strokeRect(bb.x-6, bb.y-6, bb.w+12, bb.h+12);
+      }
+      ctx.restore();
+      return;
+    }
+  }
+
+  // ---------- hit testing & bounds ----------
+  function boundsOf(el){
+    if(el.type === "rect"){
+      return { x: el.x, y: el.y, w: el.w, h: el.h };
+    }
+    if(el.type === "arrow"){
+      const x = Math.min(el.x1, el.x2);
+      const y = Math.min(el.y1, el.y2);
+      return { x, y, w: Math.abs(el.x2-el.x1), h: Math.abs(el.y2-el.y1) };
+    }
+    if(el.type === "path"){
+      const pts = el.points || [];
+      if(!pts.length) return {x:el.x||0,y:el.y||0,w:0,h:0};
+      let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+      for(const p of pts){
+        minX=Math.min(minX,p.x); minY=Math.min(minY,p.y);
+        maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y);
+      }
+      return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
+    }
+    if(el.type === "text"){
+      const box = measureTextBox(el.text||"", el.fontSize||22);
+      return { x: el.x, y: el.y, w: box.w, h: box.h };
+    }
+    return {x:0,y:0,w:0,h:0};
+  }
+
+  function ptInRect(px,py, r){
+    return px>=r.x && py>=r.y && px<=r.x+r.w && py<=r.y+r.h;
+  }
+
+  function distToSegment(px,py, x1,y1,x2,y2){
+    const A = px-x1, B = py-y1, C = x2-x1, D = y2-y1;
+    const dot = A*C + B*D;
+    const lenSq = C*C + D*D;
+    let t = lenSq ? dot/lenSq : 0;
+    t = clamp(t, 0, 1);
+    const x = x1 + t*C;
+    const y = y1 + t*D;
+    const dx = px-x, dy = py-y;
+    return Math.sqrt(dx*dx + dy*dy);
+  }
+
+  function hitTest(x,y){
+    const els = currentBoard().elements;
+    // topmost first
+    for(let i=els.length-1;i>=0;i--){
+      const el = els[i];
+      if(el.type === "arrow"){
+        const d = distToSegment(x,y, el.x1,el.y1, el.x2,el.y2);
+        if(d <= (el.stroke||3) + 6) return el.id;
+      } else if(el.type === "path"){
+        const bb = boundsOf(el);
+        if(ptInRect(x,y,{x:bb.x-8,y:bb.y-8,w:bb.w+16,h:bb.h+16})) return el.id;
+      } else {
+        const bb = boundsOf(el);
+        if(ptInRect(x,y,{x:bb.x-6,y:bb.y-6,w:bb.w+12,h:bb.h+12})) return el.id;
+      }
+    }
+    return null;
+  }
+
+  function elementsInRect(r){
+    const out = [];
+    for(const el of currentBoard().elements){
+      const bb = boundsOf(el);
+      const hit = !(bb.x > r.x+r.w || bb.x+bb.w < r.x || bb.y > r.y+r.h || bb.y+bb.h < r.y);
+      if(hit) out.push(el.id);
+    }
+    return out;
+  }
+
+  function setTool(t){
+    state.tool = t;
+    $$(".tool[data-tool]").forEach(btn => btn.classList.toggle("active", btn.dataset.tool === t));
+    const help = {
+      select: "Auswählen: klicken/ziehen. Mehrfach: Strg + Klick. Box: ziehen auf leerer Fläche.",
+      hand: "Freihand: gedrückt halten und zeichnen.",
+      arrow: "Pfeil: ziehen von Start zu Ende.",
+      rect: "Kasten: ziehen.",
+      text: "Text: klicken, schreiben, Enter für neue Zeile, Klick außerhalb = fertig."
+    };
+    showToast(help[t] || "", 1600);
+  }
+
+  function setFontSize(fs){
+    state.fontSize = fs;
+    localStorage.setItem("wb_fontSize", String(fs));
+    $$(".sizes button").forEach(b => b.classList.toggle("active", Number(b.dataset.size) === fs));
+    // apply to selected text elements
+    if(selectedIds.size){
+      const b = currentBoard();
+      let changed = false;
+      for(const id of selectedIds){
+        const el = b.elements.find(e=>e.id===id);
+        if(el && el.type==="text"){
+          el.fontSize = fs;
+          changed = true;
+        }
+      }
+      if(changed){ markDirty(); draw(); }
+    }
+  }
+
+  function setColor(c){
+    state.color = c;
+    localStorage.setItem("wb_color", c);
+    $("#colorPicker").value = c;
+    // update swatch selected state
+    $$("#swatches .swatch").forEach(s=>s.classList.toggle("selected", s.dataset.color===c));
+    // apply to selection
+    if(selectedIds.size){
+      const b = currentBoard();
+      for(const id of selectedIds){
+        const el = b.elements.find(e=>e.id===id);
+        if(el){ el.color = c; }
+      }
+      markDirty(); draw();
+    }
+  }
+
+  function setStroke(w){
+    state.stroke = w;
+    localStorage.setItem("wb_stroke", String(w));
+    $("#strokeRange").value = String(w);
+    // apply to selection (non-text too)
+    if(selectedIds.size){
+      const b = currentBoard();
+      for(const id of selectedIds){
+        const el = b.elements.find(e=>e.id===id);
+        if(el && el.type!=="text"){ el.stroke = w; }
+      }
+      markDirty(); draw();
+    }
+  }
+
+  // ---------- inline text editor ----------
+  const editor = $("#textEditor");
+  let editingId = null;
+
+  function openEditorFor(el, atX, atY){
+    editingId = el.id;
+    editor.value = el.text || "";
+    editor.style.left = (atX) + "px";
+    editor.style.top  = (atY) + "px";
+    editor.style.display = "block";
+    editor.style.fontSize = (el.fontSize || state.fontSize) + "px";
+    editor.style.color = el.color || state.color;
+    editor.style.height = "auto";
+    editor.style.width = "auto";
+    editor.style.minHeight = (Math.round((el.fontSize||state.fontSize)*1.25) + 14) + "px";
+    editor.focus();
+    // size to content
+    requestAnimationFrame(()=>autoSizeEditor());
+  }
+
+  function autoSizeEditor(){
+    editor.style.height = "auto";
+    editor.style.height = Math.min(380, editor.scrollHeight + 2) + "px";
+    editor.style.width = "auto";
+    const lines = editor.value.split("\n");
+    const approx = Math.min(740, Math.max(140, Math.max(...lines.map(l=>l.length))* (state.fontSize*0.55) + 40));
+    editor.style.width = approx + "px";
+  }
+
+  editor.addEventListener("input", () => {
+    autoSizeEditor();
+    const b = currentBoard();
+    const el = b.elements.find(e=>e.id===editingId);
+    if(el){
+      el.text = editor.value;
+      markDirty();
+      draw();
+    }
+  });
+  editor.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+      editor.blur();
+    }
+    // Ctrl+Enter closes
+    if((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+      editor.blur();
+    }
+  });
+  editor.addEventListener("blur", () => {
+    editor.style.display = "none";
+    editingId = null;
   });
 
-  window.addEventListener("mousemove",(e)=>{
-    if(!drag) return;
-    const dx=e.clientX-startX;
-    const dy=e.clientY-startY;
-    bl.x = Math.max(0, origX+dx);
-    bl.y = Math.max(0, origY+dy);
-    el.style.left = bl.x+"px";
-    el.style.top  = bl.y+"px";
+  function startTextAt(x,y){
+    const b = currentBoard();
+    const el = {
+      id: uid(),
+      type: "text",
+      x, y,
+      text: "",
+      fontSize: state.fontSize,
+      color: state.color,
+      groupId: null
+    };
+    b.elements.push(el);
+    selectedIds = new Set([el.id]);
+    markDirty();
+    draw();
+    openEditorFor(el, x, y);
+  }
+
+  function editExistingText(el){
+    selectedIds = new Set([el.id]);
+    draw();
+    openEditorFor(el, el.x, el.y);
+  }
+
+  // ---------- board management ----------
+  function syncBoardUI(){
+    ensureData();
+    const sel = $("#boardSelect");
+    sel.innerHTML = "";
+    for(const b of state.data.boards){
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = b.name;
+      sel.appendChild(opt);
+    }
+    sel.value = state.activeBoardId;
+    $("#boardTitle").textContent = currentBoard().name;
+  }
+
+  $("#boardSelect").addEventListener("change", () => {
+    state.activeBoardId = $("#boardSelect").value;
+    state.data.activeBoardId = state.activeBoardId;
+    $("#boardTitle").textContent = currentBoard().name;
+    selectedIds.clear();
+    draw();
+    markDirty(); // active board changed (save desired)
   });
 
-  window.addEventListener("mouseup",()=>{ drag=false; });
-}
+  $("#newBoardBtn").addEventListener("click", () => {
+    ensureData();
+    const name = prompt("Name für neues Whiteboard?", "Neues Whiteboard");
+    if(name === null) return;
+    const b = { id: uid(), name: (name||"Neues Whiteboard").trim() || "Neues Whiteboard", elements: [] };
+    state.data.boards.unshift(b);
+    state.activeBoardId = b.id;
+    state.data.activeBoardId = b.id;
+    syncBoardUI();
+    selectedIds.clear();
+    markDirty();
+    draw();
+  });
 
-function addTextBlock(text){
-  const b = currentBoard();
-  if(!b) return;
-  b.blocks.push({ id: uid(), type:"text", x:40, y:40, w:320, h:180, text: text || "Text…" });
-  renderBoardList();
-  renderStage();
-}
-function addTableBlock(rows, cols){
-  const b = currentBoard();
-  if(!b) return;
-  b.blocks.push({ id: uid(), type:"table", x:60, y:60, w:360, h:220, rows, cols, cells: Array.from({length:rows},()=>Array.from({length:cols},()=> "")) });
-  renderBoardList();
-  renderStage();
-}
-function deleteBlock(id){
-  const b = currentBoard();
-  if(!b) return;
-  b.blocks = (b.blocks||[]).filter(x=>x.id!==id);
-  renderBoardList();
-  renderStage();
-}
-function deleteSelected(){
-  if(!selectedBlockId) return;
-  deleteBlock(selectedBlockId);
-  selectedBlockId = null;
-}
+  // ---------- toolbar wiring ----------
+  $$(".tool[data-tool]").forEach(btn => btn.addEventListener("click", () => setTool(btn.dataset.tool)));
+  $$(".sizes button").forEach(btn => btn.addEventListener("click", () => setFontSize(Number(btn.dataset.size))));
 
-function addMsg(text, who){
-  const d = document.createElement("div");
-  d.className = "m " + (who==="me" ? "me" : "ai");
-  d.textContent = text;
-  msgs.appendChild(d);
-  msgs.scrollTop = msgs.scrollHeight;
-}
+  const colorPanel = $("#colorPanel");
+  $("#colorBtn").addEventListener("click", () => {
+    colorPanel.classList.toggle("show");
+  });
+  $("#strokeRange").addEventListener("input", (e)=> setStroke(Number(e.target.value)));
+  $("#colorPicker").addEventListener("input", (e)=> setColor(e.target.value));
 
-function boardAsText(){
-  const b = currentBoard();
-  if(!b) return "";
-  const blocks = b.blocks||[];
-  return blocks.map(bl=>{
-    if(bl.type==="text") return bl.text||"";
-    if(bl.type==="table") return (bl.cells||[]).map(r=>r.join("\t")).join("\n");
-    return "";
-  }).filter(Boolean).join("\n\n");
-}
-
-async function askAi(userText){
-  const ctx = boardAsText();
-  const prompt =
-`Du bist eine Lern-KI. Antworte kurz, klar und schul-tauglich.
-Wenn ich um Tabellen bitte, gib eine einfache Tabelle als Text (mit \t getrennt) zurück.
-
-WHITEBOARD-INHALT:
----
-${ctx || "(leer)"}
----
-
-DATEI-INHALT (falls vorhanden):
----
-${attachedText || "(keine Datei)"} 
----
-
-AUFGABE:
-${userText}
-`;
-  const r = await fetch("/api/ai", { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify({ prompt }) });
-  const j = await r.json();
-  if(!r.ok) throw new Error(j?.error || "ai_error");
-  return j.text || "";
-}
-
-async function saveAll(){
-  setStatus("Speichere…");
-  try{
-    await apiPut(state);
-    setStatus("Gespeichert ✅");
-    setTimeout(()=>setStatus(""),1200);
-  }catch(e){
-    console.error(e);
-    setStatus("Speichern fehlgeschlagen");
+  // swatches
+  const sw = $("#swatches");
+  for(const c of DEFAULT_COLORS){
+    const d = document.createElement("div");
+    d.className = "swatch";
+    d.style.background = c;
+    d.dataset.color = c;
+    d.addEventListener("click", ()=> setColor(c));
+    sw.appendChild(d);
   }
-}
 
-$("#back").addEventListener("click", ()=>location.href="/lernen");
-profileSelect.addEventListener("change", ()=>{
-  activeProfileId = profileSelect.value;
-  localStorage.setItem("learn_active_profile", activeProfileId);
-  renderBoardList();
-  renderStage();
-});
-$("#newProfile").addEventListener("click", async ()=>{
-  const name = prompt("Name für den Benutzer:");
-  if(!name) return;
-  state.profiles.unshift({ id: uid(), name: name.trim(), boards:[], lastBoardId:null });
-  activeProfileId = state.profiles[0].id;
-  localStorage.setItem("learn_active_profile", activeProfileId);
-  renderProfiles();
-  renderBoardList();
-  renderStage();
-  await saveAll();
-});
+  // group/ungroup/delete
+  $("#deleteBtn").addEventListener("click", deleteSelection);
+  $("#groupBtn").addEventListener("click", groupSelection);
+  $("#ungroupBtn").addEventListener("click", ungroupSelection);
 
-$("#newBoard").addEventListener("click", ()=>{
-  const p = currentProfile();
-  const title = prompt("Name vom Whiteboard:", "Whiteboard");
-  if(!title) return;
-  const b = { id: uid(), title: title.trim(), blocks: [] };
-  p.boards.unshift(b);
-  activeBoardId = b.id;
-  p.lastBoardId = b.id;
-  localStorage.setItem("learn_active_board", activeBoardId);
-  renderBoardList();
-  renderStage();
-});
-
-$("#renameBoard").addEventListener("click", ()=>{
-  const b = currentBoard();
-  if(!b) return;
-  const t = prompt("Neuer Name:", b.title || "Whiteboard");
-  if(!t) return;
-  b.title = t.trim();
-  renderBoardList();
-});
-
-$("#deleteBoard").addEventListener("click", ()=>{
-  const p = currentProfile();
-  const b = currentBoard();
-  if(!b) return;
-  if(!confirm("Whiteboard löschen?")) return;
-  p.boards = (p.boards||[]).filter(x=>x.id!==b.id);
-  activeBoardId = p.boards[0]?.id || null;
-  p.lastBoardId = activeBoardId;
-  localStorage.setItem("learn_active_board", activeBoardId || "");
-  renderBoardList();
-  renderStage();
-});
-
-$("#addText").addEventListener("click", ()=>addTextBlock(""));
-$("#addTable").addEventListener("click", ()=>{
-  const rows = Math.max(1, Math.min(20, parseInt(prompt("Zeilen?", "4")||"4",10)));
-  const cols = Math.max(1, Math.min(12, parseInt(prompt("Spalten?", "3")||"3",10)));
-  addTableBlock(rows, cols);
-});
-$("#clearSel").addEventListener("click", deleteSelected);
-$("#save").addEventListener("click", saveAll);
-
-// File attach
-$("#attachBtn").addEventListener("click", ()=>fileInput.click());
-fileInput.addEventListener("change", async ()=>{
-  const f = fileInput.files && fileInput.files[0];
-  if(!f) return;
-  const txt = await f.text();
-  attachedText = txt.slice(0, 20000); // simple limit
-  addMsg("Datei hinzugefügt: " + f.name, "me");
-  fileInput.value = "";
-});
-
-// AI chat
-$("#send").addEventListener("click", async ()=>{
-  const t = input.value.trim();
-  if(!t) return;
-  input.value="";
-  addMsg(t,"me");
-  addMsg("…","ai");
-  const last = msgs.lastChild;
-  try{
-    const ans = await askAi(t);
-    last.textContent = ans || "(leer)";
-    lastAiAnswer = ans || "";
-  }catch(e){
-    console.error(e);
-    last.textContent = "Fehler bei der KI.";
+  function deleteSelection(){
+    if(!selectedIds.size) return;
+    const b = currentBoard();
+    b.elements = b.elements.filter(e => !selectedIds.has(e.id));
+    selectedIds.clear();
+    markDirty();
+    draw();
   }
-});
-input.addEventListener("keydown",(e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); $("#send").click(); } });
 
-$("#toBoard").addEventListener("click", ()=>{
-  if(!lastAiAnswer.trim()) return;
-  addTextBlock(lastAiAnswer.trim());
-});
+  function groupSelection(){
+    if(selectedIds.size < 2){
+      showToast("Wähle mindestens 2 Elemente aus.");
+      return;
+    }
+    const gid = uid();
+    const b = currentBoard();
+    for(const id of selectedIds){
+      const el = b.elements.find(e=>e.id===id);
+      if(el) el.groupId = gid;
+    }
+    markDirty();
+    draw();
+    showToast("Gruppe erstellt.");
+  }
 
-(async ()=>{
-  setStatus("Lade…");
-  let loaded=null;
-  try{ loaded = await apiGet(); }
-  catch(e){ console.error(e); setStatus("Fehler beim Laden (API)."); loaded = null; }
-  state = ensureDefaults(loaded);
-  renderProfiles();
-  renderBoardList();
-  renderStage();
-  setStatus("");
-  addMsg("Schreib mir z.B. 'Mach daraus eine Lernzusammenfassung' 🙂","ai");
+  function ungroupSelection(){
+    if(!selectedIds.size){
+      showToast("Nichts ausgewählt.");
+      return;
+    }
+    const b = currentBoard();
+    let changed = false;
+    for(const id of selectedIds){
+      const el = b.elements.find(e=>e.id===id);
+      if(el && el.groupId){ el.groupId = null; changed = true; }
+    }
+    if(changed){
+      markDirty(); draw(); showToast("Gruppe gelöst.");
+    } else {
+      showToast("Auswahl ist keine Gruppe.");
+    }
+  }
+
+  // keyboard shortcuts
+  window.addEventListener("keydown", (e) => {
+    if(e.target === editor) return;
+
+    if(e.key === "Delete" || e.key === "Backspace"){
+      deleteSelection();
+      return;
+    }
+    if(e.key === "Escape"){
+      selectedIds.clear();
+      draw();
+      return;
+    }
+    const k = e.key.toLowerCase();
+    if(k === "v"){ setTool("select"); }
+    if(k === "p"){ setTool("hand"); }
+    if(k === "a"){ setTool("arrow"); }
+    if(k === "r"){ setTool("rect"); }
+    if(k === "t"){ setTool("text"); }
+    if((e.ctrlKey || e.metaKey) && k === "g"){ e.preventDefault(); groupSelection(); }
+    if((e.ctrlKey || e.metaKey) && k === "s"){ e.preventDefault(); saveToCloud(); }
+  });
+
+  // ---------- pointer interactions ----------
+  canvas.addEventListener("pointerdown", (e) => {
+    // close color panel if click outside button/panel
+    const cp = colorPanel;
+    if(cp.classList.contains("show")){
+      const within = cp.contains(e.target) || $("#colorBtn").contains(e.target);
+      if(!within) cp.classList.remove("show");
+    }
+
+    canvas.setPointerCapture(e.pointerId);
+    pointerDown = true;
+    const pt = getPointerPos(e);
+    startPt = pt;
+    lastPt = pt;
+    selectRect = null;
+    dragMode = null;
+    tempEl = null;
+
+    const b = currentBoard();
+    const hitId = hitTest(pt.x, pt.y);
+
+    if(state.tool === "text"){
+      if(hitId){
+        const el = b.elements.find(x=>x.id===hitId);
+        if(el && el.type === "text"){
+          editExistingText(el);
+          pointerDown = false;
+          return;
+        }
+      }
+      startTextAt(pt.x, pt.y);
+      pointerDown = false;
+      return;
+    }
+
+    if(state.tool === "select"){
+      if(hitId){
+        // selection logic
+        if(e.ctrlKey || e.metaKey){
+          if(selectedIds.has(hitId)) selectedIds.delete(hitId);
+          else selectedIds.add(hitId);
+        } else {
+          if(!selectedIds.has(hitId)){
+            selectedIds = new Set([hitId]);
+          }
+        }
+
+        // if element has groupId, clicking selects group (unless ctrl)
+        const el = b.elements.find(x=>x.id===hitId);
+        if(el && el.groupId && !(e.ctrlKey || e.metaKey)){
+          const gid = el.groupId;
+          selectedIds = new Set(b.elements.filter(x=>x.groupId===gid).map(x=>x.id));
+        }
+
+        // start move
+        dragMode = "move";
+        moveOrigin = pt;
+        movingSnapshot = new Map();
+        for(const id of selectedIds){
+          const el2 = b.elements.find(x=>x.id===id);
+          if(el2) movingSnapshot.set(id, JSON.parse(JSON.stringify(el2)));
+        }
+        draw();
+        return;
+      } else {
+        // start box select
+        if(!(e.ctrlKey || e.metaKey)) selectedIds.clear();
+        dragMode = "boxSelect";
+        selectRect = { x: pt.x, y: pt.y, w: 0, h: 0 };
+        draw();
+        return;
+      }
+    }
+
+    // drawing tools
+    dragMode = "draw";
+    if(state.tool === "arrow"){
+      tempEl = { id: uid(), type:"arrow", x1: pt.x, y1: pt.y, x2: pt.x, y2: pt.y, color: state.color, stroke: state.stroke, groupId:null };
+      draw();
+      return;
+    }
+    if(state.tool === "rect"){
+      tempEl = { id: uid(), type:"rect", x: pt.x, y: pt.y, w: 1, h: 1, color: state.color, stroke: state.stroke, groupId:null };
+      draw();
+      return;
+    }
+    if(state.tool === "hand"){
+      tempEl = { id: uid(), type:"path", points:[{x:pt.x,y:pt.y}], color: state.color, stroke: state.stroke, groupId:null };
+      draw();
+      return;
+    }
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    const pt = getPointerPos(e);
+
+    if(!pointerDown){
+      // hover cursor for select
+      if(state.tool === "select"){
+        const id = hitTest(pt.x, pt.y);
+        canvas.style.cursor = id ? "grab" : "default";
+      } else {
+        canvas.style.cursor = (state.tool==="text") ? "text" : "crosshair";
+      }
+      return;
+    }
+
+    if(dragMode === "move"){
+      const dx = pt.x - moveOrigin.x;
+      const dy = pt.y - moveOrigin.y;
+      const b = currentBoard();
+      for(const id of selectedIds){
+        const snap = movingSnapshot.get(id);
+        const el = b.elements.find(x=>x.id===id);
+        if(!snap || !el) continue;
+
+        if(el.type === "arrow"){
+          el.x1 = snap.x1 + dx; el.y1 = snap.y1 + dy;
+          el.x2 = snap.x2 + dx; el.y2 = snap.y2 + dy;
+        } else if(el.type === "path"){
+          el.points = (snap.points||[]).map(p => ({x:p.x+dx, y:p.y+dy}));
+        } else {
+          el.x = snap.x + dx; el.y = snap.y + dy;
+        }
+      }
+      markDirty();
+      draw();
+      return;
+    }
+
+    if(dragMode === "boxSelect"){
+      const r = selectRect;
+      r.w = pt.x - startPt.x;
+      r.h = pt.y - startPt.y;
+      // normalize for negative
+      const norm = {
+        x: Math.min(startPt.x, pt.x),
+        y: Math.min(startPt.y, pt.y),
+        w: Math.abs(pt.x-startPt.x),
+        h: Math.abs(pt.y-startPt.y)
+      };
+      selectRect.x = norm.x; selectRect.y = norm.y; selectRect.w = norm.w; selectRect.h = norm.h;
+
+      const hits = elementsInRect(selectRect);
+      if(e.ctrlKey || e.metaKey){
+        for(const id of hits) selectedIds.add(id);
+      } else {
+        selectedIds = new Set(hits);
+      }
+      draw();
+      return;
+    }
+
+    if(dragMode === "draw" && tempEl){
+      if(tempEl.type === "arrow"){
+        tempEl.x2 = pt.x; tempEl.y2 = pt.y;
+      } else if(tempEl.type === "rect"){
+        tempEl.w = pt.x - startPt.x;
+        tempEl.h = pt.y - startPt.y;
+      } else if(tempEl.type === "path"){
+        // add point if far enough
+        const dx = pt.x - lastPt.x, dy = pt.y - lastPt.y;
+        if(Math.hypot(dx,dy) > 2.2){
+          tempEl.points.push({x:pt.x,y:pt.y});
+          lastPt = pt;
+        }
+      }
+      draw();
+    }
+  });
+
+  canvas.addEventListener("pointerup", (e) => {
+    pointerDown = false;
+
+    if(dragMode === "draw" && tempEl){
+      const b = currentBoard();
+      // normalize rect
+      if(tempEl.type === "rect"){
+        let {x,y,w,h} = tempEl;
+        if(w < 0){ x = x+w; w = Math.abs(w); }
+        if(h < 0){ y = y+h; h = Math.abs(h); }
+        tempEl.x = x; tempEl.y = y; tempEl.w = Math.max(6,w); tempEl.h = Math.max(6,h);
+      }
+      // minimal sizes
+      if(tempEl.type === "arrow"){
+        const bb = boundsOf(tempEl);
+        if(bb.w + bb.h < 8){ tempEl = null; draw(); return; }
+      }
+      if(tempEl.type === "path"){
+        if((tempEl.points||[]).length < 2){ tempEl = null; draw(); return; }
+      }
+
+      b.elements.push(tempEl);
+      selectedIds = new Set([tempEl.id]);
+      tempEl = null;
+      markDirty();
+      draw();
+    }
+
+    dragMode = null;
+    movingSnapshot = null;
+    moveOrigin = null;
+    selectRect = null;
+    draw();
+  });
+
+  // ---------- saving / loading ----------
+  async function loadFromCloud(){
+    try{
+      const res = await apiGet(`/api/learn/data?profileId=${encodeURIComponent(state.userId)}`);
+      // worker returns { ok:true, data: {...} } or raw
+      const data = res?.data || res?.json || res;
+      state.data = (data && typeof data === "object") ? data : null;
+      ensureData();
+      syncBoardUI();
+      draw();
+      $("#statusPill").textContent = "geladen";
+      $("#statusPill").style.color = "var(--muted)";
+      showToast("Daten geladen.");
+      return true;
+    }catch(err){
+      // fallback local draft
+      const local = localStorage.getItem("learn_whiteboard_local");
+      if(local){
+        try{
+          state.data = JSON.parse(local);
+        }catch(e){}
+      }
+      ensureData();
+      syncBoardUI();
+      draw();
+      $("#statusPill").textContent = "lokal";
+      $("#statusPill").style.color = "var(--muted)";
+      showToast("Offline/Cloud-Fehler – lokaler Stand.");
+      return false;
+    }
+  }
+
+  async function saveToCloud(){
+    ensureData();
+    state.data.updatedAt = nowISO();
+    // always keep local
+    localStorage.setItem("learn_whiteboard_local", JSON.stringify(state.data));
+
+    try{
+      const body = Object.assign({}, state.data, { profileId: state.userId });
+      const res = await apiPut(`/api/learn/data?profileId=${encodeURIComponent(state.userId)}`, body);
+      markSaved();
+      showToast("Gespeichert.");
+      return true;
+    }catch(err){
+      console.error(err);
+      const msg = err?.data?.error || err?.message || "Fehler";
+      showToast("Speichern fehlgeschlagen: " + msg, 2200);
+      $("#statusPill").textContent = "lokal";
+      $("#statusPill").style.color = "#f97316";
+      return false;
+    }
+  }
+
+  $("#saveBtn").addEventListener("click", saveToCloud);
+
+  // back button: go to /lernen
+  $("#backBtn").addEventListener("click", () => {
+    if(state.isDirty){
+      const ok = confirm("Du hast ungespeicherte Änderungen. Trotzdem zurück?");
+      if(!ok) return;
+    }
+    location.href = "/lernen";
+  });
+
+  // auto-save periodically (safe)
+  setInterval(() => {
+    if(state.isDirty){
+      localStorage.setItem("learn_whiteboard_local", JSON.stringify(state.data));
+    }
+  }, 2500);
+
+  // before unload warning
+  window.addEventListener("beforeunload", (e) => {
+    if(state.isDirty){
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
+
+  // ---------- init ----------
+  // load learn_userId (selected user) from localStorage used by /lernen page
+  const storedUser = localStorage.getItem("learn_userId");
+  if(storedUser) state.userId = storedUser;
+
+  // initial UI states
+  // size buttons
+  setFontSize(state.fontSize);
+  // stroke + color
+  $("#strokeRange").value = String(state.stroke);
+  setColor(state.color);
+  setStroke(state.stroke);
+  // tool
+  setTool("select");
+
+  resize();
+  loadFromCloud();
+
 })();
 </script>
 </body>
