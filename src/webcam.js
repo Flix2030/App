@@ -20,6 +20,53 @@ export class LOBBY {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this.code = null;
+    this.adminName = null;
+    this.senderName = null;
+    this.approvedSender = null;
+  }
+
+  async _load() {
+    if (this._loaded) return;
+    this._loaded = true;
+    const s = await this.state.storage.get("meta");
+    if (s && typeof s === "object") {
+      this.code = s.code || null;
+      this.adminName = s.adminName || null;
+      this.senderName = s.senderName || null;
+      this.approvedSender = s.approvedSender || null;
+    }
+  }
+
+  async _save() {
+    await this.state.storage.put("meta", {
+      code: this.code,
+      adminName: this.adminName,
+      senderName: this.senderName,
+      approvedSender: this.approvedSender,
+    });
+  }
+
+  _sockets() {
+    try { return this.state.getWebSockets(); } catch { return []; }
+  }
+
+  _broadcast(obj) {
+    const msg = JSON.stringify(obj);
+    for (const ws of this._sockets()) {
+      try { ws.send(msg); } catch {}
+    }
+  }
+
+  _participants() {
+    const names = new Set();
+    for (const ws of this._sockets()) {
+      try {
+        const a = ws.deserializeAttachment?.() || null;
+        if (a && a.name) names.add(a.name);
+      } catch {}
+    }
+    return Array.from(names);
   }
 
   async fetch(request) {
@@ -96,6 +143,10 @@ export class STREAM {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this.code = null;
+    this.adminName = null;
+    this.senderName = null;
+    this.approvedSender = null;
 
     this.senderId = null;
     this.clients = new Map(); // id -> { ws, role }
@@ -200,6 +251,7 @@ export class STREAM {
             }
             this.senderId = id;
             c.role = "send";
+      try { ws.serializeAttachment({ name, role: "send" }); } catch {}
             this.clients.set(id, c);
             sendText(server, { type: "role_ok", role: "send" });
             await touchLobby();
@@ -224,6 +276,23 @@ export class STREAM {
         }
 
         if (msg.type === "pong") return;
+
+        if (msg.type === "participants") {
+          refreshGrantList(msg.names || []);
+          return;
+        }
+        if (msg.type === "admin_ok") {
+          log("admin: ok");
+          return;
+        }
+        if (msg.type === "kicked") {
+          alert("Du wurdest als Sender gestoppt.");
+          stopSender();
+          cleanupWs();
+          setStatus("offline");
+          return;
+        }
+
         return;
       }
 
@@ -299,6 +368,9 @@ const HTML_LOBBY = `<!doctype html>
       <div class="row" style="margin-top:10px;">
         <input id="code" placeholder="Gruppen-Code (mind. 4 Zeichen)" />
       </div>
+      <div class="row" style="margin-top:10px;">
+        <input id="name" placeholder="Dein Name (für Admin/Chat)" />
+      </div>
       <div class="small" style="margin-top:10px;">
         Tipp: FPS 2–4, Breite 480/640, Qualität 0.5–0.7 (in der Gruppe einstellbar).
       </div>
@@ -310,6 +382,16 @@ const HTML_LOBBY = `<!doctype html>
   var listEl = document.getElementById("list");
   var roomEl = document.getElementById("room");
   var codeEl = document.getElementById("code");
+  var nameEl = document.getElementById("name");
+
+  function getNameOrAsk(){
+    var n = (nameEl && nameEl.value ? nameEl.value : "").trim();
+    if (!n) n = (sessionStorage.getItem("webcam_name") || "").trim();
+    if (!n) n = prompt("Bitte gib deinen Namen ein:") || "";
+    n = String(n).trim();
+    if (n) sessionStorage.setItem("webcam_name", n);
+    return n;
+  }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -326,14 +408,18 @@ const HTML_LOBBY = `<!doctype html>
       if (!code) return alert("Code fehlt");
       if (code.length < 4) return alert("Code zu kurz (mind. 4 Zeichen)");
 
-      location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send&code=" + encodeURIComponent(code);
+      var name = getNameOrAsk();
+      if (!name) return alert("Name fehlt");
+      location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=send&code=" + encodeURIComponent(code) + "&name=" + encodeURIComponent(name) + "&admin=1";
     } catch (e) {
       alert("Create-Fehler: " + (e && e.message ? e.message : e));
     }
   };
 
   window.__watchRoom = function(room){
-    location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=watch";
+    var name = getNameOrAsk();
+    if (!name) return alert("Name fehlt");
+    location.href = "/webcam-live/room?room=" + encodeURIComponent(room) + "&mode=watch&name=" + encodeURIComponent(name);
   };
 
   function render(rooms) {
@@ -449,6 +535,16 @@ const HTML_ROOM = `<!doctype html>
         <button id="btnHang" type="button" onclick="__disconnectNow()">Trennen</button>
       </div>
 
+      <div id="adminPanel" class="card" style="margin-top:14px; display:none;">
+        <h3 style="margin:0 0 8px;">Admin</h3>
+        <div class="small" style="margin-bottom:8px;">Nur du kannst freigeben, wer senden darf (immer nur 1 gleichzeitig).</div>
+        <div class="row">
+          <select id="grantSelect"></select>
+          <button id="btnGrant" type="button">Senden erlauben</button>
+          <button id="btnKick" type="button">Sender stoppen</button>
+        </div>
+      </div>
+
       <div class="log" id="log"></div>
     </div>
   </div>
@@ -499,7 +595,33 @@ const HTML_ROOM = `<!doctype html>
   var running = false;
   var lastUrl = null;
 
-  function setStatus(s) { statusEl.textContent = s; }
+  function refreshGrantList(list){
+    if (!grantSelect) return;
+    var me = name;
+    var opts = (list || []).filter(function(x){ return x && x !== me; });
+    grantSelect.innerHTML = opts.map(function(n){ return "<option value=\"" + n.replace(/"/g,"&quot;") + "\">" + n + "</option>"; }).join("") || "<option value=\"\">(keine)</option>";
+  }
+
+  if (adminPanel) {
+    if (adminFlag && mode === "watch") adminPanel.style.display = "";
+  }
+
+  if (btnGrant) {
+    btnGrant.onclick = function(){
+      if (!ws || ws.readyState !== 1) return alert("Nicht verbunden.");
+      var target = (grantSelect && grantSelect.value ? grantSelect.value : "").trim();
+      if (!target) return alert("Niemand ausgewählt.");
+      ws.send(JSON.stringify({ type: "admin_grant", target: target }));
+    };
+  }
+  if (btnKick) {
+    btnKick.onclick = function(){
+      if (!ws || ws.readyState !== 1) return alert("Nicht verbunden.");
+      ws.send(JSON.stringify({ type: "admin_kick" }));
+    };
+  }
+
+function setStatus(s) { statusEl.textContent = s; }
 
   function wsUrl() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -673,11 +795,15 @@ const HTML_ROOM = `<!doctype html>
 // ---------------------------
 function roomFromReq(req) {
   const url = new URL(req.url);
+    const name = (url.searchParams.get("name") || "").trim();
+    const admin = (url.searchParams.get("admin") || "0");
   return (url.searchParams.get("room") || "default").slice(0, 64);
 }
 
 export async function handleWebcamLive(req, env) {
   const url = new URL(req.url);
+    const name = (url.searchParams.get("name") || "").trim();
+    const admin = (url.searchParams.get("admin") || "0");
 
   if (url.pathname === "/webcam-live/groups") {
     if (!env.LOBBY) return new Response("Missing DO binding: LOBBY", { status: 500 });
