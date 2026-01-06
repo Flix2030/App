@@ -251,7 +251,8 @@ export class STREAM {
             }
             this.senderId = id;
             c.role = "send";
-      try { ws.serializeAttachment({ name, role: "send" }); } catch {}
+            // attachment (optional)
+            try { server.serializeAttachment({ name: url.searchParams.get("name") || "", role: "send" }); } catch {}
             this.clients.set(id, c);
             sendText(server, { type: "role_ok", role: "send" });
             await touchLobby();
@@ -277,23 +278,32 @@ export class STREAM {
 
         if (msg.type === "pong") return;
 
-        if (msg.type === "participants") {
-          refreshGrantList(msg.names || []);
-          return;
-        }
-        if (msg.type === "admin_ok") {
-          log("admin: ok");
-          return;
-        }
-        if (msg.type === "kicked") {
-          alert("Du wurdest als Sender gestoppt.");
-          stopSender();
-          cleanupWs();
-          setStatus("offline");
+        if (msg.type === "admin_grant") {
+          const isAdmin = String(url.searchParams.get("admin") || "0") === "1";
+          if (!isAdmin) { sendText(server, { type: "admin_denied" }); return; }
+          sendText(server, { type: "admin_ok" });
           return;
         }
 
+        if (msg.type === "admin_kick") {
+          // allow admin watchers to stop the current sender
+          const isAdmin = String(url.searchParams.get("admin") || "0") === "1";
+          if (!isAdmin) { sendText(server, { type: "admin_denied" }); return; }
+          if (!this.senderId || !this.clients.has(this.senderId)) { sendText(server, { type: "admin_ok" }); return; }
+          const sender = this.clients.get(this.senderId);
+          try { sender.ws.send(JSON.stringify({ type: "kicked" })); } catch {}
+          try { sender.ws.close(); } catch {}
+          this.clients.delete(this.senderId);
+          this.senderId = null;
+          sendText(server, { type: "admin_ok" });
+          await touchLobby();
+          return;
+        }
+
+        if (msg.type === "pong") return;
+
         return;
+return;
       }
 
       // Binary frame
@@ -563,6 +573,14 @@ const HTML_ROOM = `<!doctype html>
   var room = (params.get("room") || "").trim() || "default";
   var mode = (params.get("mode") || "watch") === "send" ? "send" : "watch";
 
+  var name = (params.get("name") || "").trim() || (sessionStorage.getItem("webcam_name") || "").trim() || "User";
+  sessionStorage.setItem("webcam_name", name);
+  var adminFlag = String(params.get("admin") || "0") === "1";
+  var adminPanel = $("adminPanel");
+  var grantSelect = $("grantSelect");
+  var btnGrant = $("btnGrant");
+  var btnKick = $("btnKick");
+
   // ✅ Code bei jedem Join (oder via URL)
   var codeFromUrl = (params.get("code") || "").trim();
   var code = codeFromUrl || prompt("Bitte Code für diese Gruppe eingeben:");
@@ -626,7 +644,7 @@ const HTML_ROOM = `<!doctype html>
       if (!ws || ws.readyState !== 1) return alert("Nicht verbunden.");
       var target = (grantSelect && grantSelect.value ? grantSelect.value : "").trim();
       if (!target) return alert("Niemand ausgewählt.");
-      ws.send(JSON.stringify({ type: "admin_grant", target: target }));
+      alert("Freigabe nicht nötig: Wer den Code kennt, kann senden.\nFalls ein falscher Sender sendet: nutze \"Sender stoppen\".");
     };
   }
   if (btnKick) {
@@ -640,7 +658,7 @@ function setStatus(s) { statusEl.textContent = s; }
 
   function wsUrl() {
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
-    return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room) + "&code=" + encodeURIComponent(code);
+    return proto + "//" + location.host + "/webcam-live/ws?room=" + encodeURIComponent(room) + "&code=" + encodeURIComponent(code) + "&name=" + encodeURIComponent(name) + "&admin=" + (adminFlag ? "1" : "0");
   }
 
   // ✅ Globale Handler für die Buttons
@@ -652,6 +670,10 @@ function setStatus(s) { statusEl.textContent = s; }
     try { log("click: trennen"); stopSender(); cleanupWs(); setStatus("offline"); }
     catch (e) {}
   };
+
+  // Backwards compatibility (falls alte HTML-Version noch connectNow() nutzt)
+  window.connectNow = window.__connectNow;
+  window.disconnectNow = window.__disconnectNow;
 
 
   function setRemoteFromBuffer(buf) {
