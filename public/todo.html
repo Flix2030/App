@@ -763,6 +763,10 @@
       const REMIND_CHECK_MS = 25 * 1000; // polling while app is open
       let remindTimer = null;
 
+	  function isPushEnabled(){
+	    return localStorage.getItem("todo_push_receive") === "1";
+	  }
+
       async function ensureNotifyPermission(){
         if (!("Notification" in window)) return false;
         if (Notification.permission === "granted") return true;
@@ -1051,14 +1055,17 @@
         task.remindEnabled = false;
         scheduleSave();
       }
-      function remindTask(task){
-        if (!task) return;
-        const msg = String(task.title || "Aufgabe");
-        // 1) Push to your phone (Cloudflare)
-        pushToPhone(msg);
-        // 2) Local fallback (if push not set)
-        showNotify("Aufgaben", "Erinnerung\n" + msg, "todo_rem_" + task.id);
-      }
+	  
+		async function remindTask(task){
+		  if (!task) return;
+		  const msg = String(task.title || "Aufgabe");
+
+		  if (isPushEnabled()){
+			await pushToPhone(msg);
+		  } else {
+			await showNotify("Aufgaben", "Erinnerung\n" + msg, "todo_rem_" + task.id);
+		  }
+		}
 
       async function notifyTaskCreated(task){
           if (!task) return;
