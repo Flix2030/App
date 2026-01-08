@@ -1,92 +1,1507 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Vokabeln</title>
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-  <meta name="theme-color" content="#000000">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/app.css">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="theme-color" content="#000000">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    :root {
-      --primary-color: #4B0082;
-      --secondary-color: #6A5ACD;
-      --text-color: #ffffff;
-      --bg-color: #f0f0f5;
+    :root{
+      --bg0:#05080f; --bg1:#070c16;
+      --panel:rgba(17,24,39,.72);
+      --panel2:rgba(20,28,46,.78);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --accent:#3ee38c;
+      --accent2:#2fce7a;
+      --blue:#3b82f6;
+      --danger:#ff4d6d;
+      --warn:#facc15;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
     }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: var(--bg-color);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
+        radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
     }
-    .container {
-      background: #ffffff;
-      padding: 40px 60px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      text-align: center;
-      max-width: 600px;
+
+    .wrap{max-width:1280px;margin:0 auto;padding:16px 12px calc(16px + var(--safe-bottom));}
+    .topbar{
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      padding: calc(10px + var(--safe-top)) 0 10px;
+      position:sticky; top:0; z-index:40;
+      background: linear-gradient(180deg, rgba(5,8,15,.92), rgba(5,8,15,.65) 60%, rgba(5,8,15,0));
+      backdrop-filter: blur(10px);
     }
-    h1 {
-      color: var(--primary-color);
-      margin-bottom: 20px;
+    .title{display:flex;gap:10px;align-items:center;min-width:0}
+    .title b{font-size:18px;white-space:nowrap}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:800;
     }
-    p {
-      color: #333333;
-      line-height: 1.5;
+    .btn:hover{background:rgba(255,255,255,.09)}
+    .btn.primary{
+      border:0;
+      color:#04170c;
+      background:linear-gradient(180deg,var(--accent),var(--accent2));
+      box-shadow:0 10px 26px rgba(62,227,140,.20);
     }
-    .back-link {
-      display: inline-block;
-      margin-top: 30px;
-      padding: 12px 24px;
-      background: var(--primary-color);
-      color: var(--text-color);
-      border-radius: 6px;
-      text-decoration: none;
-      transition: background 0.3s ease;
+    .btn.danger{border-color:rgba(255,77,109,.35); background:rgba(255,77,109,.10)}
+    .btn.small{padding:8px 10px;border-radius:12px;font-weight:800}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .select, input[type="text"], textarea{
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      outline:none;
     }
-    .back-link:hover {
-      background: var(--secondary-color);
+    .muted{color:var(--muted);font-size:13px}
+    .grid{
+      display:grid;
+      grid-template-columns: 330px 1fr;
+      gap:12px;
+      align-items:start;
     }
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr}
+    }
+
+    .panel{
+      border:1px solid var(--border);
+      background:linear-gradient(180deg,var(--panel2),var(--panel));
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .panelHead{
+      padding:12px 12px;
+      border-bottom:1px solid var(--border);
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    }
+    .panelBody{padding:12px}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .item{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.05);
+      border-radius:14px;
+      padding:10px 10px;
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      cursor:pointer;
+    }
+    .item:hover{background:rgba(255,255,255,.07)}
+    .item.active{
+      border-color:rgba(62,227,140,.55);
+      box-shadow:0 0 0 3px rgba(62,227,140,.10) inset;
+      background:rgba(62,227,140,.08);
+    }
+    .item .left{
+      min-width:0;
+      display:flex; gap:10px; align-items:center;
+    }
+    .badge{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:30px; height:30px; border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.20);
+      font-weight:900;
+      flex:0 0 auto;
+    }
+    .item .name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .item .meta{font-size:12px;color:var(--muted);white-space:nowrap}
+    .kebab{border:1px solid var(--border); background:rgba(0,0,0,.22); color:var(--text); border-radius:12px; padding:8px 10px; cursor:pointer}
+    .kebab:hover{background:rgba(255,255,255,.07)}
+    .sep{height:1px;background:rgba(255,255,255,.10);margin:10px 0}
+
+    .miniRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.86);
+      font-size:12px;
+      font-weight:800;
+    }
+    .switch{
+      display:inline-flex; align-items:center; gap:8px; user-select:none; cursor:pointer;
+      color:var(--muted); font-weight:800; font-size:12px;
+    }
+    .switch input{accent-color: var(--accent)}
+    .hint{font-size:12px;color:var(--muted);line-height:1.35}
+
+    .cardRow{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.05);
+      border-radius:16px;
+      overflow:hidden;
+      margin-bottom:10px;
+    }
+    .cardRowInner{
+      display:grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap:10px;
+      padding:10px;
+      align-items:start;
+    }
+    @media (max-width: 900px){
+      .cardRowInner{grid-template-columns: 1fr}
+    }
+
+    /* modal */
+    .modalWrap{
+      position:fixed; inset:0; background:rgba(0,0,0,.58);
+      display:none; align-items:center; justify-content:center;
+      z-index:200;
+      padding:18px 12px;
+    }
+    .modalWrap.show{display:flex}
+    .modal{
+      width:min(860px, 100%);
+      border:1px solid var(--border);
+      background:linear-gradient(180deg,var(--panel2),var(--panel));
+      border-radius:20px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .modalHead{padding:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .modalBody{padding:12px}
+    .xbtn{width:40px;height:40px;border-radius:14px;border:1px solid var(--border);background:rgba(0,0,0,.22);color:var(--text);cursor:pointer;font-weight:900}
+    .xbtn:hover{background:rgba(255,255,255,.07)}
+
+    /* learn session */
+    .learnTop{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      padding:12px; border-bottom:1px solid var(--border);
+    }
+    .progress{
+      flex:1; min-width:220px;
+      height:12px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .progress > div{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
+    .learnStage{padding:14px; display:grid; place-items:center; min-height:56vh}
+    .swipeCard{
+      width:min(520px, 92vw);
+      min-height: 320px;
+      border-radius:24px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.07);
+      box-shadow:0 18px 60px rgba(0,0,0,.50);
+      padding:18px 18px;
+      position:relative;
+      touch-action: none;
+      user-select:none;
+      overflow:hidden;
+    }
+    .swipeCard .small{font-size:12px;color:var(--muted);font-weight:800}
+    .swipeCard .front{font-size:30px; font-weight:950; line-height:1.1; margin-top:10px; word-break:break-word}
+    .swipeCard .back{margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.12); font-size:18px; color:rgba(255,255,255,.90); display:none; white-space:pre-wrap}
+    .swipeCard.reveal .back{display:block}
+    .overlay{
+      position:absolute; inset:0;
+      display:flex; align-items:flex-start; justify-content:flex-end;
+      padding:14px;
+      pointer-events:none;
+    }
+    .tag{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(0,0,0,.25);
+      font-weight:950;
+      opacity:0;
+      transform: translateY(-6px);
+      transition: opacity .08s linear, transform .08s linear;
+    }
+    .tag.show{opacity:1; transform: translateY(0)}
+    .tag.bad{border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.14)}
+    .tag.mid{border-color: rgba(250,204,21,.35); background: rgba(250,204,21,.14)}
+    .tag.good{border-color: rgba(62,227,140,.35); background: rgba(62,227,140,.14)}
+    .learnBottom{
+      padding:12px; border-top:1px solid var(--border);
+      display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;
+    }
+    .ghostBtn{
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:900;
+    }
+    .ghostBtn:hover{background:rgba(255,255,255,.07)}
+    .kbd{font-size:12px;color:var(--muted);font-weight:800}
+
+    /* KI Lernen (chat) */
+    .chat{
+      height:62vh; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:10px;
+    }
+    .bubble{
+      max-width: 86%;
+      padding:10px 12px;
+      border-radius: 16px;
+      border:1px solid var(--border);
+      white-space:pre-wrap;
+      line-height:1.35;
+    }
+    .me{align-self:flex-end;background:rgba(59,130,246,.18)}
+    .ai{align-self:flex-start;background:rgba(255,255,255,.06)}
+    .chatBar{display:flex; gap:10px; padding:12px; border-top:1px solid var(--border)}
+    .chatBar textarea{flex:1; resize:none; min-height:48px; max-height:160px}
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .chipBtn{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:12px;
+    }
+    .chipBtn:hover{background:rgba(255,255,255,.09)}
+    .chipBtn.active{border-color:rgba(62,227,140,.55); background:rgba(62,227,140,.10)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Vokabeln</h1>
-    <p>Hier kannst du deine Vokabeln üben und verwalten.</p>
-    <!-- Zurück zur Startseite von app. -->
-    <a class="back-link" href="../">&#x2B05; Zurück</a>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <button class="btn" id="btnBack">← Lernen</button>
+        <b>🧠 Vokabeln</b>
+        <span class="pill" id="pillProfile">Profil: …</span>
+        <span class="pill" id="pillSaved">geladen</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnSave">Speichern</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- left: folders + sets -->
+      <div class="panel">
+        <div class="panelHead">
+          <div style="font-weight:950">Ordner</div>
+          <div class="row">
+            <button class="btn small primary" id="btnNewFolder">+ Ordner</button>
+          </div>
+        </div>
+        <div class="panelBody">
+          <div class="list" id="folderList"></div>
+          <div class="sep"></div>
+          <div class="panelHead" style="padding:0 0 10px;border:0">
+            <div style="font-weight:950">Lernsets</div>
+            <div class="row">
+              <button class="btn small primary" id="btnNewSet">+ Set</button>
+            </div>
+          </div>
+          <div class="muted" id="setHint" style="margin-bottom:10px"></div>
+          <div class="list" id="setList"></div>
+        </div>
+      </div>
+
+      <!-- right: detail -->
+      <div class="panel">
+        <div class="panelHead">
+          <div style="min-width:0">
+            <div style="font-weight:950" id="detailTitle">Wähle ein Lernset</div>
+            <div class="muted" id="detailSub">Ordner → Lernset → Bearbeiten oder Lernen</div>
+          </div>
+          <div class="row" id="detailActions" style="display:none">
+            <button class="btn small" id="btnSetMenu">⋯</button>
+            <button class="btn small" id="btnLearnCards">Karteikarten</button>
+            <button class="btn small" id="btnLearnHard">KI-Karteikarten</button>
+            <button class="btn small" id="btnLearnAI">KI-Lernen</button>
+          </div>
+        </div>
+        <div class="panelBody" id="detailBody">
+          <div class="muted">Erstelle zuerst einen Ordner und ein Lernset.</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script>
-  // Wenn der Browser per "Zurück" eine gecachte Seite zeigt -> sofort Auth prüfen
-  async function enforceAuth() {
-    try {
-      const r = await fetch("/api/me", { credentials: "include" });
-      if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-    } catch (_) {
+  <!-- modal: learn session -->
+  <div class="modalWrap" id="learnModalWrap" aria-hidden="true">
+    <div class="modal">
+      <div class="modalHead">
+        <div style="font-weight:950" id="learnTitle">Lernen</div>
+        <button class="xbtn" id="learnClose" title="Schließen">✕</button>
+      </div>
+
+      <div id="learnCardsUI" style="display:none">
+        <div class="learnTop">
+          <div class="row" style="gap:12px">
+            <span class="pill" id="learnModePill">Karteikarten</span>
+            <span class="pill" id="learnCountPill">0/0</span>
+            <span class="pill" id="learnQueuePill">Queue: 0</span>
+          </div>
+          <div class="progress" title="Fortschritt"><div id="learnProg"></div></div>
+        </div>
+
+        <div class="learnStage">
+          <div class="swipeCard" id="swipeCard">
+            <div class="overlay">
+              <div class="tag" id="tagEl"> </div>
+            </div>
+            <div class="small" id="cardTop">Tippe zum Umdrehen • Swipe: ← / ↑ / →</div>
+            <div class="front" id="cardFront">…</div>
+            <div class="back" id="cardBack">…</div>
+            <div style="position:absolute;left:14px;bottom:14px" class="mono" id="cardMeta"></div>
+          </div>
+        </div>
+
+        <div class="learnBottom">
+          <div class="row">
+            <button class="ghostBtn" id="btnSwipeLeft">← nicht</button>
+            <button class="ghostBtn" id="btnSwipeUp">↑ halb</button>
+            <button class="ghostBtn" id="btnSwipeRight">→ kann</button>
+            <button class="ghostBtn" id="btnReveal">👁️ zeigen</button>
+          </div>
+          <div class="kbd">Tasten: ← ↑ → • Leertaste: zeigen</div>
+        </div>
+      </div>
+
+      <div id="learnAIUI" style="display:none">
+        <div class="modalBody">
+          <div class="muted" id="aiIntro">KI-Lernen: Themen auswählen, dann abfragen.</div>
+          <div class="chips" id="topicChips"></div>
+        </div>
+        <div class="chat" id="chat"></div>
+        <div class="chatBar">
+          <textarea id="chatInput" placeholder="Antwort tippen (Enter = senden, Shift+Enter = neue Zeile)"></textarea>
+          <button class="btn primary" id="chatSend">Senden</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+(() => {
+  // -------- Auth (wie in deinen anderen Seiten) --------
+  async function enforceAuth(){
+    try{
+      const r = await fetch("/api/me", { credentials:"include" });
+      if(r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+    }catch(_){
       location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
     }
   }
+  window.addEventListener("pageshow", (e)=>{ if(e.persisted) enforceAuth(); });
+  enforceAuth();
 
-  window.addEventListener("pageshow", (e) => {
-    if (e.persisted) enforceAuth(); // BFCache
+  // ---------- helpers ----------
+  const $ = (s)=>document.querySelector(s);
+  const $$ = (s)=>Array.from(document.querySelectorAll(s));
+  const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : ("id_"+Date.now()+"_"+Math.random().toString(16).slice(2)));
+  const nowISO = ()=> new Date().toISOString();
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const deepClone = (o)=> JSON.parse(JSON.stringify(o));
+
+  function toast(text){
+    const pill = $("#pillSaved");
+    const old = pill.textContent;
+    pill.textContent = text;
+    pill.style.color = "rgba(255,255,255,.86)";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>{ pill.textContent = old; pill.style.color = ""; }, 1400);
+  }
+
+  // ---------- API (wie dein Whiteboard: /api/learn/data?profileId=...) ----------
+  const profileId = localStorage.getItem("learn_userId") || "u_default";
+  $("#pillProfile").textContent = "Profil: " + profileId;
+
+  async function apiGet(path){
+    const r = await fetch(path, { credentials:"include", cache:"no-store" });
+    const txt = await r.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch(_){ data = { raw: txt }; }
+    if(!r.ok) throw Object.assign(new Error("HTTP "+r.status), { status:r.status, data });
+    return data;
+  }
+  async function apiPut(path, body){
+    const r = await fetch(path, {
+      method:"PUT",
+      headers:{ "content-type":"application/json" },
+      body: JSON.stringify(body),
+      credentials:"include"
+    });
+    const txt = await r.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch(_){ data = { raw: txt }; }
+    if(!r.ok) throw Object.assign(new Error("HTTP "+r.status), { status:r.status, data });
+    return data;
+  }
+
+  async function apiAskAI(prompt){
+    const r = await fetch("/api/ai", {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      credentials:"include",
+      body: JSON.stringify({ prompt })
+    });
+    const t = await r.text();
+    let j = null;
+    try{ j = t ? JSON.parse(t) : null; }catch(_){}
+    if(!r.ok) throw new Error(j?.error || ("HTTP_"+r.status));
+    return j?.text || "";
+  }
+
+  // ---------- data model (gespeichert in data.vocab, Whiteboard bleibt kompatibel) ----------
+  let data = null;
+  let dirty = false;
+
+  let activeFolderId = null;
+  let activeSetId = null;
+
+  function setDirty(v){
+    dirty = !!v;
+    $("#pillSaved").textContent = dirty ? "ungespeichert" : "gespeichert";
+    $("#pillSaved").style.color = dirty ? "var(--warn)" : "";
+  }
+
+  function ensureDefaults(obj){
+    if(!obj || typeof obj!=="object") obj = {};
+    // whiteboard-compat optional fields:
+    if(!obj.version) obj.version = 1;
+    if(!obj.updatedAt) obj.updatedAt = nowISO();
+
+    // vocab:
+    if(!obj.vocab || typeof obj.vocab!=="object"){
+      obj.vocab = { folders:[], sets:[], stats:{ perCard:{} }, lastFolderId:null, lastSetId:null };
+    }
+    const v = obj.vocab;
+    if(!Array.isArray(v.folders)) v.folders = [];
+    if(!Array.isArray(v.sets)) v.sets = [];
+    if(!v.stats || typeof v.stats!=="object") v.stats = { perCard:{} };
+    if(!v.stats.perCard || typeof v.stats.perCard!=="object") v.stats.perCard = {};
+
+    if(v.folders.length===0){
+      v.folders.push({ id: uid(), name:"Standard", color:"#3ee38c", icon:"📁", createdAt: nowISO() });
+    }
+
+    for(const s of v.sets){
+      if(!s.id) s.id = uid();
+      if(!s.folderId) s.folderId = v.folders[0].id;
+      if(!s.name) s.name = "Neues Set";
+      if(!Array.isArray(s.cards)) s.cards = [];
+      for(const c of s.cards){
+        if(!c.id) c.id = uid();
+        if(c.active === undefined) c.active = true;
+      }
+      if(!s.createdAt) s.createdAt = nowISO();
+      if(!s.updatedAt) s.updatedAt = nowISO();
+      if(!s.langA) s.langA = "Englisch";
+      if(!s.langB) s.langB = "Deutsch";
+      if(!s.desc) s.desc = "";
+    }
+
+    if(!v.lastFolderId || !v.folders.some(f=>f.id===v.lastFolderId)){
+      v.lastFolderId = v.folders[0].id;
+    }
+    const setsInFolder = v.sets.filter(s=>s.folderId===v.lastFolderId);
+    if(!v.lastSetId || !v.sets.some(s=>s.id===v.lastSetId)){
+      v.lastSetId = setsInFolder[0]?.id || v.sets[0]?.id || null;
+    }
+    return obj;
+  }
+
+  function vocab(){ return data.vocab; }
+  function folders(){ return vocab().folders; }
+  function sets(){ return vocab().sets; }
+  function stats(){ return vocab().stats; }
+  function currentFolder(){
+    return folders().find(f=>f.id===activeFolderId) || folders()[0];
+  }
+  function currentSet(){
+    return sets().find(s=>s.id===activeSetId) || null;
+  }
+  function getCardStat(cardId){
+    const per = stats().perCard;
+    if(!per[cardId]) per[cardId] = { l:0, u:0, r:0, lastSeen:null, nextDue:null, streak:0, lastResult:null };
+    return per[cardId];
+  }
+  function hardnessScore(st){
+    const l = st?.l||0, u = st?.u||0, r = st?.r||0;
+    return (l*3 + u*2) - (r*1.2);
+  }
+
+  async function load(){
+    try{
+      const res = await apiGet(`/api/learn/data?profileId=${encodeURIComponent(profileId)}`);
+      // Worker kann {ok:true,data:{...}} oder direkt {..} liefern → beides abfangen
+      const obj = res?.data || res?.json || res;
+      data = ensureDefaults(obj && typeof obj==="object" ? obj : {});
+      setDirty(false);
+    }catch(e){
+      console.error(e);
+      data = ensureDefaults({});
+      setDirty(true);
+      alert("Cloud-Load fehlgeschlagen – lokaler leeres Setup. (Login/Worker prüfen)");
+    }
+
+    activeFolderId = vocab().lastFolderId;
+    const s = sets().find(x=>x.id===vocab().lastSetId && x.folderId===activeFolderId)
+      || sets().find(x=>x.folderId===activeFolderId)
+      || null;
+    activeSetId = s?.id || null;
+
+    renderAll();
+  }
+
+  async function save(){
+    if(!dirty){ toast("nichts"); return; }
+    try{
+      data.updatedAt = nowISO();
+      const body = Object.assign({}, data, { profileId }); // wie bei deinem Whiteboard
+      await apiPut(`/api/learn/data?profileId=${encodeURIComponent(profileId)}`, body);
+      setDirty(false);
+      toast("gespeichert");
+    }catch(e){
+      console.error(e);
+      toast("Fehler");
+      alert("Speichern fehlgeschlagen: " + (e?.data?.error || e?.message || "Fehler"));
+    }
+  }
+
+  // ---------- UI ----------
+  const folderList = $("#folderList");
+  const setList = $("#setList");
+
+  function countSetsInFolder(folderId){
+    return sets().filter(s=>s.folderId===folderId).length;
+  }
+
+  function renderFolders(){
+    folderList.innerHTML = "";
+    if(!activeFolderId || !folders().some(f=>f.id===activeFolderId)){
+      activeFolderId = vocab().lastFolderId || folders()[0].id;
+    }
+    vocab().lastFolderId = activeFolderId;
+
+    for(const f of folders()){
+      const div = document.createElement("div");
+      div.className = "item" + (f.id===activeFolderId ? " active" : "");
+      div.innerHTML = `
+        <div class="left">
+          <div class="badge" style="background:${(f.color||"#3ee38c")+"22"}; border-color:${(f.color||"#3ee38c")+"55"}">${escapeHtml(f.icon||"📁")}</div>
+          <div style="min-width:0">
+            <div class="name">${escapeHtml(f.name||"Ordner")}</div>
+            <div class="meta">${countSetsInFolder(f.id)} Set(s)</div>
+          </div>
+        </div>
+        <button class="kebab" title="Ordner">⋯</button>
+      `;
+      div.addEventListener("click",(ev)=>{
+        if(ev.target && ev.target.classList.contains("kebab")) return;
+        activeFolderId = f.id;
+        vocab().lastFolderId = activeFolderId;
+        const s = sets().find(x=>x.folderId===activeFolderId) || null;
+        activeSetId = s?.id || null;
+        vocab().lastSetId = activeSetId;
+        renderAll();
+      });
+      div.querySelector(".kebab").addEventListener("click", ()=> folderMenu(f.id));
+      folderList.appendChild(div);
+    }
+  }
+
+  function renderSets(){
+    setList.innerHTML = "";
+    const list = sets().filter(s=>s.folderId===activeFolderId);
+    $("#setHint").textContent = list.length ? "" : "Noch kein Lernset in diesem Ordner.";
+
+    if(!activeSetId || !list.some(s=>s.id===activeSetId)){
+      activeSetId = (vocab().lastSetId && list.some(s=>s.id===vocab().lastSetId))
+        ? vocab().lastSetId
+        : (list[0]?.id || null);
+    }
+    vocab().lastSetId = activeSetId;
+
+    for(const s of list){
+      const cTotal = (s.cards||[]).length;
+      const cActive = (s.cards||[]).filter(c=>c.active!==false && (c.front||c.back)).length;
+
+      const div = document.createElement("div");
+      div.className = "item" + (s.id===activeSetId ? " active" : "");
+      div.innerHTML = `
+        <div class="left">
+          <div class="badge">🗂️</div>
+          <div style="min-width:0">
+            <div class="name">${escapeHtml(s.name||"Set")}</div>
+            <div class="meta">${cActive}/${cTotal} Karten</div>
+          </div>
+        </div>
+        <button class="kebab" title="Set">⋯</button>
+      `;
+      div.addEventListener("click",(ev)=>{
+        if(ev.target && ev.target.classList.contains("kebab")) return;
+        activeSetId = s.id;
+        vocab().lastSetId = activeSetId;
+        renderDetail();
+        renderSets();
+      });
+      div.querySelector(".kebab").addEventListener("click", ()=> setMenu(s.id));
+      setList.appendChild(div);
+    }
+  }
+
+  function renderDetail(){
+    const s = currentSet();
+    const actions = $("#detailActions");
+    const body = $("#detailBody");
+    if(!s){
+      $("#detailTitle").textContent = "Wähle ein Lernset";
+      $("#detailSub").textContent = "Ordner → Lernset → Bearbeiten oder Lernen";
+      actions.style.display = "none";
+      body.innerHTML = `<div class="muted">Erstelle zuerst einen Ordner und ein Lernset.</div>`;
+      return;
+    }
+
+    actions.style.display = "flex";
+    $("#detailTitle").textContent = s.name || "Lernset";
+    $("#detailSub").textContent = `${currentFolder().icon||"📁"} ${currentFolder().name} • ${(s.cards||[]).length} Karten`;
+
+    const cards = Array.isArray(s.cards) ? s.cards : [];
+    const activeCount = cards.filter(c=>c.active!==false && (c.front||c.back)).length;
+
+    body.innerHTML = `
+      <div class="miniRow" style="justify-content:space-between">
+        <div class="miniRow">
+          <span class="pill">Aktiv: <b>${activeCount}</b></span>
+          <span class="pill">Gesamt: <b>${cards.length}</b></span>
+          <span class="pill">Sprachen: <b>${escapeHtml(s.langA||"A")}</b> → <b>${escapeHtml(s.langB||"B")}</b></span>
+        </div>
+        <div class="miniRow">
+          <button class="btn small" id="btnEditMeta">✎ Set-Infos</button>
+          <button class="btn small" id="btnAddCard">+ Karte</button>
+          <button class="btn small" id="btnBulk">⤓ Einfügen</button>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="hint">
+        <b>Swipe-Modus:</b> ← kommt schnell wieder • ↑ kommt später wieder • → verschwindet (für diese Session).<br/>
+        <span class="muted">KI-Karteikarten = automatisch „schwere“ Karten (viele ←/↑) priorisiert.</span>
+      </div>
+
+      <div class="sep"></div>
+      <div id="cardsTable"></div>
+    `;
+
+    $("#btnEditMeta").addEventListener("click", ()=> editSetMeta(s.id));
+    $("#btnAddCard").addEventListener("click", ()=> addCard(s.id));
+    $("#btnBulk").addEventListener("click", ()=> bulkPaste(s.id));
+
+    renderCardsTable(s.id);
+  }
+
+  function renderCardsTable(setId){
+    const s = sets().find(x=>x.id===setId);
+    if(!s) return;
+    const el = $("#cardsTable");
+    const cards = s.cards || [];
+    if(cards.length===0){
+      el.innerHTML = `<div class="muted">Noch keine Karten. Klick auf <b>+ Karte</b> oder <b>⤓ Einfügen</b>.</div>`;
+      return;
+    }
+
+    el.innerHTML = cards.map((c)=>{
+      const st = getCardStat(c.id);
+      const score = hardnessScore(st);
+      const scoreLabel = score >= 8 ? "schwer" : (score >= 3 ? "mittel" : "leicht");
+      const scoreColor = score >= 8 ? "rgba(255,77,109,.18)" : (score >= 3 ? "rgba(250,204,21,.16)" : "rgba(62,227,140,.14)");
+
+      return `
+        <div class="cardRow">
+          <div class="cardRowInner">
+            <div>
+              <div class="muted" style="font-weight:900;margin-bottom:6px">Begriff</div>
+              <input type="text" class="inFront" data-id="${c.id}" value="${escapeAttr(c.front||"")}" placeholder="z.B. house" />
+            </div>
+            <div>
+              <div class="muted" style="font-weight:900;margin-bottom:6px">Bedeutung</div>
+              <input type="text" class="inBack" data-id="${c.id}" value="${escapeAttr(c.back||"")}" placeholder="z.B. Haus" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+              <label class="switch" title="Diese Karte beim Lernen ein-/ausblenden">
+                <input type="checkbox" class="inActive" data-id="${c.id}" ${c.active!==false ? "checked":""}/>
+                aktiv
+              </label>
+              <span class="pill" style="background:${scoreColor};border-color:rgba(255,255,255,.10)">${scoreLabel} • ←${st.l} ↑${st.u} →${st.r}</span>
+              <button class="btn small danger inDel" data-id="${c.id}">Löschen</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    el.querySelectorAll(".inFront").forEach(inp=>{
+      inp.addEventListener("input", ()=>{
+        const id = inp.dataset.id;
+        const c = s.cards.find(x=>x.id===id);
+        c.front = inp.value;
+        s.updatedAt = nowISO();
+        setDirty(true);
+      });
+    });
+    el.querySelectorAll(".inBack").forEach(inp=>{
+      inp.addEventListener("input", ()=>{
+        const id = inp.dataset.id;
+        const c = s.cards.find(x=>x.id===id);
+        c.back = inp.value;
+        s.updatedAt = nowISO();
+        setDirty(true);
+      });
+    });
+    el.querySelectorAll(".inActive").forEach(inp=>{
+      inp.addEventListener("change", ()=>{
+        const id = inp.dataset.id;
+        const c = s.cards.find(x=>x.id===id);
+        c.active = inp.checked;
+        s.updatedAt = nowISO();
+        setDirty(true);
+        renderSets();
+        renderDetail();
+      });
+    });
+    el.querySelectorAll(".inDel").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.dataset.id;
+        if(!confirm("Karte löschen?")) return;
+        s.cards = s.cards.filter(x=>x.id!==id);
+        delete stats().perCard[id];
+        s.updatedAt = nowISO();
+        setDirty(true);
+        renderSets();
+        renderDetail();
+      });
+    });
+  }
+
+  function renderAll(){
+    renderFolders();
+    renderSets();
+    renderDetail();
+  }
+
+  // ---------- Menüs / CRUD ----------
+  function folderMenu(folderId){
+    const f = folders().find(x=>x.id===folderId);
+    if(!f) return;
+    const a = prompt(
+      "Ordner-Aktion:\n1 = Umbenennen\n2 = Farbe\n3 = Icon\n4 = Löschen\n\n(Abbrechen = nichts)",
+      "1"
+    );
+    if(!a) return;
+
+    if(a==="1"){
+      const name = prompt("Neuer Ordnername:", f.name||"Ordner");
+      if(!name) return;
+      f.name = name.trim();
+      setDirty(true);
+      renderAll();
+      return;
+    }
+    if(a==="2"){
+      const color = prompt("Farbe als HEX, z.B. #3ee38c:", f.color||"#3ee38c");
+      if(!color) return;
+      f.color = color.trim();
+      setDirty(true);
+      renderAll();
+      return;
+    }
+    if(a==="3"){
+      const icon = prompt("Icon (Emoji), z.B. 📁 🧩 🇬🇧:", f.icon||"📁");
+      if(!icon) return;
+      f.icon = icon.trim().slice(0,4);
+      setDirty(true);
+      renderAll();
+      return;
+    }
+    if(a==="4"){
+      const hasSets = sets().some(s=>s.folderId===folderId);
+      if(hasSets){
+        if(!confirm("In diesem Ordner sind Lernsets. Wirklich löschen? (Sets werden auch gelöscht)")) return;
+      } else {
+        if(!confirm("Ordner wirklich löschen?")) return;
+      }
+      vocab().sets = sets().filter(s=>s.folderId!==folderId);
+      vocab().folders = folders().filter(x=>x.id!==folderId);
+      if(vocab().folders.length===0){
+        vocab().folders.push({ id: uid(), name:"Standard", color:"#3ee38c", icon:"📁", createdAt: nowISO() });
+      }
+      activeFolderId = vocab().folders[0].id;
+      activeSetId = sets().find(s=>s.folderId===activeFolderId)?.id || null;
+      vocab().lastFolderId = activeFolderId;
+      vocab().lastSetId = activeSetId;
+      setDirty(true);
+      renderAll();
+      return;
+    }
+  }
+
+  function setMenu(setId){
+    const s = sets().find(x=>x.id===setId);
+    if(!s) return;
+    const a = prompt(
+      "Set-Aktion:\n1 = Umbenennen\n2 = In anderen Ordner\n3 = Duplizieren\n4 = Export (JSON)\n5 = Import (JSON)\n6 = Stats zurücksetzen\n7 = Löschen\n\n(Abbrechen = nichts)",
+      "1"
+    );
+    if(!a) return;
+
+    if(a==="1"){
+      const name = prompt("Neuer Set-Name:", s.name||"Set");
+      if(!name) return;
+      s.name = name.trim();
+      s.updatedAt = nowISO();
+      setDirty(true);
+      renderSets(); renderDetail();
+      return;
+    }
+    if(a==="2"){
+      const names = folders().map((f,i)=> `${i+1} = ${f.icon||"📁"} ${f.name}`).join("\n");
+      const pick = prompt("Wohin verschieben?\n"+names, "1");
+      const idx = Number(pick)-1;
+      if(!Number.isFinite(idx) || idx<0 || idx>=folders().length) return;
+      s.folderId = folders()[idx].id;
+      s.updatedAt = nowISO();
+      setDirty(true);
+      if(s.folderId!==activeFolderId) activeSetId = null;
+      renderAll();
+      return;
+    }
+    if(a==="3"){
+      const copy = deepClone(s);
+      copy.id = uid();
+      copy.name = (s.name||"Set") + " (Kopie)";
+      for(const c of (copy.cards||[])) c.id = uid();
+      copy.createdAt = nowISO();
+      copy.updatedAt = nowISO();
+      vocab().sets.unshift(copy);
+      setDirty(true);
+      renderAll();
+      return;
+    }
+    if(a==="4"){
+      prompt("Copy JSON:", JSON.stringify(s, null, 2));
+      return;
+    }
+    if(a==="5"){
+      const txt = prompt("JSON einfügen (vom Export):");
+      if(!txt) return;
+      try{
+        const obj = JSON.parse(txt);
+        if(!obj || typeof obj!=="object") throw new Error("bad");
+        const imp = obj;
+        imp.id = uid();
+        imp.folderId = activeFolderId;
+        if(!Array.isArray(imp.cards)) imp.cards = [];
+        for(const c of imp.cards){ if(!c.id) c.id = uid(); if(c.active===undefined) c.active=true; }
+        imp.createdAt = nowISO();
+        imp.updatedAt = nowISO();
+        if(!imp.langA) imp.langA = "Englisch";
+        if(!imp.langB) imp.langB = "Deutsch";
+        if(!imp.desc) imp.desc = "";
+        vocab().sets.unshift(imp);
+        activeSetId = imp.id;
+        setDirty(true);
+        renderAll();
+      }catch(_){
+        alert("Ungültiges JSON.");
+      }
+      return;
+    }
+    if(a==="6"){
+      if(!confirm("Alle Swipe-Stats für dieses Set zurücksetzen?")) return;
+      for(const c of (s.cards||[])) delete stats().perCard[c.id];
+      setDirty(true);
+      renderDetail();
+      return;
+    }
+    if(a==="7"){
+      if(!confirm("Set wirklich löschen?")) return;
+      for(const c of (s.cards||[])) delete stats().perCard[c.id];
+      vocab().sets = sets().filter(x=>x.id!==setId);
+      if(activeSetId===setId) activeSetId = null;
+      setDirty(true);
+      renderAll();
+      return;
+    }
+  }
+
+  function editSetMeta(setId){
+    const s = sets().find(x=>x.id===setId);
+    if(!s) return;
+    const name = prompt("Set-Name:", s.name||"");
+    if(name===null) return;
+    const langA = prompt("Sprache/Seite A (Begriff):", s.langA||"Englisch");
+    if(langA===null) return;
+    const langB = prompt("Sprache/Seite B (Bedeutung):", s.langB||"Deutsch");
+    if(langB===null) return;
+    const desc = prompt("Beschreibung (optional):", s.desc||"");
+    if(desc===null) return;
+
+    s.name = name.trim() || "Lernset";
+    s.langA = langA.trim() || "A";
+    s.langB = langB.trim() || "B";
+    s.desc = desc.trim();
+    s.updatedAt = nowISO();
+    setDirty(true);
+    renderSets(); renderDetail();
+  }
+
+  function addCard(setId){
+    const s = sets().find(x=>x.id===setId);
+    if(!s) return;
+    s.cards.unshift({ id: uid(), front:"", back:"", active:true, createdAt: nowISO() });
+    s.updatedAt = nowISO();
+    setDirty(true);
+    renderSets(); renderDetail();
+  }
+
+  function bulkPaste(setId){
+    const s = sets().find(x=>x.id===setId);
+    if(!s) return;
+    const txt = prompt("Bulk einfügen:\nJe Zeile: Begriff[TAB]Bedeutung\nOder: Begriff;Bedeutung\n\n(Beispiel: house\\tHaus)", "");
+    if(!txt) return;
+    const lines = txt.split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
+    let added = 0;
+    for(const ln of lines){
+      const parts = ln.includes("\\t") ? ln.split("\\t") : ln.split(";");
+      const front = (parts[0]||"").trim();
+      const back  = (parts.slice(1).join(parts.includes("\\t") ? "\\t" : ";")||"").trim();
+      if(!front && !back) continue;
+      s.cards.push({ id: uid(), front, back, active:true, createdAt: nowISO() });
+      added++;
+    }
+    if(added){
+      s.updatedAt = nowISO();
+      setDirty(true);
+      renderSets(); renderDetail();
+      alert(added + " Karte(n) hinzugefügt.");
+    }
+  }
+
+  // ---------- Buttons ----------
+  $("#btnNewFolder").addEventListener("click", ()=>{
+    const name = prompt("Ordnername:", "Neuer Ordner");
+    if(!name) return;
+    const icon = prompt("Icon (Emoji):", "📁");
+    if(icon===null) return;
+    const color = prompt("Farbe (HEX):", "#3ee38c");
+    if(color===null) return;
+    const f = { id: uid(), name: name.trim(), icon: (icon||"📁").trim().slice(0,4), color: (color||"#3ee38c").trim(), createdAt: nowISO() };
+    vocab().folders.unshift(f);
+    activeFolderId = f.id;
+    vocab().lastFolderId = activeFolderId;
+    activeSetId = null;
+    vocab().lastSetId = null;
+    setDirty(true);
+    renderAll();
   });
-</script>
 
+  $("#btnNewSet").addEventListener("click", ()=>{
+    if(!activeFolderId) activeFolderId = folders()[0]?.id;
+    const name = prompt("Name des Lernsets:", "Neues Set");
+    if(!name) return;
+    const langA = prompt("Sprache/Seite A (Begriff):", "Englisch");
+    if(langA===null) return;
+    const langB = prompt("Sprache/Seite B (Bedeutung):", "Deutsch");
+    if(langB===null) return;
+
+    const s = {
+      id: uid(),
+      folderId: activeFolderId,
+      name: name.trim(),
+      langA: langA.trim(),
+      langB: langB.trim(),
+      desc: "",
+      cards: [],
+      createdAt: nowISO(),
+      updatedAt: nowISO()
+    };
+    vocab().sets.unshift(s);
+    activeSetId = s.id;
+    vocab().lastSetId = activeSetId;
+    setDirty(true);
+    renderAll();
+  });
+
+  $("#btnBack").addEventListener("click", ()=>{
+    if(dirty && !confirm("Ungespeicherte Änderungen. Trotzdem zurück?")) return;
+    location.href = "/lernen";
+  });
+  $("#btnSave").addEventListener("click", save);
+
+  $("#btnSetMenu").addEventListener("click", ()=> { if(currentSet()) setMenu(currentSet().id); });
+  $("#btnLearnCards").addEventListener("click", ()=> startLearnSession("cards"));
+  $("#btnLearnHard").addEventListener("click", ()=> startLearnSession("hard"));
+  $("#btnLearnAI").addEventListener("click", ()=> startLearnSession("ai"));
+
+  // ---------- Learn modal ----------
+  const learnWrap = $("#learnModalWrap");
+  const learnClose = $("#learnClose");
+  learnClose.addEventListener("click", ()=> closeLearnModal());
+  learnWrap.addEventListener("click", (e)=> { if(e.target===learnWrap) closeLearnModal(); });
+
+  function openLearnModal(){
+    learnWrap.classList.add("show");
+    learnWrap.setAttribute("aria-hidden","false");
+  }
+  function closeLearnModal(){
+    stopSession();
+    learnWrap.classList.remove("show");
+    learnWrap.setAttribute("aria-hidden","true");
+  }
+
+  // session vars
+  let session = null;
+  let dragging = null;
+
+  function stopSession(){
+    session = null;
+    dragging = null;
+    $("#learnCardsUI").style.display = "none";
+    $("#learnAIUI").style.display = "none";
+    $("#chat").innerHTML = "";
+    $("#topicChips").innerHTML = "";
+    $("#chatInput").value = "";
+    window.removeEventListener("keydown", keyHandler);
+  }
+
+  function startLearnSession(mode){
+    const s = currentSet();
+    if(!s) return;
+    const cardsAll = (s.cards||[]).filter(c=>c.active!==false && (String(c.front||"").trim() || String(c.back||"").trim()));
+    if(cardsAll.length===0){ alert("Keine aktiven Karten."); return; }
+
+    if(mode === "ai"){
+      openLearnModal();
+      $("#learnTitle").textContent = "KI-Lernen – " + (s.name||"Set");
+      $("#learnCardsUI").style.display = "none";
+      $("#learnAIUI").style.display = "block";
+      startKILernen(s, cardsAll).catch(e=>{
+        console.error(e);
+        addChat("Fehler bei der KI.", "ai");
+      });
+      return;
+    }
+
+    const pick = prompt(
+      "Wie viele Karten?\n- leer = alle\n- Zahl (z.B. 20) = zufällige Auswahl\n\nTipp: In großen Sets lieber z.B. 30.",
+      ""
+    );
+    let chosen = cardsAll.slice();
+    if(pick && pick.trim()){
+      const n = Number(pick.trim());
+      if(Number.isFinite(n) && n>0){
+        chosen = shuffle(chosen).slice(0, Math.min(n, chosen.length));
+      }
+    }
+
+    let queueCards = chosen.slice();
+    if(mode === "hard"){
+      const sorted = chosen.slice().sort((a,b)=> (hardnessScore(getCardStat(b.id)) - hardnessScore(getCardStat(a.id))));
+      const hardN = Math.max(6, Math.min(sorted.length, Math.round(sorted.length*0.6)));
+      queueCards = sorted.slice(0, hardN);
+      const rest = sorted.slice(hardN);
+      while(queueCards.length < Math.min(chosen.length, hardN + 12) && rest.length){
+        queueCards.push(rest.shift());
+      }
+    }
+
+    openLearnModal();
+    $("#learnTitle").textContent = (mode==="hard" ? "KI-Karteikarten – " : "Karteikarten – ") + (s.name||"Set");
+    $("#learnCardsUI").style.display = "block";
+    $("#learnAIUI").style.display = "none";
+    $("#learnModePill").textContent = (mode==="hard") ? "KI-Karteikarten" : "Karteikarten";
+
+    const total = queueCards.length;
+    session = {
+      mode,
+      setId: s.id,
+      uniqueTotal: total,
+      mastered: new Set(),
+      queue: queueCards.map(c=>c.id),
+      currentId: null,
+      reveal: false,
+      counts: { left:0, up:0, right:0 },
+      startAt: Date.now()
+    };
+
+    // “kommt schnell / später wieder” abhängig von Set-Länge
+    session.delayFast = clamp(Math.round(total * 0.25), 2, 16);  // left
+    session.delayMid  = clamp(Math.round(total * 0.65), 6, 36);  // up
+
+    $("#btnSwipeLeft").onclick = ()=> applySwipe("left");
+    $("#btnSwipeUp").onclick   = ()=> applySwipe("up");
+    $("#btnSwipeRight").onclick= ()=> applySwipe("right");
+    $("#btnReveal").onclick    = ()=> toggleReveal();
+
+    const cardEl = $("#swipeCard");
+    cardEl.onclick = ()=> { if(dragging && dragging.moved) return; toggleReveal(); };
+    enableDrag(cardEl);
+
+    window.addEventListener("keydown", keyHandler);
+    nextCard();
+  }
+
+  function keyHandler(e){
+    if(!session) return;
+    if(e.key === "ArrowLeft"){ e.preventDefault(); applySwipe("left"); }
+    if(e.key === "ArrowUp"){ e.preventDefault(); applySwipe("up"); }
+    if(e.key === "ArrowRight"){ e.preventDefault(); applySwipe("right"); }
+    if(e.key === " "){ e.preventDefault(); toggleReveal(); }
+    if(e.key === "Escape"){ e.preventDefault(); closeLearnModal(); }
+  }
+
+  function toggleReveal(){
+    if(!session) return;
+    session.reveal = !session.reveal;
+    $("#swipeCard").classList.toggle("reveal", session.reveal);
+  }
+
+  function nextCard(){
+    if(!session) return;
+    while(session.queue.length && session.mastered.has(session.queue[0])) session.queue.shift();
+    if(session.queue.length===0){
+      finishSession();
+      return;
+    }
+    session.currentId = session.queue[0];
+    session.reveal = false;
+    $("#swipeCard").classList.remove("reveal");
+
+    const s = currentSet();
+    const card = (s.cards||[]).find(c=>c.id===session.currentId);
+    $("#cardFront").textContent = card?.front || "";
+    $("#cardBack").textContent = card?.back || "";
+    const st = getCardStat(session.currentId);
+    $("#cardMeta").textContent = `←${st.l} ↑${st.u} →${st.r} • fast:${session.delayFast} mid:${session.delayMid}`;
+
+    renderLearnHUD();
+    resetCardTransform();
+  }
+
+  function renderLearnHUD(){
+    const mastered = session.mastered.size;
+    const total = session.uniqueTotal;
+    const donePct = total ? Math.round((mastered/total)*100) : 0;
+    $("#learnCountPill").textContent = mastered + "/" + total;
+    $("#learnQueuePill").textContent = "Queue: " + session.queue.length;
+    $("#learnProg").style.width = donePct + "%";
+  }
+
+  function finishSession(){
+    const sec = Math.round((Date.now() - session.startAt)/1000);
+    alert(
+      `Fertig ✅\n\nZeit: ${sec}s\n← nicht: ${session.counts.left}\n↑ halb: ${session.counts.up}\n→ kann: ${session.counts.right}\n\n`+
+      `Hinweis: Stats sind im Speicher – drück noch "Speichern", damit es in der Cloud ist.`
+    );
+    closeLearnModal();
+  }
+
+  function applySwipe(dir){
+    if(!session) return;
+    const cid = session.currentId;
+    if(!cid) return;
+
+    // remove current from front
+    if(session.queue[0]===cid) session.queue.shift();
+    else session.queue = session.queue.filter(x=>x!==cid);
+
+    const st = getCardStat(cid);
+    st.lastSeen = nowISO();
+    st.lastResult = dir;
+
+    if(dir==="left"){ st.l++; st.streak = 0; session.counts.left++; }
+    if(dir==="up"){ st.u++; st.streak = 0; session.counts.up++; }
+    if(dir==="right"){ st.r++; st.streak = (st.streak||0)+1; session.counts.right++; }
+
+    // “KI analysiert” → wir speichern die Counts, daraus wird “hardness” berechnet
+    setDirty(true);
+
+    if(dir==="right"){
+      session.mastered.add(cid);
+      showTag("good","→ kann");
+      animateOut("right", ()=> nextCard());
+      return;
+    }
+    if(dir==="up"){
+      const pos = Math.min(session.queue.length, session.delayMid);
+      session.queue.splice(pos, 0, cid);
+      showTag("mid","↑ halb");
+      animateOut("up", ()=> nextCard());
+      return;
+    }
+    // left
+    const pos = Math.min(session.queue.length, session.delayFast);
+    session.queue.splice(pos, 0, cid);
+    showTag("bad","← nicht");
+    animateOut("left", ()=> nextCard());
+  }
+
+  function showTag(kind, text){
+    const tag = $("#tagEl");
+    tag.className = "tag " + (kind==="good"?"good":kind==="mid"?"mid":"bad") + " show";
+    tag.textContent = text;
+    clearTimeout(showTag._t);
+    showTag._t = setTimeout(()=> tag.classList.remove("show"), 420);
+  }
+
+  function resetCardTransform(){
+    const el = $("#swipeCard");
+    el.style.transition = "transform .16s ease";
+    el.style.transform = "translate(0px, 0px) rotate(0deg)";
+    setTimeout(()=>{ el.style.transition=""; }, 180);
+  }
+  function animateOut(dir, cb){
+    const el = $("#swipeCard");
+    const w = el.offsetWidth;
+    el.style.transition = "transform .20s ease";
+    if(dir==="left") el.style.transform = `translate(${-w*1.2}px, 0px) rotate(-10deg)`;
+    if(dir==="right") el.style.transform = `translate(${w*1.2}px, 0px) rotate(10deg)`;
+    if(dir==="up") el.style.transform = `translate(0px, ${-w*0.9}px) rotate(0deg)`;
+    setTimeout(()=>{ el.style.transition=""; cb && cb(); }, 210);
+  }
+
+  function enableDrag(el){
+    el.onpointerdown = (e)=>{
+      if(!session) return;
+      el.setPointerCapture(e.pointerId);
+      dragging = { id: e.pointerId, sx: e.clientX, sy: e.clientY, dx:0, dy:0, moved:false };
+    };
+    el.onpointermove = (e)=>{
+      if(!dragging || dragging.id !== e.pointerId) return;
+      const dx = e.clientX - dragging.sx;
+      const dy = e.clientY - dragging.sy;
+      dragging.dx = dx; dragging.dy = dy;
+      dragging.moved = dragging.moved || (Math.abs(dx)+Math.abs(dy) > 6);
+
+      const rot = clamp(dx/28, -12, 12);
+      el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if(dx > 60 && adx > ady + 20) showTag("good","→ kann");
+      else if(dx < -60 && adx > ady + 20) showTag("bad","← nicht");
+      else if(dy < -60 && ady > adx + 20) showTag("mid","↑ halb");
+    };
+    el.onpointerup = (e)=>{
+      if(!dragging || dragging.id !== e.pointerId) return;
+      const dx = dragging.dx, dy = dragging.dy;
+      dragging = null;
+
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if(dx > 90 && adx > ady + 20){ applySwipe("right"); return; }
+      if(dx < -90 && adx > ady + 20){ applySwipe("left"); return; }
+      if(dy < -90 && ady > adx + 20){ applySwipe("up"); return; }
+      resetCardTransform();
+    };
+    el.onpointercancel = ()=> { dragging=null; resetCardTransform(); };
+  }
+
+  // ---------- KI Lernen (Themen + Abfragen) ----------
+  let aiState = null;
+
+  function addChat(text, who){
+    const chat = $("#chat");
+    const d = document.createElement("div");
+    d.className = "bubble " + (who==="me" ? "me" : "ai");
+    d.textContent = text;
+    chat.appendChild(d);
+    chat.scrollTop = chat.scrollHeight;
+  }
+  function setTopicsUI(topics){
+    const wrap = $("#topicChips");
+    wrap.innerHTML = "";
+    for(const t of topics){
+      const b = document.createElement("button");
+      b.className = "chipBtn";
+      b.textContent = t;
+      b.addEventListener("click", ()=>{
+        $$("#topicChips .chipBtn").forEach(x=>x.classList.remove("active"));
+        b.classList.add("active");
+        aiState.topic = t;
+        addChat("Ok. Thema: " + t, "ai");
+        askNextAIQuestion();
+      });
+      wrap.appendChild(b);
+    }
+  }
+
+  function parseTopics(out){
+    const s = String(out||"").trim();
+    if(!s) return [];
+    try{
+      const j = JSON.parse(s);
+      if(Array.isArray(j)) return j.map(x=>String(x).trim()).filter(Boolean).slice(0,10);
+    }catch(_){}
+    return s.split(/\\r?\\n/)
+      .map(l=>l.replace(/^[\\-\\*\\d\\.\\)\\s]+/,"").trim())
+      .filter(Boolean)
+      .map(x=>x.slice(0,42))
+      .slice(0,10);
+  }
+
+  function pickNextCardForAI(cards){
+    const sorted = cards.slice().sort((a,b)=> hardnessScore(getCardStat(b.id)) - hardnessScore(getCardStat(a.id)));
+    for(const c of sorted){
+      if(!aiState.asked.has(c.id)){
+        aiState.asked.add(c.id);
+        return c;
+      }
+    }
+    aiState.asked.clear();
+    const c = sorted[0];
+    if(c) aiState.asked.add(c.id);
+    return c;
+  }
+
+  function normalizeAnswer(s){ return String(s||"").trim(); }
+  function splitAlternatives(ans){
+    return normalizeAnswer(ans).split(/[;\\/\\|]/).map(x=>x.trim()).filter(Boolean);
+  }
+  function equalsStrict(user, expected){
+    // aktuell: case-insensitive, aber sonst exakt (keine Tippfehler)
+    return normalizeAnswer(user).toLowerCase() === normalizeAnswer(expected).toLowerCase();
+  }
+
+  async function startKILernen(setObj, cardsAll){
+    aiState = {
+      topic: null,
+      setId: setObj.id,
+      setName: setObj.name||"Set",
+      langA: setObj.langA||"A",
+      langB: setObj.langB||"B",
+      cards: cardsAll,
+      asked: new Set(),
+      awaitingAnswer: false,
+      lastQuestion: null,
+      lastExpected: null,
+      lastCardId: null,
+      theoryMode: false
+    };
+
+    $("#chat").innerHTML = "";
+    $("#topicChips").innerHTML = "";
+    addChat("Ich erstelle Themen…", "ai");
+
+    let topics = [];
+    try{
+      const sample = cardsAll.slice(0, 18).map(c=>`${c.front} = ${c.back}`).join("\\n");
+      const prompt =
+`Gib mir 8 kurze Lern-Themen als Liste (ohne Erklärungen), passend zu diesem Stoff.
+Wenn es Vokabeln sind: gruppiere nach Themenfeldern (z.B. Schule, Essen, Reisen).
+Stoff:
+${sample}
+
+Antworte als Bullet-Liste oder JSON-Array.`;
+      const out = await apiAskAI(prompt);
+      topics = parseTopics(out);
+    }catch(_){}
+
+    if(!topics.length){
+      topics = ["Grundwortschatz", "Wiederholung", "Schwierige Wörter", "Zufall", "Prüfungsmodus"];
+    }
+
+    $("#aiIntro").textContent = "Wähle ein Thema:";
+    addChat("Wähle oben ein Thema, dann frage ich dich ab.", "ai");
+    setTopicsUI(topics);
+
+    $("#chatSend").onclick = sendAIAnswer;
+    $("#chatInput").onkeydown = (e)=>{
+      if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendAIAnswer(); }
+    };
+  }
+
+  async function askNextAIQuestion(){
+    if(!aiState || aiState.awaitingAnswer) return;
+
+    // Vokabel-Modus (streng prüfen)
+    const c = pickNextCardForAI(aiState.cards);
+    aiState.lastCardId = c?.id || null;
+    aiState.lastQuestion = `Was bedeutet „${c.front}“ (${aiState.langA}) auf ${aiState.langB}?`;
+    aiState.lastExpected = c.back;
+    aiState.awaitingAnswer = true;
+    addChat(aiState.lastQuestion, "ai");
+  }
+
+  async function sendAIAnswer(){
+    const inp = $("#chatInput");
+    const t = inp.value.trim();
+    if(!t || !aiState || !aiState.awaitingAnswer) return;
+    inp.value = "";
+    addChat(t, "me");
+
+    // Vokabel: lokal prüfen, dann Feedback
+    const expected = aiState.lastExpected;
+    const alts = splitAlternatives(expected);
+    const ok = alts.some(a=>equalsStrict(t, a));
+
+    if(aiState.lastCardId){
+      const st = getCardStat(aiState.lastCardId);
+      st.lastSeen = nowISO();
+      if(ok){ st.r++; st.streak=(st.streak||0)+1; st.lastResult="right"; }
+      else { st.l++; st.streak=0; st.lastResult="left"; }
+      setDirty(true);
+    }
+
+    addChat(ok ? "✅ Richtig." : ("❌ Nicht ganz. Richtig wäre: " + expected), "ai");
+    aiState.awaitingAnswer = false;
+    askNextAIQuestion();
+  }
+
+  // ---------- utilities ----------
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+  function escapeHtml(s){
+    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
+
+  // ---------- init ----------
+  load();
+})();
+</script>
 </body>
 </html>
