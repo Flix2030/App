@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Vokabeln</title>
+  <title>Vokabeln – Lernen</title>
+
+  <!-- optional, falls du das schon hast -->
   <link rel="stylesheet" href="/app.css">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <style>
     :root{
       --bg0:#05080f; --bg1:#070c16;
@@ -39,7 +41,6 @@
         radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
         linear-gradient(180deg, var(--bg0), var(--bg1));
     }
-
     .wrap{max-width:1280px;margin:0 auto;padding:16px 12px calc(16px + var(--safe-bottom));}
     .topbar{
       display:flex; gap:10px; align-items:center; justify-content:space-between;
@@ -48,7 +49,7 @@
       background: linear-gradient(180deg, rgba(5,8,15,.92), rgba(5,8,15,.65) 60%, rgba(5,8,15,0));
       backdrop-filter: blur(10px);
     }
-    .title{display:flex;gap:10px;align-items:center;min-width:0}
+    .title{display:flex;gap:10px;align-items:center;min-width:0;flex-wrap:wrap}
     .title b{font-size:18px;white-space:nowrap}
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .btn{
@@ -58,7 +59,7 @@
       padding:10px 12px;
       border-radius:14px;
       cursor:pointer;
-      font-weight:800;
+      font-weight:900;
     }
     .btn:hover{background:rgba(255,255,255,.09)}
     .btn.primary{
@@ -67,9 +68,16 @@
       background:linear-gradient(180deg,var(--accent),var(--accent2));
       box-shadow:0 10px 26px rgba(62,227,140,.20);
     }
+    .btn.blue{
+      border:0;
+      background:linear-gradient(180deg, rgba(59,130,246,.95), rgba(59,130,246,.70));
+      color:rgba(255,255,255,.94);
+      box-shadow:0 10px 26px rgba(59,130,246,.18);
+    }
     .btn.danger{border-color:rgba(255,77,109,.35); background:rgba(255,77,109,.10)}
-    .btn.small{padding:8px 10px;border-radius:12px;font-weight:800}
+    .btn.small{padding:8px 10px;border-radius:12px;font-weight:900}
     .btn:disabled{opacity:.6;cursor:not-allowed}
+
     .select, input[type="text"], textarea{
       border:1px solid var(--border);
       background:rgba(0,0,0,.25);
@@ -77,17 +85,13 @@
       padding:10px 12px;
       border-radius:14px;
       outline:none;
+      width:100%;
+      font-size:16px; /* iOS zoom fix */
     }
+    textarea{resize:none}
     .muted{color:var(--muted);font-size:13px}
-    .grid{
-      display:grid;
-      grid-template-columns: 330px 1fr;
-      gap:12px;
-      align-items:start;
-    }
-    @media (max-width: 980px){
-      .grid{grid-template-columns: 1fr}
-    }
+    .grid{display:grid;grid-template-columns: 330px 1fr;gap:12px;align-items:start;}
+    @media (max-width: 980px){ .grid{grid-template-columns: 1fr} }
 
     .panel{
       border:1px solid var(--border);
@@ -97,7 +101,7 @@
       overflow:hidden;
     }
     .panelHead{
-      padding:12px 12px;
+      padding:12px;
       border-bottom:1px solid var(--border);
       display:flex; justify-content:space-between; align-items:center; gap:10px;
     }
@@ -107,7 +111,7 @@
       border:1px solid var(--border);
       background:rgba(255,255,255,.05);
       border-radius:14px;
-      padding:10px 10px;
+      padding:10px;
       display:flex; gap:10px; align-items:center; justify-content:space-between;
       cursor:pointer;
     }
@@ -117,10 +121,7 @@
       box-shadow:0 0 0 3px rgba(62,227,140,.10) inset;
       background:rgba(62,227,140,.08);
     }
-    .item .left{
-      min-width:0;
-      display:flex; gap:10px; align-items:center;
-    }
+    .item .left{min-width:0;display:flex; gap:10px; align-items:center;}
     .badge{
       display:inline-flex; align-items:center; justify-content:center;
       width:30px; height:30px; border-radius:10px;
@@ -129,30 +130,22 @@
       font-weight:900;
       flex:0 0 auto;
     }
-    .item .name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .item .name{font-weight:950;white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .item .meta{font-size:12px;color:var(--muted);white-space:nowrap}
-    .kebab{border:1px solid var(--border); background:rgba(0,0,0,.22); color:var(--text); border-radius:12px; padding:8px 10px; cursor:pointer}
+    .kebab{border:1px solid var(--border); background:rgba(0,0,0,.22); color:var(--text); border-radius:12px; padding:8px 10px; cursor:pointer; font-weight:950}
     .kebab:hover{background:rgba(255,255,255,.07)}
     .sep{height:1px;background:rgba(255,255,255,.10);margin:10px 0}
 
-    .miniRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .pill{
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
+      display:inline-flex; gap:8px; align-items:center;
       padding:7px 10px;
       border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background:rgba(255,255,255,.06);
       color:rgba(255,255,255,.86);
       font-size:12px;
-      font-weight:800;
+      font-weight:900;
     }
-    .switch{
-      display:inline-flex; align-items:center; gap:8px; user-select:none; cursor:pointer;
-      color:var(--muted); font-weight:800; font-size:12px;
-    }
-    .switch input{accent-color: var(--accent)}
     .hint{font-size:12px;color:var(--muted);line-height:1.35}
 
     .cardRow{
@@ -169,43 +162,11 @@
       padding:10px;
       align-items:start;
     }
-    @media (max-width: 900px){
-      .cardRowInner{grid-template-columns: 1fr}
-    }
+    @media (max-width: 900px){ .cardRowInner{grid-template-columns: 1fr} }
 
-    /* modal */
-    .modalWrap{
-      position:fixed; inset:0; background:rgba(0,0,0,.58);
-      display:none; align-items:center; justify-content:center;
-      z-index:200;
-      padding:18px 12px;
-    }
-    .modalWrap.show{display:flex}
-    .modal{
-      width:min(860px, 100%);
-      border:1px solid var(--border);
-      background:linear-gradient(180deg,var(--panel2),var(--panel));
-      border-radius:20px;
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .modalHead{padding:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .modalBody{padding:12px}
-    .xbtn{width:40px;height:40px;border-radius:14px;border:1px solid var(--border);background:rgba(0,0,0,.22);color:var(--text);cursor:pointer;font-weight:900}
-    .xbtn:hover{background:rgba(255,255,255,.07)}
-
-    /* learn session */
-    .learnTop{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
-      padding:12px; border-bottom:1px solid var(--border);
-    }
-    .progress{
-      flex:1; min-width:220px;
-      height:12px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(0,0,0,.25);
-      overflow:hidden;
-    }
+    /* Learn */
+    .learnTop{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border);}
+    .progress{flex:1; min-width:220px; height:12px; border-radius:999px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25); overflow:hidden;}
     .progress > div{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
     .learnStage{padding:14px; display:grid; place-items:center; min-height:56vh}
     .swipeCard{
@@ -215,85 +176,59 @@
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.07);
       box-shadow:0 18px 60px rgba(0,0,0,.50);
-      padding:18px 18px;
+      padding:18px;
       position:relative;
-      touch-action: none;
+      touch-action:none;
       user-select:none;
       overflow:hidden;
     }
-    .swipeCard .small{font-size:12px;color:var(--muted);font-weight:800}
+    .swipeCard .small{font-size:12px;color:var(--muted);font-weight:900}
     .swipeCard .front{font-size:30px; font-weight:950; line-height:1.1; margin-top:10px; word-break:break-word}
     .swipeCard .back{margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.12); font-size:18px; color:rgba(255,255,255,.90); display:none; white-space:pre-wrap}
     .swipeCard.reveal .back{display:block}
-    .overlay{
-      position:absolute; inset:0;
-      display:flex; align-items:flex-start; justify-content:flex-end;
-      padding:14px;
-      pointer-events:none;
-    }
-    .tag{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background:rgba(0,0,0,.25);
-      font-weight:950;
-      opacity:0;
-      transform: translateY(-6px);
-      transition: opacity .08s linear, transform .08s linear;
-    }
+    .overlay{position:absolute; inset:0; display:flex; align-items:flex-start; justify-content:flex-end; padding:14px; pointer-events:none;}
+    .tag{display:inline-flex; gap:8px; align-items:center; padding:10px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.25); font-weight:950; opacity:0; transform: translateY(-6px); transition: opacity .08s linear, transform .08s linear;}
     .tag.show{opacity:1; transform: translateY(0)}
     .tag.bad{border-color: rgba(255,77,109,.35); background: rgba(255,77,109,.14)}
     .tag.mid{border-color: rgba(250,204,21,.35); background: rgba(250,204,21,.14)}
     .tag.good{border-color: rgba(62,227,140,.35); background: rgba(62,227,140,.14)}
-    .learnBottom{
-      padding:12px; border-top:1px solid var(--border);
-      display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;
-    }
-    .ghostBtn{
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.25);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:900;
-    }
+    .learnBottom{padding:12px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:space-between; align-items:center; flex-wrap:wrap;}
+    .ghostBtn{border:1px solid var(--border); background:rgba(0,0,0,.25); color:var(--text); padding:10px 12px; border-radius:14px; cursor:pointer; font-weight:950;}
     .ghostBtn:hover{background:rgba(255,255,255,.07)}
-    .kbd{font-size:12px;color:var(--muted);font-weight:800}
+    .kbd{font-size:12px;color:var(--muted);font-weight:900}
 
-    /* KI Lernen (chat) */
-    .chat{
-      height:62vh; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:10px;
-    }
-    .bubble{
-      max-width: 86%;
-      padding:10px 12px;
-      border-radius: 16px;
-      border:1px solid var(--border);
-      white-space:pre-wrap;
-      line-height:1.35;
-    }
+    /* Chat */
+    .chat{height:62vh; overflow:auto; padding:12px; display:flex; flex-direction:column; gap:10px;}
+    .bubble{max-width: 86%; padding:10px 12px; border-radius: 16px; border:1px solid var(--border); white-space:pre-wrap; line-height:1.35;}
     .me{align-self:flex-end;background:rgba(59,130,246,.18)}
     .ai{align-self:flex-start;background:rgba(255,255,255,.06)}
     .chatBar{display:flex; gap:10px; padding:12px; border-top:1px solid var(--border)}
-    .chatBar textarea{flex:1; resize:none; min-height:48px; max-height:160px}
+    .chatBar textarea{flex:1; min-height:48px; max-height:160px}
     .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
-    .chipBtn{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:8px 10px;
-      border-radius:999px;
-      cursor:pointer;
-      font-weight:900;
-      font-size:12px;
-    }
+    .chipBtn{border:1px solid var(--border); background:rgba(255,255,255,.06); color:var(--text); padding:8px 10px; border-radius:999px; cursor:pointer; font-weight:950; font-size:12px;}
     .chipBtn:hover{background:rgba(255,255,255,.09)}
     .chipBtn.active{border-color:rgba(62,227,140,.55); background:rgba(62,227,140,.10)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--muted)}
+
+    /* Popups (statt alert/confirm/prompt) */
+    .popupShade{position:fixed; inset:0; background:rgba(0,0,0,.58); display:none; align-items:center; justify-content:center; z-index:9999; padding:16px 12px;}
+    .popupShade.show{display:flex}
+    .popup{width:min(860px, 100%); border:1px solid var(--border); background:linear-gradient(180deg,var(--panel2),var(--panel)); border-radius:20px; box-shadow:var(--shadow); overflow:hidden;}
+    .popupHead{padding:12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .popupTitle{font-weight:950}
+    .popupBody{padding:12px}
+    .popupFoot{padding:12px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;}
+    .xbtn{width:40px;height:40px;border-radius:14px; border:1px solid var(--border); background:rgba(0,0,0,.22); color:var(--text); cursor:pointer; font-weight:950;}
+    .xbtn:hover{background:rgba(255,255,255,.07)}
+    .twoCols{display:grid;grid-template-columns: 1fr 1fr;gap:10px;}
+    @media (max-width: 860px){ .twoCols{grid-template-columns: 1fr} }
+    .fieldLabel{font-size:12px;font-weight:950;color:var(--muted);margin-bottom:6px;}
+    .smallHint{font-size:12px;color:var(--muted);line-height:1.35}
+    .spinner{width:18px;height:18px;border-radius:999px; border:2px solid rgba(255,255,255,.25); border-top-color: rgba(255,255,255,.88); animation: spin .75s linear infinite; display:inline-block; vertical-align:-4px; margin-right:8px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="topbar">
@@ -309,29 +244,26 @@
     </div>
 
     <div class="grid">
-      <!-- left: folders + sets -->
+      <!-- Left -->
       <div class="panel">
         <div class="panelHead">
           <div style="font-weight:950">Ordner</div>
-          <div class="row">
-            <button class="btn small primary" id="btnNewFolder">+ Ordner</button>
-          </div>
+          <button class="btn small primary" id="btnNewFolder">+ Ordner</button>
         </div>
         <div class="panelBody">
           <div class="list" id="folderList"></div>
           <div class="sep"></div>
+
           <div class="panelHead" style="padding:0 0 10px;border:0">
             <div style="font-weight:950">Lernsets</div>
-            <div class="row">
-              <button class="btn small primary" id="btnNewSet">+ Set</button>
-            </div>
+            <button class="btn small primary" id="btnNewSet">+ Set</button>
           </div>
           <div class="muted" id="setHint" style="margin-bottom:10px"></div>
           <div class="list" id="setList"></div>
         </div>
       </div>
 
-      <!-- right: detail -->
+      <!-- Right -->
       <div class="panel">
         <div class="panelHead">
           <div style="min-width:0">
@@ -340,6 +272,7 @@
           </div>
           <div class="row" id="detailActions" style="display:none">
             <button class="btn small" id="btnSetMenu">⋯</button>
+            <button class="btn small blue" id="btnAIImport">KI-Import</button>
             <button class="btn small" id="btnLearnCards">Karteikarten</button>
             <button class="btn small" id="btnLearnHard">KI-Karteikarten</button>
             <button class="btn small" id="btnLearnAI">KI-Lernen</button>
@@ -352,14 +285,15 @@
     </div>
   </div>
 
-  <!-- modal: learn session -->
-  <div class="modalWrap" id="learnModalWrap" aria-hidden="true">
-    <div class="modal">
-      <div class="modalHead">
-        <div style="font-weight:950" id="learnTitle">Lernen</div>
+  <!-- Learn Modal -->
+  <div class="popupShade" id="learnModalShade" aria-hidden="true">
+    <div class="popup">
+      <div class="popupHead">
+        <div class="popupTitle" id="learnTitle">Lernen</div>
         <button class="xbtn" id="learnClose" title="Schließen">✕</button>
       </div>
 
+      <!-- Cards UI -->
       <div id="learnCardsUI" style="display:none">
         <div class="learnTop">
           <div class="row" style="gap:12px">
@@ -367,15 +301,13 @@
             <span class="pill" id="learnCountPill">0/0</span>
             <span class="pill" id="learnQueuePill">Queue: 0</span>
           </div>
-          <div class="progress" title="Fortschritt"><div id="learnProg"></div></div>
+          <div class="progress"><div id="learnProg"></div></div>
         </div>
 
         <div class="learnStage">
           <div class="swipeCard" id="swipeCard">
-            <div class="overlay">
-              <div class="tag" id="tagEl"> </div>
-            </div>
-            <div class="small" id="cardTop">Tippe zum Umdrehen • Swipe: ← / ↑ / →</div>
+            <div class="overlay"><div class="tag" id="tagEl"></div></div>
+            <div class="small">Tippe zum Umdrehen • Swipe: ← / ↑ / →</div>
             <div class="front" id="cardFront">…</div>
             <div class="back" id="cardBack">…</div>
             <div style="position:absolute;left:14px;bottom:14px" class="mono" id="cardMeta"></div>
@@ -393,8 +325,9 @@
         </div>
       </div>
 
+      <!-- KI Lernen UI -->
       <div id="learnAIUI" style="display:none">
-        <div class="modalBody">
+        <div class="popupBody">
           <div class="muted" id="aiIntro">KI-Lernen: Themen auswählen, dann abfragen.</div>
           <div class="chips" id="topicChips"></div>
         </div>
@@ -404,31 +337,49 @@
           <button class="btn primary" id="chatSend">Senden</button>
         </div>
       </div>
-
     </div>
   </div>
 
+  <!-- Generic Popup -->
+  <div class="popupShade" id="popupShade" aria-hidden="true">
+    <div class="popup" role="dialog" aria-modal="true">
+      <div class="popupHead">
+        <div class="popupTitle" id="popupTitle">Popup</div>
+        <button class="xbtn" id="popupX" title="Schließen">✕</button>
+      </div>
+      <div class="popupBody" id="popupBody"></div>
+      <div class="popupFoot" id="popupFoot"></div>
+    </div>
+  </div>
+
+  <!-- PDF/DOCX/OCR für KI-Import -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
+
 <script>
 (() => {
-  // -------- Auth (wie in deinen anderen Seiten) --------
+  // Kein alert/confirm/prompt wird benutzt.
+
+  // optional Auth (wenn du /api/me hast)
   async function enforceAuth(){
     try{
       const r = await fetch("/api/me", { credentials:"include" });
       if(r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-    }catch(_){
-      location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-    }
+    }catch(_){}
   }
-  window.addEventListener("pageshow", (e)=>{ if(e.persisted) enforceAuth(); });
   enforceAuth();
 
-  // ---------- helpers ----------
   const $ = (s)=>document.querySelector(s);
   const $$ = (s)=>Array.from(document.querySelectorAll(s));
   const uid = ()=> (crypto.randomUUID ? crypto.randomUUID() : ("id_"+Date.now()+"_"+Math.random().toString(16).slice(2)));
   const nowISO = ()=> new Date().toISOString();
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const deepClone = (o)=> JSON.parse(JSON.stringify(o));
+  const shuffle = (arr)=>{ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
+
+  function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
 
   function toast(text){
     const pill = $("#pillSaved");
@@ -439,8 +390,123 @@
     toast._t = setTimeout(()=>{ pill.textContent = old; pill.style.color = ""; }, 1400);
   }
 
-  // ---------- API (wie dein Whiteboard: /api/learn/data?profileId=...) ----------
-  const profileId = localStorage.getItem("learn_userId") || "u_default";
+  // ---- Popup System (kein alert) ----
+  const popupShade = $("#popupShade");
+  const popupTitle = $("#popupTitle");
+  const popupBody  = $("#popupBody");
+  const popupFoot  = $("#popupFoot");
+  const popupX     = $("#popupX");
+  let popupResolve = null;
+
+  function closePopup(){
+    popupShade.classList.remove("show");
+    popupShade.setAttribute("aria-hidden","true");
+    popupBody.innerHTML = "";
+    popupFoot.innerHTML = "";
+    popupResolve = null;
+  }
+  popupX.addEventListener("click", ()=> { if(popupResolve) popupResolve(null); closePopup(); });
+  popupShade.addEventListener("click", (e)=>{ if(e.target===popupShade){ if(popupResolve) popupResolve(null); closePopup(); } });
+
+  function openPopup({ title, bodyHTML, buttons }){
+    popupTitle.textContent = title || "Popup";
+    popupBody.innerHTML = bodyHTML || "";
+    popupFoot.innerHTML = "";
+    (buttons||[]).forEach(btn=>{
+      const b = document.createElement("button");
+      b.className = "btn" + (btn.primary ? " primary" : "") + (btn.danger ? " danger" : "") + (btn.blue ? " blue" : "") + (btn.small ? " small" : "");
+      b.textContent = btn.label || "OK";
+      b.addEventListener("click", ()=>{
+        const val = btn.onClick ? btn.onClick() : true;
+        if(popupResolve) popupResolve(val);
+        closePopup();
+      });
+      popupFoot.appendChild(b);
+    });
+    popupShade.classList.add("show");
+    popupShade.setAttribute("aria-hidden","false");
+  }
+
+  function popupInfo(title, text){
+    return new Promise(resolve=>{
+      popupResolve = resolve;
+      openPopup({
+        title,
+        bodyHTML: `<div class="smallHint">${escapeHtml(text).replace(/\\n/g,"<br>")}</div>`,
+        buttons:[{ label:"OK", primary:true, onClick: ()=> true }]
+      });
+    });
+  }
+
+  function popupConfirm(title, text, { ok="OK", cancel="Abbrechen", danger=false } = {}){
+    return new Promise(resolve=>{
+      popupResolve = resolve;
+      openPopup({
+        title,
+        bodyHTML: `<div class="smallHint">${escapeHtml(text).replace(/\\n/g,"<br>")}</div>`,
+        buttons:[
+          { label: cancel, onClick: ()=> false },
+          { label: ok, danger, primary: !danger, onClick: ()=> true }
+        ]
+      });
+    });
+  }
+
+  function popupPrompt(title, fields, { ok="OK", cancel="Abbrechen", wide=false } = {}){
+    return new Promise(resolve=>{
+      popupResolve = resolve;
+      const idPrefix = "f_" + uid().replaceAll("-","");
+      const htmlFields = (fields||[]).map((f, i)=>{
+        const fid = idPrefix + "_" + i;
+        const type = f.type || "text";
+        const val = f.value ?? "";
+        const ph = f.placeholder ?? "";
+        const rows = f.rows || 4;
+        let inputHTML = "";
+        if(type === "textarea"){
+          inputHTML = `<textarea id="${fid}" rows="${rows}" placeholder="${escapeAttr(ph)}">${escapeHtml(val)}</textarea>`;
+        } else if(type === "select"){
+          const opts = (f.options||[]).map(o=>`<option value="${escapeAttr(o.value)}"${o.value===val?" selected":""}>${escapeHtml(o.label)}</option>`).join("");
+          inputHTML = `<select id="${fid}" class="select">${opts}</select>`;
+        } else if(type === "file"){
+          inputHTML = `<input id="${fid}" type="file" ${f.accept ? `accept="${escapeAttr(f.accept)}"`:""} ${f.multiple ? "multiple":""} />`;
+        } else {
+          inputHTML = `<input id="${fid}" type="${escapeAttr(type)}" value="${escapeAttr(val)}" placeholder="${escapeAttr(ph)}" />`;
+        }
+        return `<div><div class="fieldLabel">${escapeHtml(f.label||"")}</div>${inputHTML}</div>`;
+      }).join("");
+
+      openPopup({
+        title,
+        bodyHTML: `<div class="${wide ? "" : "twoCols"}">${htmlFields}</div>`,
+        buttons:[
+          { label: cancel, onClick: ()=> null },
+          { label: ok, primary:true, onClick: ()=>{
+            const out = {};
+            (fields||[]).forEach((f,i)=>{
+              const fid = idPrefix + "_" + i;
+              const el = $("#"+fid);
+              if(!el) return;
+              if(f.type==="file") out[f.key] = el.files;
+              else out[f.key] = el.value;
+            });
+            return out;
+          } }
+        ]
+      });
+    });
+  }
+
+  function popupBusy(title, text){
+    popupTitle.textContent = title || "Bitte warten…";
+    popupBody.innerHTML = `<div class="smallHint"><span class="spinner"></span>${escapeHtml(text||"")}</div>`;
+    popupFoot.innerHTML = "";
+    popupShade.classList.add("show");
+    popupShade.setAttribute("aria-hidden","false");
+  }
+
+  // ---- API ----
+  const profileId = localStorage.getItem("learn_profileId") || "u_default";
   $("#pillProfile").textContent = "Profil: " + profileId;
 
   async function apiGet(path){
@@ -464,7 +530,6 @@
     if(!r.ok) throw Object.assign(new Error("HTTP "+r.status), { status:r.status, data });
     return data;
   }
-
   async function apiAskAI(prompt){
     const r = await fetch("/api/ai", {
       method:"POST",
@@ -479,10 +544,10 @@
     return j?.text || "";
   }
 
-  // ---------- data model (gespeichert in data.vocab, Whiteboard bleibt kompatibel) ----------
+  // ---- Data (local + cloud) ----
+  const LS_KEY = "vocab_app_data_" + profileId;
   let data = null;
   let dirty = false;
-
   let activeFolderId = null;
   let activeSetId = null;
 
@@ -490,15 +555,13 @@
     dirty = !!v;
     $("#pillSaved").textContent = dirty ? "ungespeichert" : "gespeichert";
     $("#pillSaved").style.color = dirty ? "var(--warn)" : "";
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
   }
 
   function ensureDefaults(obj){
     if(!obj || typeof obj!=="object") obj = {};
-    // whiteboard-compat optional fields:
     if(!obj.version) obj.version = 1;
     if(!obj.updatedAt) obj.updatedAt = nowISO();
-
-    // vocab:
     if(!obj.vocab || typeof obj.vocab!=="object"){
       obj.vocab = { folders:[], sets:[], stats:{ perCard:{} }, lastFolderId:null, lastSetId:null };
     }
@@ -506,12 +569,11 @@
     if(!Array.isArray(v.folders)) v.folders = [];
     if(!Array.isArray(v.sets)) v.sets = [];
     if(!v.stats || typeof v.stats!=="object") v.stats = { perCard:{} };
-    if(!v.stats.perCard || typeof v.stats.perCard!=="object") v.stats.perCard = {};
+    if(!v.stats.perCard || typeof v.stats.perCard !== "object") v.stats.perCard = {};
 
     if(v.folders.length===0){
       v.folders.push({ id: uid(), name:"Standard", color:"#3ee38c", icon:"📁", createdAt: nowISO() });
     }
-
     for(const s of v.sets){
       if(!s.id) s.id = uid();
       if(!s.folderId) s.folderId = v.folders[0].id;
@@ -527,7 +589,6 @@
       if(!s.langB) s.langB = "Deutsch";
       if(!s.desc) s.desc = "";
     }
-
     if(!v.lastFolderId || !v.folders.some(f=>f.id===v.lastFolderId)){
       v.lastFolderId = v.folders[0].id;
     }
@@ -538,19 +599,16 @@
     return obj;
   }
 
-  function vocab(){ return data.vocab; }
-  function folders(){ return vocab().folders; }
-  function sets(){ return vocab().sets; }
-  function stats(){ return vocab().stats; }
-  function currentFolder(){
-    return folders().find(f=>f.id===activeFolderId) || folders()[0];
-  }
-  function currentSet(){
-    return sets().find(s=>s.id===activeSetId) || null;
-  }
+  const vocab = ()=>data.vocab;
+  const folders = ()=>vocab().folders;
+  const sets = ()=>vocab().sets;
+  const stats = ()=>vocab().stats;
+  const currentFolder = ()=> folders().find(f=>f.id===activeFolderId) || folders()[0];
+  const currentSet = ()=> sets().find(s=>s.id===activeSetId) || null;
+
   function getCardStat(cardId){
     const per = stats().perCard;
-    if(!per[cardId]) per[cardId] = { l:0, u:0, r:0, lastSeen:null, nextDue:null, streak:0, lastResult:null };
+    if(!per[cardId]) per[cardId] = { l:0, u:0, r:0, lastSeen:null, streak:0, lastResult:null };
     return per[cardId];
   }
   function hardnessScore(st){
@@ -560,16 +618,21 @@
 
   async function load(){
     try{
+      const local = localStorage.getItem(LS_KEY);
+      if(local) data = ensureDefaults(JSON.parse(local));
+    }catch(_){}
+
+    try{
       const res = await apiGet(`/api/learn/data?profileId=${encodeURIComponent(profileId)}`);
-      // Worker kann {ok:true,data:{...}} oder direkt {..} liefern → beides abfangen
       const obj = res?.data || res?.json || res;
-      data = ensureDefaults(obj && typeof obj==="object" ? obj : {});
-      setDirty(false);
-    }catch(e){
-      console.error(e);
-      data = ensureDefaults({});
-      setDirty(true);
-      alert("Cloud-Load fehlgeschlagen – lokaler leeres Setup. (Login/Worker prüfen)");
+      data = ensureDefaults(obj && typeof obj==="object" ? obj : (data || {}));
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      dirty = false;
+      $("#pillSaved").textContent = "geladen";
+    }catch(_){
+      if(!data) data = ensureDefaults({});
+      $("#pillSaved").textContent = "lokal";
+      $("#pillSaved").style.color = "var(--warn)";
     }
 
     activeFolderId = vocab().lastFolderId;
@@ -577,7 +640,6 @@
       || sets().find(x=>x.folderId===activeFolderId)
       || null;
     activeSetId = s?.id || null;
-
     renderAll();
   }
 
@@ -585,24 +647,25 @@
     if(!dirty){ toast("nichts"); return; }
     try{
       data.updatedAt = nowISO();
-      const body = Object.assign({}, data, { profileId }); // wie bei deinem Whiteboard
+      const body = Object.assign({}, data, { profileId });
       await apiPut(`/api/learn/data?profileId=${encodeURIComponent(profileId)}`, body);
-      setDirty(false);
-      toast("gespeichert");
-    }catch(e){
-      console.error(e);
-      toast("Fehler");
-      alert("Speichern fehlgeschlagen: " + (e?.data?.error || e?.message || "Fehler"));
+      dirty = false;
+      $("#pillSaved").textContent = "gespeichert";
+      $("#pillSaved").style.color = "";
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      toast("ok");
+    }catch(_){
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      toast("lokal");
+      await popupInfo("Hinweis", "Cloud-Speichern ging nicht. Daten sind lokal gespeichert.");
     }
   }
 
-  // ---------- UI ----------
+  // ---- Render ----
   const folderList = $("#folderList");
   const setList = $("#setList");
 
-  function countSetsInFolder(folderId){
-    return sets().filter(s=>s.folderId===folderId).length;
-  }
+  function countSetsInFolder(folderId){ return sets().filter(s=>s.folderId===folderId).length; }
 
   function renderFolders(){
     folderList.innerHTML = "";
@@ -653,7 +716,6 @@
     for(const s of list){
       const cTotal = (s.cards||[]).length;
       const cActive = (s.cards||[]).filter(c=>c.active!==false && (c.front||c.back)).length;
-
       const div = document.createElement("div");
       div.className = "item" + (s.id===activeSetId ? " active" : "");
       div.innerHTML = `
@@ -698,13 +760,13 @@
     const activeCount = cards.filter(c=>c.active!==false && (c.front||c.back)).length;
 
     body.innerHTML = `
-      <div class="miniRow" style="justify-content:space-between">
-        <div class="miniRow">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:8px">
           <span class="pill">Aktiv: <b>${activeCount}</b></span>
           <span class="pill">Gesamt: <b>${cards.length}</b></span>
-          <span class="pill">Sprachen: <b>${escapeHtml(s.langA||"A")}</b> → <b>${escapeHtml(s.langB||"B")}</b></span>
+          <span class="pill">A: <b>${escapeHtml(s.langA||"A")}</b> → B: <b>${escapeHtml(s.langB||"B")}</b></span>
         </div>
-        <div class="miniRow">
+        <div class="row">
           <button class="btn small" id="btnEditMeta">✎ Set-Infos</button>
           <button class="btn small" id="btnAddCard">+ Karte</button>
           <button class="btn small" id="btnBulk">⤓ Einfügen</button>
@@ -715,7 +777,7 @@
 
       <div class="hint">
         <b>Swipe-Modus:</b> ← kommt schnell wieder • ↑ kommt später wieder • → verschwindet (für diese Session).<br/>
-        <span class="muted">KI-Karteikarten = automatisch „schwere“ Karten (viele ←/↑) priorisiert.</span>
+        <span class="muted">KI-Karteikarten = „schwere“ Karten zuerst.</span>
       </div>
 
       <div class="sep"></div>
@@ -735,7 +797,7 @@
     const el = $("#cardsTable");
     const cards = s.cards || [];
     if(cards.length===0){
-      el.innerHTML = `<div class="muted">Noch keine Karten. Klick auf <b>+ Karte</b> oder <b>⤓ Einfügen</b>.</div>`;
+      el.innerHTML = `<div class="muted">Noch keine Karten. Klick auf <b>+ Karte</b>, <b>⤓ Einfügen</b> oder <b>KI-Import</b>.</div>`;
       return;
     }
 
@@ -744,21 +806,20 @@
       const score = hardnessScore(st);
       const scoreLabel = score >= 8 ? "schwer" : (score >= 3 ? "mittel" : "leicht");
       const scoreColor = score >= 8 ? "rgba(255,77,109,.18)" : (score >= 3 ? "rgba(250,204,21,.16)" : "rgba(62,227,140,.14)");
-
       return `
         <div class="cardRow">
           <div class="cardRowInner">
             <div>
-              <div class="muted" style="font-weight:900;margin-bottom:6px">Begriff</div>
+              <div class="muted" style="font-weight:950;margin-bottom:6px">Begriff (A)</div>
               <input type="text" class="inFront" data-id="${c.id}" value="${escapeAttr(c.front||"")}" placeholder="z.B. house" />
             </div>
             <div>
-              <div class="muted" style="font-weight:900;margin-bottom:6px">Bedeutung</div>
+              <div class="muted" style="font-weight:950;margin-bottom:6px">Bedeutung (B)</div>
               <input type="text" class="inBack" data-id="${c.id}" value="${escapeAttr(c.back||"")}" placeholder="z.B. Haus" />
             </div>
             <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
-              <label class="switch" title="Diese Karte beim Lernen ein-/ausblenden">
-                <input type="checkbox" class="inActive" data-id="${c.id}" ${c.active!==false ? "checked":""}/>
+              <label class="pill" style="cursor:pointer">
+                <input type="checkbox" class="inActive" data-id="${c.id}" ${c.active!==false ? "checked":""} style="margin-right:8px;accent-color:var(--accent)"/>
                 aktiv
               </label>
               <span class="pill" style="background:${scoreColor};border-color:rgba(255,255,255,.10)">${scoreLabel} • ←${st.l} ↑${st.u} →${st.r}</span>
@@ -794,71 +855,69 @@
         c.active = inp.checked;
         s.updatedAt = nowISO();
         setDirty(true);
-        renderSets();
-        renderDetail();
+        renderSets(); renderDetail();
       });
     });
     el.querySelectorAll(".inDel").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
+      btn.addEventListener("click", async ()=>{
         const id = btn.dataset.id;
-        if(!confirm("Karte löschen?")) return;
+        const ok = await popupConfirm("Löschen", "Karte löschen?", { ok:"Löschen", cancel:"Abbrechen", danger:true });
+        if(!ok) return;
         s.cards = s.cards.filter(x=>x.id!==id);
         delete stats().perCard[id];
         s.updatedAt = nowISO();
         setDirty(true);
-        renderSets();
-        renderDetail();
+        renderSets(); renderDetail();
       });
     });
   }
 
-  function renderAll(){
-    renderFolders();
-    renderSets();
-    renderDetail();
-  }
+  function renderAll(){ renderFolders(); renderSets(); renderDetail(); }
 
-  // ---------- Menüs / CRUD ----------
-  function folderMenu(folderId){
+  // ---- Menüs (Ordner/Set) ----
+  async function folderMenu(folderId){
     const f = folders().find(x=>x.id===folderId);
     if(!f) return;
-    const a = prompt(
-      "Ordner-Aktion:\n1 = Umbenennen\n2 = Farbe\n3 = Icon\n4 = Löschen\n\n(Abbrechen = nichts)",
-      "1"
-    );
-    if(!a) return;
 
-    if(a==="1"){
-      const name = prompt("Neuer Ordnername:", f.name||"Ordner");
-      if(!name) return;
-      f.name = name.trim();
-      setDirty(true);
-      renderAll();
-      return;
+    const res = await popupPrompt("Ordner", [
+      { key:"action", label:"Aktion", type:"select", value:"rename", options:[
+        { value:"rename", label:"Umbenennen" },
+        { value:"color", label:"Farbe ändern" },
+        { value:"icon", label:"Icon ändern" },
+        { value:"delete", label:"Löschen" }
+      ] }
+    ], { ok:"Weiter", cancel:"Abbrechen", wide:true });
+
+    if(!res) return;
+
+    if(res.action==="rename"){
+      const r2 = await popupPrompt("Umbenennen", [
+        { key:"name", label:"Neuer Ordnername", type:"text", value: f.name || "Ordner", placeholder:"Name" }
+      ], { ok:"Speichern", cancel:"Abbrechen", wide:true });
+      if(!r2) return;
+      f.name = (r2.name||"").trim() || "Ordner";
+      setDirty(true); renderAll(); return;
     }
-    if(a==="2"){
-      const color = prompt("Farbe als HEX, z.B. #3ee38c:", f.color||"#3ee38c");
-      if(!color) return;
-      f.color = color.trim();
-      setDirty(true);
-      renderAll();
-      return;
+    if(res.action==="color"){
+      const r2 = await popupPrompt("Farbe", [
+        { key:"color", label:"HEX (z.B. #3ee38c)", type:"text", value: f.color || "#3ee38c", placeholder:"#RRGGBB" }
+      ], { ok:"Speichern", cancel:"Abbrechen", wide:true });
+      if(!r2) return;
+      f.color = (r2.color||"").trim() || "#3ee38c";
+      setDirty(true); renderAll(); return;
     }
-    if(a==="3"){
-      const icon = prompt("Icon (Emoji), z.B. 📁 🧩 🇬🇧:", f.icon||"📁");
-      if(!icon) return;
-      f.icon = icon.trim().slice(0,4);
-      setDirty(true);
-      renderAll();
-      return;
+    if(res.action==="icon"){
+      const r2 = await popupPrompt("Icon", [
+        { key:"icon", label:"Emoji", type:"text", value: f.icon || "📁", placeholder:"📁" }
+      ], { ok:"Speichern", cancel:"Abbrechen", wide:true });
+      if(!r2) return;
+      f.icon = (r2.icon||"📁").trim().slice(0,4) || "📁";
+      setDirty(true); renderAll(); return;
     }
-    if(a==="4"){
+    if(res.action==="delete"){
       const hasSets = sets().some(s=>s.folderId===folderId);
-      if(hasSets){
-        if(!confirm("In diesem Ordner sind Lernsets. Wirklich löschen? (Sets werden auch gelöscht)")) return;
-      } else {
-        if(!confirm("Ordner wirklich löschen?")) return;
-      }
+      const ok = await popupConfirm("Löschen", hasSets ? "Ordner + alle Sets wirklich löschen?" : "Ordner wirklich löschen?", { ok:"Löschen", cancel:"Abbrechen", danger:true });
+      if(!ok) return;
       vocab().sets = sets().filter(s=>s.folderId!==folderId);
       vocab().folders = folders().filter(x=>x.id!==folderId);
       if(vocab().folders.length===0){
@@ -870,41 +929,45 @@
       vocab().lastSetId = activeSetId;
       setDirty(true);
       renderAll();
-      return;
     }
   }
 
-  function setMenu(setId){
+  async function setMenu(setId){
     const s = sets().find(x=>x.id===setId);
     if(!s) return;
-    const a = prompt(
-      "Set-Aktion:\n1 = Umbenennen\n2 = In anderen Ordner\n3 = Duplizieren\n4 = Export (JSON)\n5 = Import (JSON)\n6 = Stats zurücksetzen\n7 = Löschen\n\n(Abbrechen = nichts)",
-      "1"
-    );
-    if(!a) return;
 
-    if(a==="1"){
-      const name = prompt("Neuer Set-Name:", s.name||"Set");
-      if(!name) return;
-      s.name = name.trim();
+    const r0 = await popupPrompt("Lernset", [
+      { key:"action", label:"Aktion", type:"select", value:"rename", options:[
+        { value:"rename", label:"Umbenennen" },
+        { value:"move", label:"In anderen Ordner" },
+        { value:"duplicate", label:"Duplizieren" },
+        { value:"resetstats", label:"Stats zurücksetzen" },
+        { value:"delete", label:"Löschen" }
+      ] }
+    ], { ok:"Weiter", cancel:"Abbrechen", wide:true });
+    if(!r0) return;
+
+    if(r0.action==="rename"){
+      const r = await popupPrompt("Umbenennen", [{ key:"name", label:"Neuer Name", type:"text", value:s.name||"Set" }], { ok:"Speichern", cancel:"Abbrechen", wide:true });
+      if(!r) return;
+      s.name = (r.name||"").trim() || "Set";
       s.updatedAt = nowISO();
       setDirty(true);
-      renderSets(); renderDetail();
-      return;
+      renderSets(); renderDetail(); return;
     }
-    if(a==="2"){
-      const names = folders().map((f,i)=> `${i+1} = ${f.icon||"📁"} ${f.name}`).join("\n");
-      const pick = prompt("Wohin verschieben?\n"+names, "1");
-      const idx = Number(pick)-1;
-      if(!Number.isFinite(idx) || idx<0 || idx>=folders().length) return;
-      s.folderId = folders()[idx].id;
+
+    if(r0.action==="move"){
+      const opts = folders().map(f=>({ value:f.id, label:(f.icon||"📁")+" "+(f.name||"Ordner") }));
+      const r = await popupPrompt("Verschieben", [{ key:"folderId", label:"Ziel-Ordner", type:"select", value:s.folderId, options:opts }], { ok:"Verschieben", cancel:"Abbrechen", wide:true });
+      if(!r) return;
+      s.folderId = r.folderId;
       s.updatedAt = nowISO();
       setDirty(true);
       if(s.folderId!==activeFolderId) activeSetId = null;
-      renderAll();
-      return;
+      renderAll(); return;
     }
-    if(a==="3"){
+
+    if(r0.action==="duplicate"){
       const copy = deepClone(s);
       copy.id = uid();
       copy.name = (s.name||"Set") + " (Kopie)";
@@ -913,72 +976,43 @@
       copy.updatedAt = nowISO();
       vocab().sets.unshift(copy);
       setDirty(true);
-      renderAll();
-      return;
+      renderAll(); return;
     }
-    if(a==="4"){
-      prompt("Copy JSON:", JSON.stringify(s, null, 2));
-      return;
-    }
-    if(a==="5"){
-      const txt = prompt("JSON einfügen (vom Export):");
-      if(!txt) return;
-      try{
-        const obj = JSON.parse(txt);
-        if(!obj || typeof obj!=="object") throw new Error("bad");
-        const imp = obj;
-        imp.id = uid();
-        imp.folderId = activeFolderId;
-        if(!Array.isArray(imp.cards)) imp.cards = [];
-        for(const c of imp.cards){ if(!c.id) c.id = uid(); if(c.active===undefined) c.active=true; }
-        imp.createdAt = nowISO();
-        imp.updatedAt = nowISO();
-        if(!imp.langA) imp.langA = "Englisch";
-        if(!imp.langB) imp.langB = "Deutsch";
-        if(!imp.desc) imp.desc = "";
-        vocab().sets.unshift(imp);
-        activeSetId = imp.id;
-        setDirty(true);
-        renderAll();
-      }catch(_){
-        alert("Ungültiges JSON.");
-      }
-      return;
-    }
-    if(a==="6"){
-      if(!confirm("Alle Swipe-Stats für dieses Set zurücksetzen?")) return;
+
+    if(r0.action==="resetstats"){
+      const ok = await popupConfirm("Stats", "Alle Swipe-Stats für dieses Set zurücksetzen?", { ok:"Zurücksetzen", cancel:"Abbrechen", danger:true });
+      if(!ok) return;
       for(const c of (s.cards||[])) delete stats().perCard[c.id];
       setDirty(true);
-      renderDetail();
-      return;
+      renderDetail(); return;
     }
-    if(a==="7"){
-      if(!confirm("Set wirklich löschen?")) return;
+
+    if(r0.action==="delete"){
+      const ok = await popupConfirm("Löschen", "Set wirklich löschen?", { ok:"Löschen", cancel:"Abbrechen", danger:true });
+      if(!ok) return;
       for(const c of (s.cards||[])) delete stats().perCard[c.id];
       vocab().sets = sets().filter(x=>x.id!==setId);
       if(activeSetId===setId) activeSetId = null;
       setDirty(true);
-      renderAll();
-      return;
+      renderAll(); return;
     }
   }
 
-  function editSetMeta(setId){
+  // ---- Edit/Add/Bulk ----
+  async function editSetMeta(setId){
     const s = sets().find(x=>x.id===setId);
     if(!s) return;
-    const name = prompt("Set-Name:", s.name||"");
-    if(name===null) return;
-    const langA = prompt("Sprache/Seite A (Begriff):", s.langA||"Englisch");
-    if(langA===null) return;
-    const langB = prompt("Sprache/Seite B (Bedeutung):", s.langB||"Deutsch");
-    if(langB===null) return;
-    const desc = prompt("Beschreibung (optional):", s.desc||"");
-    if(desc===null) return;
-
-    s.name = name.trim() || "Lernset";
-    s.langA = langA.trim() || "A";
-    s.langB = langB.trim() || "B";
-    s.desc = desc.trim();
+    const r = await popupPrompt("Set-Infos", [
+      { key:"name", label:"Name", type:"text", value:s.name||"Lernset" },
+      { key:"langA", label:"Sprache/Seite A (Begriff)", type:"text", value:s.langA||"Englisch" },
+      { key:"langB", label:"Sprache/Seite B (Bedeutung)", type:"text", value:s.langB||"Deutsch" },
+      { key:"desc", label:"Beschreibung (optional)", type:"textarea", value:s.desc||"", rows:6 }
+    ], { ok:"Speichern", cancel:"Abbrechen", wide:true });
+    if(!r) return;
+    s.name = (r.name||"").trim() || "Lernset";
+    s.langA = (r.langA||"").trim() || "A";
+    s.langB = (r.langB||"").trim() || "B";
+    s.desc = (r.desc||"").trim();
     s.updatedAt = nowISO();
     setDirty(true);
     renderSets(); renderDetail();
@@ -993,12 +1027,15 @@
     renderSets(); renderDetail();
   }
 
-  function bulkPaste(setId){
+  async function bulkPaste(setId){
     const s = sets().find(x=>x.id===setId);
     if(!s) return;
-    const txt = prompt("Bulk einfügen:\nJe Zeile: Begriff[TAB]Bedeutung\nOder: Begriff;Bedeutung\n\n(Beispiel: house\\tHaus)", "");
-    if(!txt) return;
-    const lines = txt.split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
+    const r = await popupPrompt("Bulk einfügen", [
+      { key:"txt", label:"Je Zeile: Begriff[TAB]Bedeutung oder Begriff;Bedeutung", type:"textarea", value:"", rows:12, placeholder:"house\\tHaus\\ncar\\tAuto" }
+    ], { ok:"Einfügen", cancel:"Abbrechen", wide:true });
+    if(!r) return;
+
+    const lines = String(r.txt||"").split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
     let added = 0;
     for(const ln of lines){
       const parts = ln.includes("\\t") ? ln.split("\\t") : ln.split(";");
@@ -1012,83 +1049,19 @@
       s.updatedAt = nowISO();
       setDirty(true);
       renderSets(); renderDetail();
-      alert(added + " Karte(n) hinzugefügt.");
+      await popupInfo("Fertig", added + " Karte(n) hinzugefügt.");
     }
   }
 
-  // ---------- Buttons ----------
-  $("#btnNewFolder").addEventListener("click", ()=>{
-    const name = prompt("Ordnername:", "Neuer Ordner");
-    if(!name) return;
-    const icon = prompt("Icon (Emoji):", "📁");
-    if(icon===null) return;
-    const color = prompt("Farbe (HEX):", "#3ee38c");
-    if(color===null) return;
-    const f = { id: uid(), name: name.trim(), icon: (icon||"📁").trim().slice(0,4), color: (color||"#3ee38c").trim(), createdAt: nowISO() };
-    vocab().folders.unshift(f);
-    activeFolderId = f.id;
-    vocab().lastFolderId = activeFolderId;
-    activeSetId = null;
-    vocab().lastSetId = null;
-    setDirty(true);
-    renderAll();
-  });
-
-  $("#btnNewSet").addEventListener("click", ()=>{
-    if(!activeFolderId) activeFolderId = folders()[0]?.id;
-    const name = prompt("Name des Lernsets:", "Neues Set");
-    if(!name) return;
-    const langA = prompt("Sprache/Seite A (Begriff):", "Englisch");
-    if(langA===null) return;
-    const langB = prompt("Sprache/Seite B (Bedeutung):", "Deutsch");
-    if(langB===null) return;
-
-    const s = {
-      id: uid(),
-      folderId: activeFolderId,
-      name: name.trim(),
-      langA: langA.trim(),
-      langB: langB.trim(),
-      desc: "",
-      cards: [],
-      createdAt: nowISO(),
-      updatedAt: nowISO()
-    };
-    vocab().sets.unshift(s);
-    activeSetId = s.id;
-    vocab().lastSetId = activeSetId;
-    setDirty(true);
-    renderAll();
-  });
-
-  $("#btnBack").addEventListener("click", ()=>{
-    if(dirty && !confirm("Ungespeicherte Änderungen. Trotzdem zurück?")) return;
-    location.href = "/lernen";
-  });
-  $("#btnSave").addEventListener("click", save);
-
-  $("#btnSetMenu").addEventListener("click", ()=> { if(currentSet()) setMenu(currentSet().id); });
-  $("#btnLearnCards").addEventListener("click", ()=> startLearnSession("cards"));
-  $("#btnLearnHard").addEventListener("click", ()=> startLearnSession("hard"));
-  $("#btnLearnAI").addEventListener("click", ()=> startLearnSession("ai"));
-
-  // ---------- Learn modal ----------
-  const learnWrap = $("#learnModalWrap");
+  // ---- Learn Modal (Swipe) ----
+  const learnShade = $("#learnModalShade");
   const learnClose = $("#learnClose");
   learnClose.addEventListener("click", ()=> closeLearnModal());
-  learnWrap.addEventListener("click", (e)=> { if(e.target===learnWrap) closeLearnModal(); });
+  learnShade.addEventListener("click", (e)=>{ if(e.target===learnShade) closeLearnModal(); });
 
-  function openLearnModal(){
-    learnWrap.classList.add("show");
-    learnWrap.setAttribute("aria-hidden","false");
-  }
-  function closeLearnModal(){
-    stopSession();
-    learnWrap.classList.remove("show");
-    learnWrap.setAttribute("aria-hidden","true");
-  }
+  function openLearnModal(){ learnShade.classList.add("show"); learnShade.setAttribute("aria-hidden","false"); }
+  function closeLearnModal(){ stopSession(); learnShade.classList.remove("show"); learnShade.setAttribute("aria-hidden","true"); }
 
-  // session vars
   let session = null;
   let dragging = null;
 
@@ -1103,31 +1076,118 @@
     window.removeEventListener("keydown", keyHandler);
   }
 
-  function startLearnSession(mode){
+  $("#btnLearnCards").addEventListener("click", ()=> startLearnSession("cards"));
+  $("#btnLearnHard").addEventListener("click", ()=> startLearnSession("hard"));
+  $("#btnLearnAI").addEventListener("click", ()=> startLearnSession("ai"));
+
+  function renderLearnHUD(){
+    const mastered = session.mastered.size;
+    const total = session.uniqueTotal;
+    const donePct = total ? Math.round((mastered/total)*100) : 0;
+    $("#learnCountPill").textContent = mastered + "/" + total;
+    $("#learnQueuePill").textContent = "Queue: " + session.queue.length;
+    $("#learnProg").style.width = donePct + "%";
+  }
+
+  function resetCardTransform(){
+    const el = $("#swipeCard");
+    el.style.transition = "transform .16s ease";
+    el.style.transform = "translate(0px, 0px) rotate(0deg)";
+    setTimeout(()=>{ el.style.transition=""; }, 180);
+  }
+
+  function showTag(kind, text){
+    const tag = $("#tagEl");
+    tag.className = "tag " + (kind==="good"?"good":kind==="mid"?"mid":"bad") + " show";
+    tag.textContent = text;
+    clearTimeout(showTag._t);
+    showTag._t = setTimeout(()=> tag.classList.remove("show"), 420);
+  }
+
+  function animateOut(dir, cb){
+    const el = $("#swipeCard");
+    const w = el.offsetWidth;
+    el.style.transition = "transform .20s ease";
+    if(dir==="left")  el.style.transform = `translate(${-w*1.2}px, 0px) rotate(-10deg)`;
+    if(dir==="right") el.style.transform = `translate(${w*1.2}px, 0px) rotate(10deg)`;
+    if(dir==="up")    el.style.transform = `translate(0px, ${-w*0.9}px) rotate(0deg)`;
+    setTimeout(()=>{ el.style.transition=""; cb && cb(); }, 210);
+  }
+
+  function toggleReveal(){
+    if(!session) return;
+    session.reveal = !session.reveal;
+    $("#swipeCard").classList.toggle("reveal", session.reveal);
+  }
+
+  function keyHandler(e){
+    if(!session) return;
+    if(e.key === "ArrowLeft"){ e.preventDefault(); applySwipe("left"); }
+    if(e.key === "ArrowUp"){ e.preventDefault(); applySwipe("up"); }
+    if(e.key === "ArrowRight"){ e.preventDefault(); applySwipe("right"); }
+    if(e.key === " "){ e.preventDefault(); toggleReveal(); }
+    if(e.key === "Escape"){ e.preventDefault(); closeLearnModal(); }
+  }
+
+  function enableDrag(el){
+    el.onpointerdown = (e)=>{
+      if(!session) return;
+      el.setPointerCapture(e.pointerId);
+      dragging = { id: e.pointerId, sx: e.clientX, sy: e.clientY, dx:0, dy:0, moved:false };
+    };
+    el.onpointermove = (e)=>{
+      if(!dragging || dragging.id !== e.pointerId) return;
+      const dx = e.clientX - dragging.sx;
+      const dy = e.clientY - dragging.sy;
+      dragging.dx = dx; dragging.dy = dy;
+      dragging.moved = dragging.moved || (Math.abs(dx)+Math.abs(dy) > 6);
+
+      const rot = clamp(dx/28, -12, 12);
+      el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if(dx > 60 && adx > ady + 20) showTag("good","→ kann");
+      else if(dx < -60 && adx > ady + 20) showTag("bad","← nicht");
+      else if(dy < -60 && ady > adx + 20) showTag("mid","↑ halb");
+    };
+    el.onpointerup = ()=>{
+      if(!dragging) return;
+      const dx = dragging.dx, dy = dragging.dy;
+      dragging = null;
+
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if(dx > 90 && adx > ady + 20){ applySwipe("right"); return; }
+      if(dx < -90 && adx > ady + 20){ applySwipe("left"); return; }
+      if(dy < -90 && ady > adx + 20){ applySwipe("up"); return; }
+      resetCardTransform();
+    };
+    el.onpointercancel = ()=> { dragging=null; resetCardTransform(); };
+  }
+
+  async function startLearnSession(mode){
     const s = currentSet();
     if(!s) return;
     const cardsAll = (s.cards||[]).filter(c=>c.active!==false && (String(c.front||"").trim() || String(c.back||"").trim()));
-    if(cardsAll.length===0){ alert("Keine aktiven Karten."); return; }
+    if(cardsAll.length===0){ await popupInfo("Hinweis","Keine aktiven Karten."); return; }
 
     if(mode === "ai"){
       openLearnModal();
       $("#learnTitle").textContent = "KI-Lernen – " + (s.name||"Set");
       $("#learnCardsUI").style.display = "none";
       $("#learnAIUI").style.display = "block";
-      startKILernen(s, cardsAll).catch(e=>{
-        console.error(e);
-        addChat("Fehler bei der KI.", "ai");
-      });
+      startKILernen(s, cardsAll).catch(e=>addChat("KI-Fehler: "+(e?.message||"Fehler"),"ai"));
       return;
     }
 
-    const pick = prompt(
-      "Wie viele Karten?\n- leer = alle\n- Zahl (z.B. 20) = zufällige Auswahl\n\nTipp: In großen Sets lieber z.B. 30.",
-      ""
-    );
+    const r = await popupPrompt("Karteikarten", [
+      { key:"count", label:"Wie viele Karten? (leer = alle)", type:"text", value:"", placeholder:"z.B. 30" }
+    ], { ok:"Start", cancel:"Abbrechen", wide:true });
+    if(!r) return;
+
     let chosen = cardsAll.slice();
-    if(pick && pick.trim()){
-      const n = Number(pick.trim());
+    const pick = String(r.count||"").trim();
+    if(pick){
+      const n = Number(pick);
       if(Number.isFinite(n) && n>0){
         chosen = shuffle(chosen).slice(0, Math.min(n, chosen.length));
       }
@@ -1160,17 +1220,15 @@
       currentId: null,
       reveal: false,
       counts: { left:0, up:0, right:0 },
-      startAt: Date.now()
+      startAt: Date.now(),
+      delayFast: clamp(Math.round(total * 0.25), 2, 16),
+      delayMid:  clamp(Math.round(total * 0.65), 6, 36),
     };
 
-    // “kommt schnell / später wieder” abhängig von Set-Länge
-    session.delayFast = clamp(Math.round(total * 0.25), 2, 16);  // left
-    session.delayMid  = clamp(Math.round(total * 0.65), 6, 36);  // up
-
-    $("#btnSwipeLeft").onclick = ()=> applySwipe("left");
-    $("#btnSwipeUp").onclick   = ()=> applySwipe("up");
-    $("#btnSwipeRight").onclick= ()=> applySwipe("right");
-    $("#btnReveal").onclick    = ()=> toggleReveal();
+    $("#btnSwipeLeft").onclick  = ()=> applySwipe("left");
+    $("#btnSwipeUp").onclick    = ()=> applySwipe("up");
+    $("#btnSwipeRight").onclick = ()=> applySwipe("right");
+    $("#btnReveal").onclick     = ()=> toggleReveal();
 
     const cardEl = $("#swipeCard");
     cardEl.onclick = ()=> { if(dragging && dragging.moved) return; toggleReveal(); };
@@ -1180,28 +1238,24 @@
     nextCard();
   }
 
-  function keyHandler(e){
-    if(!session) return;
-    if(e.key === "ArrowLeft"){ e.preventDefault(); applySwipe("left"); }
-    if(e.key === "ArrowUp"){ e.preventDefault(); applySwipe("up"); }
-    if(e.key === "ArrowRight"){ e.preventDefault(); applySwipe("right"); }
-    if(e.key === " "){ e.preventDefault(); toggleReveal(); }
-    if(e.key === "Escape"){ e.preventDefault(); closeLearnModal(); }
-  }
-
-  function toggleReveal(){
-    if(!session) return;
-    session.reveal = !session.reveal;
-    $("#swipeCard").classList.toggle("reveal", session.reveal);
+  async function finishSessionPopup(){
+    const sec = Math.round((Date.now() - session.startAt)/1000);
+    const txt =
+      `Fertig ✅\\n\\n`+
+      `Zeit: ${sec}s\\n`+
+      `← nicht: ${session.counts.left}\\n`+
+      `↑ halb: ${session.counts.up}\\n`+
+      `→ kann: ${session.counts.right}\\n\\n`+
+      `Tipp: Klick auf „Speichern“, damit es in der Cloud ist.`;
+    await popupInfo("Session fertig", txt);
+    closeLearnModal();
   }
 
   function nextCard(){
     if(!session) return;
     while(session.queue.length && session.mastered.has(session.queue[0])) session.queue.shift();
-    if(session.queue.length===0){
-      finishSession();
-      return;
-    }
+    if(session.queue.length===0){ finishSessionPopup(); return; }
+
     session.currentId = session.queue[0];
     session.reveal = false;
     $("#swipeCard").classList.remove("reveal");
@@ -1209,30 +1263,12 @@
     const s = currentSet();
     const card = (s.cards||[]).find(c=>c.id===session.currentId);
     $("#cardFront").textContent = card?.front || "";
-    $("#cardBack").textContent = card?.back || "";
+    $("#cardBack").textContent  = card?.back  || "";
     const st = getCardStat(session.currentId);
-    $("#cardMeta").textContent = `←${st.l} ↑${st.u} →${st.r} • fast:${session.delayFast} mid:${session.delayMid}`;
+    $("#cardMeta").textContent  = `←${st.l} ↑${st.u} →${st.r}`;
 
     renderLearnHUD();
     resetCardTransform();
-  }
-
-  function renderLearnHUD(){
-    const mastered = session.mastered.size;
-    const total = session.uniqueTotal;
-    const donePct = total ? Math.round((mastered/total)*100) : 0;
-    $("#learnCountPill").textContent = mastered + "/" + total;
-    $("#learnQueuePill").textContent = "Queue: " + session.queue.length;
-    $("#learnProg").style.width = donePct + "%";
-  }
-
-  function finishSession(){
-    const sec = Math.round((Date.now() - session.startAt)/1000);
-    alert(
-      `Fertig ✅\n\nZeit: ${sec}s\n← nicht: ${session.counts.left}\n↑ halb: ${session.counts.up}\n→ kann: ${session.counts.right}\n\n`+
-      `Hinweis: Stats sind im Speicher – drück noch "Speichern", damit es in der Cloud ist.`
-    );
-    closeLearnModal();
   }
 
   function applySwipe(dir){
@@ -1240,7 +1276,6 @@
     const cid = session.currentId;
     if(!cid) return;
 
-    // remove current from front
     if(session.queue[0]===cid) session.queue.shift();
     else session.queue = session.queue.filter(x=>x!==cid);
 
@@ -1252,7 +1287,6 @@
     if(dir==="up"){ st.u++; st.streak = 0; session.counts.up++; }
     if(dir==="right"){ st.r++; st.streak = (st.streak||0)+1; session.counts.right++; }
 
-    // “KI analysiert” → wir speichern die Counts, daraus wird “hardness” berechnet
     setDirty(true);
 
     if(dir==="right"){
@@ -1268,73 +1302,13 @@
       animateOut("up", ()=> nextCard());
       return;
     }
-    // left
     const pos = Math.min(session.queue.length, session.delayFast);
     session.queue.splice(pos, 0, cid);
     showTag("bad","← nicht");
     animateOut("left", ()=> nextCard());
   }
 
-  function showTag(kind, text){
-    const tag = $("#tagEl");
-    tag.className = "tag " + (kind==="good"?"good":kind==="mid"?"mid":"bad") + " show";
-    tag.textContent = text;
-    clearTimeout(showTag._t);
-    showTag._t = setTimeout(()=> tag.classList.remove("show"), 420);
-  }
-
-  function resetCardTransform(){
-    const el = $("#swipeCard");
-    el.style.transition = "transform .16s ease";
-    el.style.transform = "translate(0px, 0px) rotate(0deg)";
-    setTimeout(()=>{ el.style.transition=""; }, 180);
-  }
-  function animateOut(dir, cb){
-    const el = $("#swipeCard");
-    const w = el.offsetWidth;
-    el.style.transition = "transform .20s ease";
-    if(dir==="left") el.style.transform = `translate(${-w*1.2}px, 0px) rotate(-10deg)`;
-    if(dir==="right") el.style.transform = `translate(${w*1.2}px, 0px) rotate(10deg)`;
-    if(dir==="up") el.style.transform = `translate(0px, ${-w*0.9}px) rotate(0deg)`;
-    setTimeout(()=>{ el.style.transition=""; cb && cb(); }, 210);
-  }
-
-  function enableDrag(el){
-    el.onpointerdown = (e)=>{
-      if(!session) return;
-      el.setPointerCapture(e.pointerId);
-      dragging = { id: e.pointerId, sx: e.clientX, sy: e.clientY, dx:0, dy:0, moved:false };
-    };
-    el.onpointermove = (e)=>{
-      if(!dragging || dragging.id !== e.pointerId) return;
-      const dx = e.clientX - dragging.sx;
-      const dy = e.clientY - dragging.sy;
-      dragging.dx = dx; dragging.dy = dy;
-      dragging.moved = dragging.moved || (Math.abs(dx)+Math.abs(dy) > 6);
-
-      const rot = clamp(dx/28, -12, 12);
-      el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
-
-      const adx = Math.abs(dx), ady = Math.abs(dy);
-      if(dx > 60 && adx > ady + 20) showTag("good","→ kann");
-      else if(dx < -60 && adx > ady + 20) showTag("bad","← nicht");
-      else if(dy < -60 && ady > adx + 20) showTag("mid","↑ halb");
-    };
-    el.onpointerup = (e)=>{
-      if(!dragging || dragging.id !== e.pointerId) return;
-      const dx = dragging.dx, dy = dragging.dy;
-      dragging = null;
-
-      const adx = Math.abs(dx), ady = Math.abs(dy);
-      if(dx > 90 && adx > ady + 20){ applySwipe("right"); return; }
-      if(dx < -90 && adx > ady + 20){ applySwipe("left"); return; }
-      if(dy < -90 && ady > adx + 20){ applySwipe("up"); return; }
-      resetCardTransform();
-    };
-    el.onpointercancel = ()=> { dragging=null; resetCardTransform(); };
-  }
-
-  // ---------- KI Lernen (Themen + Abfragen) ----------
+  // ---- KI Lernen (Themen + Abfragen) ----
   let aiState = null;
 
   function addChat(text, who){
@@ -1345,6 +1319,17 @@
     chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
   }
+
+  function parseTopics(out){
+    const s = String(out||"").trim();
+    if(!s) return [];
+    try{
+      const j = JSON.parse(s);
+      if(Array.isArray(j)) return j.map(x=>String(x).trim()).filter(Boolean).slice(0,10);
+    }catch(_){}
+    return s.split(/\\r?\\n/).map(l=>l.replace(/^[\\-\\*\\d\\.\\)\\s]+/,"").trim()).filter(Boolean).slice(0,10);
+  }
+
   function setTopicsUI(topics){
     const wrap = $("#topicChips");
     wrap.innerHTML = "";
@@ -1356,28 +1341,21 @@
         $$("#topicChips .chipBtn").forEach(x=>x.classList.remove("active"));
         b.classList.add("active");
         aiState.topic = t;
-        addChat("Ok. Thema: " + t, "ai");
+        aiState.mode = inferTopicMode(t, aiState.cards);
+        addChat("Thema gewählt: " + t, "ai");
         askNextAIQuestion();
       });
       wrap.appendChild(b);
     }
   }
 
-  function parseTopics(out){
-    const s = String(out||"").trim();
-    if(!s) return [];
-    try{
-      const j = JSON.parse(s);
-      if(Array.isArray(j)) return j.map(x=>String(x).trim()).filter(Boolean).slice(0,10);
-    }catch(_){}
-    return s.split(/\\r?\\n/)
-      .map(l=>l.replace(/^[\\-\\*\\d\\.\\)\\s]+/,"").trim())
-      .filter(Boolean)
-      .map(x=>x.slice(0,42))
-      .slice(0,10);
+  function inferTopicMode(topic, cards){
+    const t = (topic||"").toLowerCase();
+    if(t.includes("definition") || t.includes("erklär") || t.includes("erklaer") || t.includes("konzept")) return "concept";
+    return (cards && cards.length) ? "vocab" : "concept";
   }
 
-  function pickNextCardForAI(cards){
+  function pickNextCardByHardness(cards){
     const sorted = cards.slice().sort((a,b)=> hardnessScore(getCardStat(b.id)) - hardnessScore(getCardStat(a.id)));
     for(const c of sorted){
       if(!aiState.asked.has(c.id)){
@@ -1392,17 +1370,15 @@
   }
 
   function normalizeAnswer(s){ return String(s||"").trim(); }
-  function splitAlternatives(ans){
-    return normalizeAnswer(ans).split(/[;\\/\\|]/).map(x=>x.trim()).filter(Boolean);
-  }
+  function splitAlternatives(ans){ return normalizeAnswer(ans).split(/[;\\/\\|]/).map(x=>x.trim()).filter(Boolean); }
   function equalsStrict(user, expected){
-    // aktuell: case-insensitive, aber sonst exakt (keine Tippfehler)
     return normalizeAnswer(user).toLowerCase() === normalizeAnswer(expected).toLowerCase();
   }
 
   async function startKILernen(setObj, cardsAll){
     aiState = {
       topic: null,
+      mode: null,
       setId: setObj.id,
       setName: setObj.name||"Set",
       langA: setObj.langA||"A",
@@ -1410,14 +1386,12 @@
       cards: cardsAll,
       asked: new Set(),
       awaitingAnswer: false,
-      lastQuestion: null,
-      lastExpected: null,
-      lastCardId: null,
-      theoryMode: false
+      last: null
     };
 
     $("#chat").innerHTML = "";
     $("#topicChips").innerHTML = "";
+    $("#aiIntro").textContent = "Wähle ein Thema:";
     addChat("Ich erstelle Themen…", "ai");
 
     let topics = [];
@@ -1425,7 +1399,6 @@
       const sample = cardsAll.slice(0, 18).map(c=>`${c.front} = ${c.back}`).join("\\n");
       const prompt =
 `Gib mir 8 kurze Lern-Themen als Liste (ohne Erklärungen), passend zu diesem Stoff.
-Wenn es Vokabeln sind: gruppiere nach Themenfeldern (z.B. Schule, Essen, Reisen).
 Stoff:
 ${sample}
 
@@ -1434,12 +1407,8 @@ Antworte als Bullet-Liste oder JSON-Array.`;
       topics = parseTopics(out);
     }catch(_){}
 
-    if(!topics.length){
-      topics = ["Grundwortschatz", "Wiederholung", "Schwierige Wörter", "Zufall", "Prüfungsmodus"];
-    }
-
-    $("#aiIntro").textContent = "Wähle ein Thema:";
-    addChat("Wähle oben ein Thema, dann frage ich dich ab.", "ai");
+    if(!topics.length) topics = ["Wiederholung", "Schwierige Wörter", "Zufall", "Definitionen", "Prüfungsmodus"];
+    addChat("Wähle oben ein Thema. Dann frage ich dich ab.", "ai");
     setTopicsUI(topics);
 
     $("#chatSend").onclick = sendAIAnswer;
@@ -1450,14 +1419,24 @@ Antworte als Bullet-Liste oder JSON-Array.`;
 
   async function askNextAIQuestion(){
     if(!aiState || aiState.awaitingAnswer) return;
+    if(!aiState.topic){ addChat("Wähle zuerst ein Thema.", "ai"); return; }
 
-    // Vokabel-Modus (streng prüfen)
-    const c = pickNextCardForAI(aiState.cards);
-    aiState.lastCardId = c?.id || null;
-    aiState.lastQuestion = `Was bedeutet „${c.front}“ (${aiState.langA}) auf ${aiState.langB}?`;
-    aiState.lastExpected = c.back;
+    if(aiState.mode === "concept"){
+      aiState.last = { type:"concept", question:`Erkläre kurz: ${aiState.topic}` };
+      aiState.awaitingAnswer = true;
+      addChat(aiState.last.question, "ai");
+      return;
+    }
+
+    const c = pickNextCardByHardness(aiState.cards);
+    aiState.last = {
+      type:"vocab",
+      cardId: c?.id || null,
+      expected: c?.back || "",
+      question: `Was bedeutet „${c.front}“ (${aiState.langA}) auf ${aiState.langB}?`
+    };
     aiState.awaitingAnswer = true;
-    addChat(aiState.lastQuestion, "ai");
+    addChat(aiState.last.question, "ai");
   }
 
   async function sendAIAnswer(){
@@ -1467,39 +1446,263 @@ Antworte als Bullet-Liste oder JSON-Array.`;
     inp.value = "";
     addChat(t, "me");
 
-    // Vokabel: lokal prüfen, dann Feedback
-    const expected = aiState.lastExpected;
-    const alts = splitAlternatives(expected);
-    const ok = alts.some(a=>equalsStrict(t, a));
+    if(aiState.last?.type === "vocab"){
+      const expected = aiState.last.expected;
+      const alts = splitAlternatives(expected);
+      const ok = alts.some(a=>equalsStrict(t, a));
 
-    if(aiState.lastCardId){
-      const st = getCardStat(aiState.lastCardId);
-      st.lastSeen = nowISO();
-      if(ok){ st.r++; st.streak=(st.streak||0)+1; st.lastResult="right"; }
-      else { st.l++; st.streak=0; st.lastResult="left"; }
-      setDirty(true);
+      if(aiState.last.cardId){
+        const st = getCardStat(aiState.last.cardId);
+        st.lastSeen = nowISO();
+        if(ok){ st.r++; st.streak=(st.streak||0)+1; st.lastResult="right"; }
+        else { st.l++; st.streak=0; st.lastResult="left"; }
+        setDirty(true);
+      }
+      addChat(ok ? "✅ Richtig." : ("❌ Nicht ganz. Richtig wäre: " + expected), "ai");
+      aiState.awaitingAnswer = false;
+      askNextAIQuestion();
+      return;
     }
 
-    addChat(ok ? "✅ Richtig." : ("❌ Nicht ganz. Richtig wäre: " + expected), "ai");
+    // concept grading via /api/ai
+    try{
+      addChat("Ich bewerte das…", "ai");
+      const prompt =
+`Du bist ein strenger Lehrer. Thema: ${aiState.topic}
+Schülerantwort:
+${t}
+
+Gib:
+1) Kurz: was stimmt (1-3 Punkte)
+2) Kurz: was fehlt/verbessern (1-3 Punkte)
+3) Eine bessere Musterantwort (max 4 Sätze)
+
+Kein unnötiger Text.`;
+      const out = await apiAskAI(prompt);
+      addChat(out || "Das weiß ich leider nicht!😩", "ai");
+    }catch(_){
+      addChat("Das weiß ich leider nicht!😩", "ai");
+    }
     aiState.awaitingAnswer = false;
     askNextAIQuestion();
   }
 
-  // ---------- utilities ----------
-  function shuffle(arr){
-    const a = arr.slice();
-    for(let i=a.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [a[i],a[j]]=[a[j],a[i]];
-    }
-    return a;
-  }
-  function escapeHtml(s){
-    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
+  // ---- KI Import (Bild/PDF/DOCX) ----
+  $("#btnAIImport").addEventListener("click", openAIImport);
 
-  // ---------- init ----------
+  async function openAIImport(){
+    const s = currentSet();
+    if(!s) return;
+
+    const r = await popupPrompt("KI-Import ins Lernset", [
+      { key:"file", label:"Datei (Bild/PDF/DOCX)", type:"file", accept:"image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+      { key:"langA", label:"Seite A (Begriff)", type:"text", value: s.langA || "Englisch" },
+      { key:"langB", label:"Seite B (Bedeutung)", type:"text", value: s.langB || "Deutsch" },
+      { key:"extra", label:"Extra-Hinweis (optional)", type:"textarea", rows:6, value:"", placeholder:"z.B. 'Nur Vokabeln aus Seite 2-4'" }
+    ], { ok:"Weiter", cancel:"Abbrechen", wide:true });
+
+    if(!r) return;
+
+    const file = (r.file && r.file[0]) ? r.file[0] : null;
+    if(!file){ await popupInfo("Hinweis", "Bitte eine Datei auswählen."); return; }
+
+    popupBusy("Analysiere Datei…", "Text wird gelesen (OCR / PDF / Word) …");
+    try{
+      const extracted = await extractTextFromFile(file);
+      closePopup();
+
+      if(!extracted || extracted.trim().length < 3){
+        await popupInfo("Hinweis", "Konnte kaum Text erkennen. Versuch ein klareres Bild/PDF.");
+        return;
+      }
+
+      const r2 = await popupPrompt("KI-Vorschau", [
+        { key:"preview", label:"Erkannter Text (editierbar)", type:"textarea", rows:12, value: extracted.slice(0, 6500) },
+        { key:"limit", label:"Max. Karten (optional)", type:"text", value:"", placeholder:"z.B. 40" }
+      ], { ok:"KI erstellen", cancel:"Abbrechen", wide:true });
+      if(!r2) return;
+
+      popupBusy("KI erstellt Karten…", "Bitte kurz warten …");
+
+      const maxCards = Number(String(r2.limit||"").trim());
+      const maxLine = (Number.isFinite(maxCards) && maxCards>0) ? maxCards : 60;
+
+      let out = "";
+      try{
+        const prompt =
+`Erstelle Lernkarten aus dem folgenden Text.
+
+Vorgaben:
+- Format: JE ZEILE genau: Begriff<TAB>Bedeutung
+- Keine Nummerierung, keine Bullets, keine Extra-Erklärungen.
+- Maximal ${maxLine} Karten.
+- Sprache Seite A: ${String(r.langA||s.langA||"A")}
+- Sprache Seite B: ${String(r.langB||s.langB||"B")}
+- Extra-Hinweis: ${String(r.extra||"-")}
+
+Text:
+${String(r2.preview||"").slice(0,12000)}
+`;
+        out = await apiAskAI(prompt);
+      }catch(_){
+        closePopup();
+        await popupInfo("Fehler", "KI ist nicht erreichbar. ( /api/ai )");
+        return;
+      }
+      closePopup();
+
+      const parsed = parseCardLines(out);
+      if(!parsed.length){
+        await popupInfo("Fehler", "KI hat keine Karten im erwarteten Format geliefert.");
+        return;
+      }
+
+      const previewList = parsed.slice(0, 18).map(c=>`• ${c.front}  →  ${c.back}`).join("\\n");
+      const ok = await popupConfirm(
+        "Import",
+        `Es wurden ${parsed.length} Karten erkannt.\\n\\nVorschau:\\n${previewList}${parsed.length>18 ? "\\n…":""}\\n\\nEinfügen?`
+      );
+      if(!ok) return;
+
+      for(const c of parsed){
+        s.cards.push({ id: uid(), front:c.front, back:c.back, active:true, createdAt: nowISO() });
+      }
+      s.langA = String(r.langA||s.langA||"A");
+      s.langB = String(r.langB||s.langB||"B");
+      s.updatedAt = nowISO();
+      setDirty(true);
+      renderSets(); renderDetail();
+      toast("importiert");
+    }catch(e){
+      closePopup();
+      await popupInfo("Fehler", "KI-Import fehlgeschlagen: " + (e?.message || "Fehler"));
+    }
+  }
+
+  function parseCardLines(txt){
+    const lines = String(txt||"").split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
+    const out = [];
+    for(const ln of lines){
+      let a="", b="";
+      if(ln.includes("\\t")){
+        const parts = ln.split("\\t");
+        a = (parts[0]||"").trim();
+        b = (parts.slice(1).join("\\t")||"").trim();
+      } else if(ln.includes(" = ")){
+        const parts = ln.split(" = ");
+        a = (parts[0]||"").trim(); b = (parts.slice(1).join(" = ")||"").trim();
+      } else if(ln.includes(" - ")){
+        const parts = ln.split(" - ");
+        a = (parts[0]||"").trim(); b = (parts.slice(1).join(" - ")||"").trim();
+      } else continue;
+      if(!a && !b) continue;
+      out.push({ front:a, back:b });
+    }
+    const seen = new Set();
+    const unique = [];
+    for(const c of out){
+      const k = (c.front+"||"+c.back).toLowerCase();
+      if(seen.has(k)) continue;
+      seen.add(k);
+      unique.push(c);
+    }
+    return unique;
+  }
+
+  async function extractTextFromFile(file){
+    const type = (file.type||"").toLowerCase();
+    if(type.includes("pdf")) return await extractPdfText(file);
+    if(type.includes("wordprocessingml") || file.name.toLowerCase().endsWith(".docx")) return await extractDocxText(file);
+    if(type.startsWith("image/")) return await extractImageText(file);
+    return await file.text();
+  }
+
+  async function extractPdfText(file){
+    try{
+      if(pdfjsLib.GlobalWorkerOptions){
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.worker.min.js";
+      }
+    }catch(_){}
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let out = "";
+    const maxPages = Math.min(pdf.numPages, 25);
+    for(let p=1; p<=maxPages; p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const strings = content.items.map(it=>it.str).filter(Boolean);
+      out += "\\n\\n[Seite " + p + "]\\n" + strings.join(" ");
+    }
+    return out.trim();
+  }
+
+  async function extractDocxText(file){
+    const buf = await file.arrayBuffer();
+    const res = await mammoth.extractRawText({ arrayBuffer: buf });
+    return String(res.value||"").trim();
+  }
+
+  async function extractImageText(file){
+    const { data: { text } } = await Tesseract.recognize(file, "deu+eng", { logger: ()=>{} });
+    return String(text||"").trim();
+  }
+
+  // ---- Top Buttons ----
+  $("#btnNewFolder").addEventListener("click", async ()=>{
+    const r = await popupPrompt("Neuer Ordner", [
+      { key:"name",  label:"Name", type:"text", value:"Neuer Ordner" },
+      { key:"icon",  label:"Icon (Emoji)", type:"text", value:"📁" },
+      { key:"color", label:"Farbe (HEX)", type:"text", value:"#3ee38c" },
+    ], { ok:"Erstellen", cancel:"Abbrechen", wide:true });
+    if(!r) return;
+    const f = { id: uid(), name:(r.name||"").trim()||"Ordner", icon:(r.icon||"📁").trim().slice(0,4)||"📁", color:(r.color||"#3ee38c").trim()||"#3ee38c", createdAt: nowISO() };
+    vocab().folders.unshift(f);
+    activeFolderId = f.id;
+    activeSetId = null;
+    vocab().lastFolderId = activeFolderId;
+    vocab().lastSetId = null;
+    setDirty(true);
+    renderAll();
+  });
+
+  $("#btnNewSet").addEventListener("click", async ()=>{
+    if(!activeFolderId) activeFolderId = folders()[0]?.id;
+    const r = await popupPrompt("Neues Lernset", [
+      { key:"name",  label:"Name", type:"text", value:"Neues Set" },
+      { key:"langA", label:"Sprache/Seite A", type:"text", value:"Englisch" },
+      { key:"langB", label:"Sprache/Seite B", type:"text", value:"Deutsch" },
+    ], { ok:"Erstellen", cancel:"Abbrechen", wide:true });
+    if(!r) return;
+
+    const s = {
+      id: uid(),
+      folderId: activeFolderId,
+      name: (r.name||"").trim() || "Neues Set",
+      langA: (r.langA||"").trim() || "A",
+      langB: (r.langB||"").trim() || "B",
+      desc: "",
+      cards: [],
+      createdAt: nowISO(),
+      updatedAt: nowISO()
+    };
+    vocab().sets.unshift(s);
+    activeSetId = s.id;
+    vocab().lastSetId = activeSetId;
+    setDirty(true);
+    renderAll();
+  });
+
+  $("#btnSave").addEventListener("click", save);
+  $("#btnBack").addEventListener("click", async ()=>{
+    if(dirty){
+      const ok = await popupConfirm("Zurück", "Ungespeicherte Änderungen. Trotzdem zurück?", { ok:"Zurück", cancel:"Bleiben", danger:true });
+      if(!ok) return;
+    }
+    location.href = "/lernen";
+  });
+
+  $("#btnSetMenu").addEventListener("click", ()=> { if(currentSet()) setMenu(currentSet().id); });
+
   load();
 })();
 </script>
