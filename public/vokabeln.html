@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Vokabeln – Lernen</title>
 
-  <!-- optional, falls du das schon hast -->
   <link rel="stylesheet" href="/app.css">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#000000">
@@ -86,7 +85,7 @@
       border-radius:14px;
       outline:none;
       width:100%;
-      font-size:16px; /* iOS zoom fix */
+      font-size:16px;
     }
     textarea{resize:none}
     .muted{color:var(--muted);font-size:13px}
@@ -210,10 +209,10 @@
     .chipBtn.active{border-color:rgba(62,227,140,.55); background:rgba(62,227,140,.10)}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--muted)}
 
-    /* Popups (statt alert/confirm/prompt) */
+    /* Popups */
     .popupShade{position:fixed; inset:0; background:rgba(0,0,0,.58); display:none; align-items:center; justify-content:center; z-index:9999; padding:16px 12px;}
     .popupShade.show{display:flex}
-    .popup{width:min(860px, 100%); border:1px solid var(--border); background:linear-gradient(180deg,var(--panel2),var(--panel)); border-radius:20px; box-shadow:var(--shadow); overflow:hidden;}
+    .popup{width:min(960px, 100%); border:1px solid var(--border); background:linear-gradient(180deg,var(--panel2),var(--panel)); border-radius:20px; box-shadow:var(--shadow); overflow:hidden;}
     .popupHead{padding:12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px;}
     .popupTitle{font-weight:950}
     .popupBody{padding:12px}
@@ -226,6 +225,21 @@
     .smallHint{font-size:12px;color:var(--muted);line-height:1.35}
     .spinner{width:18px;height:18px;border-radius:999px; border:2px solid rgba(255,255,255,.25); border-top-color: rgba(255,255,255,.88); animation: spin .75s linear infinite; display:inline-block; vertical-align:-4px; margin-right:8px;}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Import Wizard */
+    .wizGrid{display:grid;grid-template-columns: 1fr 1.1fr; gap:12px; align-items:start;}
+    @media (max-width: 980px){ .wizGrid{grid-template-columns:1fr} }
+    .wizBox{border:1px solid var(--border); background:rgba(0,0,0,.22); border-radius:16px; padding:12px;}
+    .wizTitle{font-weight:950;margin-bottom:8px}
+    .wizRow{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .chk{display:flex; gap:10px; align-items:center; padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); cursor:pointer; user-select:none}
+    .chk input{accent-color:var(--accent)}
+    .rad{display:flex; gap:10px; align-items:center; padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); cursor:pointer; user-select:none}
+    .rad input{accent-color:var(--accent)}
+    .previewList{display:flex; flex-direction:column; gap:8px; max-height: 52vh; overflow:auto; padding-right:6px;}
+    .pvItem{border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); border-radius:14px; padding:10px;}
+    .pvItem b{font-weight:950}
+    .pvMiniCard{border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); border-radius:16px; padding:12px; margin-bottom:10px;}
   </style>
 </head>
 
@@ -244,7 +258,6 @@
     </div>
 
     <div class="grid">
-      <!-- Left -->
       <div class="panel">
         <div class="panelHead">
           <div style="font-weight:950">Ordner</div>
@@ -263,7 +276,6 @@
         </div>
       </div>
 
-      <!-- Right -->
       <div class="panel">
         <div class="panelHead">
           <div style="min-width:0">
@@ -293,7 +305,6 @@
         <button class="xbtn" id="learnClose" title="Schließen">✕</button>
       </div>
 
-      <!-- Cards UI -->
       <div id="learnCardsUI" style="display:none">
         <div class="learnTop">
           <div class="row" style="gap:12px">
@@ -325,7 +336,6 @@
         </div>
       </div>
 
-      <!-- KI Lernen UI -->
       <div id="learnAIUI" style="display:none">
         <div class="popupBody">
           <div class="muted" id="aiIntro">KI-Lernen: Themen auswählen, dann abfragen.</div>
@@ -352,16 +362,13 @@
     </div>
   </div>
 
-  <!-- PDF/DOCX/OCR für KI-Import -->
+  <!-- OCR/PDF/DOCX -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.7.76/build/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
 
 <script>
 (() => {
-  // Kein alert/confirm/prompt wird benutzt.
-
-  // optional Auth (wenn du /api/me hast)
   async function enforceAuth(){
     try{
       const r = await fetch("/api/me", { credentials:"include" });
@@ -390,7 +397,7 @@
     toast._t = setTimeout(()=>{ pill.textContent = old; pill.style.color = ""; }, 1400);
   }
 
-  // ---- Popup System (kein alert) ----
+  // ---- Popup System ----
   const popupShade = $("#popupShade");
   const popupTitle = $("#popupTitle");
   const popupBody  = $("#popupBody");
@@ -432,7 +439,7 @@
       popupResolve = resolve;
       openPopup({
         title,
-        bodyHTML: `<div class="smallHint">${escapeHtml(text).replace(/\\n/g,"<br>")}</div>`,
+        bodyHTML: `<div class="smallHint">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`,
         buttons:[{ label:"OK", primary:true, onClick: ()=> true }]
       });
     });
@@ -443,7 +450,7 @@
       popupResolve = resolve;
       openPopup({
         title,
-        bodyHTML: `<div class="smallHint">${escapeHtml(text).replace(/\\n/g,"<br>")}</div>`,
+        bodyHTML: `<div class="smallHint">${escapeHtml(text).replace(/\n/g,"<br>")}</div>`,
         buttons:[
           { label: cancel, onClick: ()=> false },
           { label: ok, danger, primary: !danger, onClick: ()=> true }
@@ -874,7 +881,7 @@
 
   function renderAll(){ renderFolders(); renderSets(); renderDetail(); }
 
-  // ---- Menüs (Ordner/Set) ----
+  // ---- Menüs ----
   async function folderMenu(folderId){
     const f = folders().find(x=>x.id===folderId);
     if(!f) return;
@@ -1031,16 +1038,16 @@
     const s = sets().find(x=>x.id===setId);
     if(!s) return;
     const r = await popupPrompt("Bulk einfügen", [
-      { key:"txt", label:"Je Zeile: Begriff[TAB]Bedeutung oder Begriff;Bedeutung", type:"textarea", value:"", rows:12, placeholder:"house\\tHaus\\ncar\\tAuto" }
+      { key:"txt", label:"Je Zeile: Begriff[TAB]Bedeutung oder Begriff;Bedeutung", type:"textarea", value:"", rows:12, placeholder:"house\tHaus\ncar\tAuto" }
     ], { ok:"Einfügen", cancel:"Abbrechen", wide:true });
     if(!r) return;
 
-    const lines = String(r.txt||"").split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
+    const lines = String(r.txt||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
     let added = 0;
     for(const ln of lines){
-      const parts = ln.includes("\\t") ? ln.split("\\t") : ln.split(";");
+      const parts = ln.includes("\t") ? ln.split("\t") : ln.split(";");
       const front = (parts[0]||"").trim();
-      const back  = (parts.slice(1).join(parts.includes("\\t") ? "\\t" : ";")||"").trim();
+      const back  = (parts.slice(1).join(parts.includes("\t") ? "\t" : ";")||"").trim();
       if(!front && !back) continue;
       s.cards.push({ id: uid(), front, back, active:true, createdAt: nowISO() });
       added++;
@@ -1241,11 +1248,11 @@
   async function finishSessionPopup(){
     const sec = Math.round((Date.now() - session.startAt)/1000);
     const txt =
-      `Fertig ✅\\n\\n`+
-      `Zeit: ${sec}s\\n`+
-      `← nicht: ${session.counts.left}\\n`+
-      `↑ halb: ${session.counts.up}\\n`+
-      `→ kann: ${session.counts.right}\\n\\n`+
+      `Fertig ✅\n\n`+
+      `Zeit: ${sec}s\n`+
+      `← nicht: ${session.counts.left}\n`+
+      `↑ halb: ${session.counts.up}\n`+
+      `→ kann: ${session.counts.right}\n\n`+
       `Tipp: Klick auf „Speichern“, damit es in der Cloud ist.`;
     await popupInfo("Session fertig", txt);
     closeLearnModal();
@@ -1308,7 +1315,7 @@
     animateOut("left", ()=> nextCard());
   }
 
-  // ---- KI Lernen (Themen + Abfragen) ----
+  // ---- KI Lernen ----
   let aiState = null;
 
   function addChat(text, who){
@@ -1327,7 +1334,7 @@
       const j = JSON.parse(s);
       if(Array.isArray(j)) return j.map(x=>String(x).trim()).filter(Boolean).slice(0,10);
     }catch(_){}
-    return s.split(/\\r?\\n/).map(l=>l.replace(/^[\\-\\*\\d\\.\\)\\s]+/,"").trim()).filter(Boolean).slice(0,10);
+    return s.split(/\r?\n/).map(l=>l.replace(/^[\-\*\d\.\)\s]+/,"").trim()).filter(Boolean).slice(0,10);
   }
 
   function setTopicsUI(topics){
@@ -1370,7 +1377,7 @@
   }
 
   function normalizeAnswer(s){ return String(s||"").trim(); }
-  function splitAlternatives(ans){ return normalizeAnswer(ans).split(/[;\\/\\|]/).map(x=>x.trim()).filter(Boolean); }
+  function splitAlternatives(ans){ return normalizeAnswer(ans).split(/[;\/\|]/).map(x=>x.trim()).filter(Boolean); }
   function equalsStrict(user, expected){
     return normalizeAnswer(user).toLowerCase() === normalizeAnswer(expected).toLowerCase();
   }
@@ -1396,7 +1403,7 @@
 
     let topics = [];
     try{
-      const sample = cardsAll.slice(0, 18).map(c=>`${c.front} = ${c.back}`).join("\\n");
+      const sample = cardsAll.slice(0, 18).map(c=>`${c.front} = ${c.back}`).join("\n");
       const prompt =
 `Gib mir 8 kurze Lern-Themen als Liste (ohne Erklärungen), passend zu diesem Stoff.
 Stoff:
@@ -1464,7 +1471,6 @@ Antworte als Bullet-Liste oder JSON-Array.`;
       return;
     }
 
-    // concept grading via /api/ai
     try{
       addChat("Ich bewerte das…", "ai");
       const prompt =
@@ -1487,7 +1493,7 @@ Kein unnötiger Text.`;
     askNextAIQuestion();
   }
 
-  // ---- KI Import (Bild/PDF/DOCX) ----
+  // ---- KI Import + Wizard (BILD -> Fragen/Checkboxen -> Live Vorschau) ----
   $("#btnAIImport").addEventListener("click", openAIImport);
 
   async function openAIImport(){
@@ -1496,9 +1502,7 @@ Kein unnötiger Text.`;
 
     const r = await popupPrompt("KI-Import ins Lernset", [
       { key:"file", label:"Datei (Bild/PDF/DOCX)", type:"file", accept:"image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-      { key:"langA", label:"Seite A (Begriff)", type:"text", value: s.langA || "Englisch" },
-      { key:"langB", label:"Seite B (Bedeutung)", type:"text", value: s.langB || "Deutsch" },
-      { key:"extra", label:"Extra-Hinweis (optional)", type:"textarea", rows:6, value:"", placeholder:"z.B. 'Nur Vokabeln aus Seite 2-4'" }
+      { key:"extra", label:"Extra-Hinweis (optional)", type:"textarea", rows:6, value:"", placeholder:"z.B. 'Nur Vokabeln aus dem Kasten oben' oder 'Ohne Beispiele'" }
     ], { ok:"Weiter", cancel:"Abbrechen", wide:true });
 
     if(!r) return;
@@ -1509,13 +1513,40 @@ Kein unnötiger Text.`;
     popupBusy("Analysiere Datei…", "Text wird gelesen (OCR / PDF / Word) …");
     try{
       const extracted = await extractTextFromFile(file);
-      closePopup();
-
       if(!extracted || extracted.trim().length < 3){
+        closePopup();
         await popupInfo("Hinweis", "Konnte kaum Text erkennen. Versuch ein klareres Bild/PDF.");
         return;
       }
 
+      // für Bilder: Wizard mit KI-Optionen + Live Preview
+      const isImage = (file.type||"").toLowerCase().startsWith("image/");
+      if(isImage){
+        const ai = await aiAnalyzeForWizard(extracted, r.extra || "", s.langA, s.langB, s.name);
+        closePopup();
+        const result = await popupImportWizard(ai, extracted);
+        if(!result) return;
+
+        // Einfügen
+        const cards = result.cards || [];
+        if(!cards.length){ await popupInfo("Hinweis","Keine Karten übrig nach deinen Einstellungen."); return; }
+
+        s.name  = result.setName || s.name;
+        s.langA = result.langA || s.langA;
+        s.langB = result.langB || s.langB;
+
+        for(const c of cards){
+          s.cards.push({ id: uid(), front:c.front, back:c.back, active:true, createdAt: nowISO() });
+        }
+        s.updatedAt = nowISO();
+        setDirty(true);
+        renderSets(); renderDetail();
+        toast("importiert");
+        return;
+      }
+
+      // PDF/DOCX: bisheriger Flow (Text editierbar -> KI -> einfügen)
+      closePopup();
       const r2 = await popupPrompt("KI-Vorschau", [
         { key:"preview", label:"Erkannter Text (editierbar)", type:"textarea", rows:12, value: extracted.slice(0, 6500) },
         { key:"limit", label:"Max. Karten (optional)", type:"text", value:"", placeholder:"z.B. 40" }
@@ -1536,8 +1567,8 @@ Vorgaben:
 - Format: JE ZEILE genau: Begriff<TAB>Bedeutung
 - Keine Nummerierung, keine Bullets, keine Extra-Erklärungen.
 - Maximal ${maxLine} Karten.
-- Sprache Seite A: ${String(r.langA||s.langA||"A")}
-- Sprache Seite B: ${String(r.langB||s.langB||"B")}
+- Sprache Seite A: ${String(s.langA||"A")}
+- Sprache Seite B: ${String(s.langB||"B")}
 - Extra-Hinweis: ${String(r.extra||"-")}
 
 Text:
@@ -1557,43 +1588,331 @@ ${String(r2.preview||"").slice(0,12000)}
         return;
       }
 
-      const previewList = parsed.slice(0, 18).map(c=>`• ${c.front}  →  ${c.back}`).join("\\n");
+      const previewList = parsed.slice(0, 18).map(c=>`• ${c.front}  →  ${c.back}`).join("\n");
       const ok = await popupConfirm(
         "Import",
-        `Es wurden ${parsed.length} Karten erkannt.\\n\\nVorschau:\\n${previewList}${parsed.length>18 ? "\\n…":""}\\n\\nEinfügen?`
+        `Es wurden ${parsed.length} Karten erkannt.\n\nVorschau:\n${previewList}${parsed.length>18 ? "\n…":""}\n\nEinfügen?`
       );
       if(!ok) return;
 
       for(const c of parsed){
         s.cards.push({ id: uid(), front:c.front, back:c.back, active:true, createdAt: nowISO() });
       }
-      s.langA = String(r.langA||s.langA||"A");
-      s.langB = String(r.langB||s.langB||"B");
       s.updatedAt = nowISO();
       setDirty(true);
       renderSets(); renderDetail();
       toast("importiert");
+
     }catch(e){
       closePopup();
       await popupInfo("Fehler", "KI-Import fehlgeschlagen: " + (e?.message || "Fehler"));
     }
   }
 
+  // KI analysiert Text + liefert Vorschläge + Rohkarten
+  async function aiAnalyzeForWizard(extractedText, extraHint, langA, langB, setName){
+    // Fallback, falls KI nicht geht:
+    const fallback = {
+      setNameSuggestion: setName || "Neues Set",
+      langA: langA || "A",
+      langB: langB || "B",
+      type: "vocab",
+      cards: [],
+      questions: {
+        swapSuggested: false,
+        removeDuplicatesSuggested: true,
+        strictVocabSuggested: true
+      }
+    };
+
+    let out = "";
+    try{
+      const prompt =
+`Analysiere folgenden Text (aus einem Foto/OCR) und mache daraus Lernkarten.
+
+Antworte als STRICT JSON, ohne Text drumherum.
+
+Schema:
+{
+  "setNameSuggestion": "string",
+  "langA": "string",
+  "langB": "string",
+  "type": "vocab" | "qa",
+  "questions": {
+    "swapSuggested": boolean,
+    "removeDuplicatesSuggested": boolean,
+    "strictVocabSuggested": boolean
+  },
+  "cards": [{"a":"string","b":"string"}]
+}
+
+Regeln:
+- cards enthält nur sinnvolle Paare.
+- entferne offensichtliche Überschriften/Nummern/Beispiele wenn möglich.
+- max 120 cards.
+
+Extra-Hinweis: ${String(extraHint||"-")}
+
+Text:
+${String(extractedText||"").slice(0,14000)}
+`;
+      out = await apiAskAI(prompt);
+    }catch(_){
+      // ignore
+    }
+
+    let j = null;
+    try{ j = JSON.parse(String(out||"")); }catch(_){ j = null; }
+
+    if(!j || !Array.isArray(j.cards)){
+      // fallback: simple parse
+      const parsed = parseCardLines(extractedText).slice(0,120);
+      fallback.cards = parsed.map(x=>({ a:x.front, b:x.back }));
+      return fallback;
+    }
+
+    const cards = j.cards
+      .map(x=>({ a:String(x.a||"").trim(), b:String(x.b||"").trim() }))
+      .filter(x=>x.a || x.b);
+
+    return {
+      setNameSuggestion: String(j.setNameSuggestion||setName||"Neues Set").trim(),
+      langA: String(j.langA||langA||"A").trim(),
+      langB: String(j.langB||langB||"B").trim(),
+      type: (j.type==="qa" ? "qa" : "vocab"),
+      questions: {
+        swapSuggested: !!j.questions?.swapSuggested,
+        removeDuplicatesSuggested: j.questions?.removeDuplicatesSuggested !== false,
+        strictVocabSuggested: j.questions?.strictVocabSuggested !== false
+      },
+      cards
+    };
+  }
+
+  // Wizard Popup mit Checkbox-Fragen + Live Preview
+  function popupImportWizard(ai, extractedText){
+    return new Promise(resolve=>{
+      popupResolve = resolve;
+
+      const body = `
+        <div class="wizGrid">
+          <div class="wizBox">
+            <div class="wizTitle">Einstellungen (ankreuzen)</div>
+
+            <div class="fieldLabel">Set-Name</div>
+            <input id="wiz_setName" type="text" value="${escapeAttr(ai.setNameSuggestion||"Neues Set")}" />
+
+            <div style="height:10px"></div>
+
+            <div class="twoCols">
+              <div>
+                <div class="fieldLabel">Seite A</div>
+                <input id="wiz_langA" type="text" value="${escapeAttr(ai.langA||"A")}" />
+              </div>
+              <div>
+                <div class="fieldLabel">Seite B</div>
+                <input id="wiz_langB" type="text" value="${escapeAttr(ai.langB||"B")}" />
+              </div>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="fieldLabel">Typ</div>
+            <label class="rad"><input type="radio" name="wiz_type" value="vocab" ${ai.type!=="qa"?"checked":""}/> Vokabeln (A → B)</label>
+            <label class="rad"><input type="radio" name="wiz_type" value="qa" ${ai.type==="qa"?"checked":""}/> Frage/Antwort</label>
+
+            <div style="height:10px"></div>
+
+            <label class="chk"><input id="wiz_swap" type="checkbox" ${ai.questions?.swapSuggested ? "checked":""}/> Seiten tauschen (B → A)</label>
+            <label class="chk"><input id="wiz_dedupe" type="checkbox" ${ai.questions?.removeDuplicatesSuggested!==false ? "checked":""}/> Duplikate entfernen</label>
+            <label class="chk"><input id="wiz_clean" type="checkbox" checked/> „Sauber machen“ (Nummern/Striche/Leerzeichen)</label>
+
+            <div style="height:10px"></div>
+
+            <div class="twoCols">
+              <div>
+                <div class="fieldLabel">Max. Karten</div>
+                <input id="wiz_max" type="text" value="60" placeholder="z.B. 40" />
+              </div>
+              <div>
+                <div class="fieldLabel">Vorschau-Zeilen</div>
+                <input id="wiz_prevN" type="text" value="18" />
+              </div>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="fieldLabel">OCR-Text (nur Vorschau)</div>
+            <div class="wizBox" style="max-height:180px; overflow:auto; padding:10px; border-radius:14px">
+              <div class="mono">${escapeHtml(String(extractedText||"").slice(0,1200))}${String(extractedText||"").length>1200?"…":""}</div>
+            </div>
+
+            <div class="smallHint" style="margin-top:10px">
+              Rechts siehst du live, wie dein Lernset aussehen wird.
+            </div>
+          </div>
+
+          <div class="wizBox">
+            <div class="wizTitle">Vorschau</div>
+
+            <div class="pvMiniCard">
+              <div class="muted" style="font-weight:950;margin-bottom:6px">Karteikarte (Beispiel)</div>
+              <div style="font-size:22px;font-weight:950" id="pv_front">…</div>
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.88)" id="pv_back">…</div>
+              <div class="mono" style="margin-top:10px" id="pv_meta">0 Karten</div>
+            </div>
+
+            <div class="previewList" id="pv_list"></div>
+          </div>
+        </div>
+      `;
+
+      openPopup({
+        title: "KI-Import (Bild) – Wizard",
+        bodyHTML: body,
+        buttons: [
+          { label:"Abbrechen", onClick: ()=> null },
+          { label:"Einfügen", primary:true, onClick: ()=>{
+            const setName = ($("#wiz_setName")?.value||"").trim() || "Neues Set";
+            const langA = ($("#wiz_langA")?.value||"").trim() || "A";
+            const langB = ($("#wiz_langB")?.value||"").trim() || "B";
+            const type = ($$('input[name="wiz_type"]:checked')[0]?.value) || "vocab";
+            const swap = !!$("#wiz_swap")?.checked;
+            const dedupe = !!$("#wiz_dedupe")?.checked;
+            const clean = !!$("#wiz_clean")?.checked;
+
+            const max = Number(String($("#wiz_max")?.value||"").trim());
+            const maxCards = (Number.isFinite(max) && max>0) ? Math.min(250, max) : 60;
+
+            const cards = buildWizardCards(ai.cards||[], { type, swap, dedupe, clean, maxCards });
+
+            return { setName, langA, langB, type, cards };
+          } }
+        ]
+      });
+
+      // live preview
+      const update = ()=>{
+        const type = ($$('input[name="wiz_type"]:checked')[0]?.value) || "vocab";
+        const swap = !!$("#wiz_swap")?.checked;
+        const dedupe = !!$("#wiz_dedupe")?.checked;
+        const clean = !!$("#wiz_clean")?.checked;
+
+        const max = Number(String($("#wiz_max")?.value||"").trim());
+        const maxCards = (Number.isFinite(max) && max>0) ? Math.min(250, max) : 60;
+
+        const prevN = Number(String($("#wiz_prevN")?.value||"").trim());
+        const showN = (Number.isFinite(prevN) && prevN>0) ? Math.min(60, prevN) : 18;
+
+        const cards = buildWizardCards(ai.cards||[], { type, swap, dedupe, clean, maxCards });
+        const list = $("#pv_list");
+        const meta = $("#pv_meta");
+        const pvF = $("#pv_front");
+        const pvB = $("#pv_back");
+
+        meta.textContent = `${cards.length} Karte(n)`;
+
+        const first = cards[0];
+        pvF.textContent = first ? first.front : "—";
+        pvB.textContent = first ? first.back  : "—";
+
+        list.innerHTML = cards.slice(0, showN).map((c,i)=>`
+          <div class="pvItem">
+            <div class="muted" style="font-weight:950;margin-bottom:6px">#${i+1}</div>
+            <div><b>${escapeHtml(c.front||"")}</b></div>
+            <div class="muted" style="margin:6px 0">→</div>
+            <div>${escapeHtml(c.back||"")}</div>
+          </div>
+        `).join("") + (cards.length>showN ? `<div class="muted">… +${cards.length-showN} weitere</div>` : "");
+      };
+
+      ["input","change"].forEach(evt=>{
+        popupBody.addEventListener(evt, (e)=>{
+          if(!e.target) return;
+          const id = e.target.id || "";
+          const name = e.target.name || "";
+          if(id.startsWith("wiz_") || name==="wiz_type") update();
+        });
+      });
+
+      // initial
+      update();
+    });
+  }
+
+  function normalizeLine(s){
+    let x = String(s||"");
+    x = x.replace(/\s+/g, " ").trim();
+    x = x.replace(/^[\-\*\d\.\)\s]+/,"").trim();
+    x = x.replace(/\s*[:=\-–—]\s*$/,"").trim();
+    return x;
+  }
+
+  function buildWizardCards(rawCards, opts){
+    const type = opts.type || "vocab";
+    const swap = !!opts.swap;
+    const dedupe = !!opts.dedupe;
+    const clean = !!opts.clean;
+    const maxCards = opts.maxCards || 60;
+
+    let cards = (rawCards||[]).map(x=>{
+      let a = String(x.a||"").trim();
+      let b = String(x.b||"").trim();
+      if(clean){ a = normalizeLine(a); b = normalizeLine(b); }
+      if(swap){ const t=a; a=b; b=t; }
+      return { front:a, back:b };
+    }).filter(c=> (c.front||c.back));
+
+    // bei QA: falls "Frage?" erkannt, lassen wir so; hier nur Label
+    if(type==="qa"){
+      // nichts erzwingen – gleiche Struktur bleibt
+    }
+
+    if(dedupe){
+      const seen = new Set();
+      const uniq = [];
+      for(const c of cards){
+        const k = (c.front+"||"+c.back).toLowerCase();
+        if(seen.has(k)) continue;
+        seen.add(k);
+        uniq.push(c);
+      }
+      cards = uniq;
+    }
+
+    // kill super-short junk
+    cards = cards.filter(c=>{
+      const a = (c.front||"").trim();
+      const b = (c.back||"").trim();
+      if(!a || !b) return false;
+      if(a.length<1 || b.length<1) return false;
+      if(a.length===1 && b.length===1) return false;
+      return true;
+    });
+
+    return cards.slice(0, maxCards);
+  }
+
   function parseCardLines(txt){
-    const lines = String(txt||"").split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
+    const lines = String(txt||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
     const out = [];
     for(const ln of lines){
       let a="", b="";
-      if(ln.includes("\\t")){
-        const parts = ln.split("\\t");
+      if(ln.includes("\t")){
+        const parts = ln.split("\t");
         a = (parts[0]||"").trim();
-        b = (parts.slice(1).join("\\t")||"").trim();
+        b = (parts.slice(1).join("\t")||"").trim();
       } else if(ln.includes(" = ")){
         const parts = ln.split(" = ");
         a = (parts[0]||"").trim(); b = (parts.slice(1).join(" = ")||"").trim();
       } else if(ln.includes(" - ")){
         const parts = ln.split(" - ");
         a = (parts[0]||"").trim(); b = (parts.slice(1).join(" - ")||"").trim();
+      } else if(ln.includes(":")){
+        const parts = ln.split(":");
+        if(parts.length>=2){
+          a = (parts[0]||"").trim(); b = (parts.slice(1).join(":")||"").trim();
+        }
       } else continue;
       if(!a && !b) continue;
       out.push({ front:a, back:b });
@@ -1631,7 +1950,7 @@ ${String(r2.preview||"").slice(0,12000)}
       const page = await pdf.getPage(p);
       const content = await page.getTextContent();
       const strings = content.items.map(it=>it.str).filter(Boolean);
-      out += "\\n\\n[Seite " + p + "]\\n" + strings.join(" ");
+      out += "\n\n[Seite " + p + "]\n" + strings.join(" ");
     }
     return out.trim();
   }
