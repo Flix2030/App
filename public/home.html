@@ -2,32 +2,32 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Home</title>
+
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="/app.css">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-  <meta name="theme-color" content="#000000">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <style>
     :root{
       --bg0:#05080f; --bg1:#070c16;
       --panel:rgba(17,24,39,.72);
+      --panel2:rgba(17,24,39,.55);
       --border:rgba(255,255,255,.10);
+      --border2:rgba(255,255,255,.14);
       --text:rgba(255,255,255,.92);
       --muted:rgba(255,255,255,.62);
       --accent:#3ee38c; --accent2:#2fce7a;
+      --danger:#ff4d6d;
       --shadow:0 18px 60px rgba(0,0,0,.55);
       --radius:18px;
+      --radius2:14px;
     }
+    *{box-sizing:border-box}
     body{
       margin:0;
       font-family:'Segoe UI', Tahoma, sans-serif;
@@ -37,88 +37,1102 @@
                   linear-gradient(180deg, var(--bg0), var(--bg1));
       min-height:100vh;
       display:flex;
-      align-items:center;
+      align-items:flex-start;
       justify-content:center;
-      padding:34px 16px;
-      box-sizing:border-box;
+      padding:22px 14px 38px;
     }
-    .card{
-      width:min(720px, 100%);
+
+    .wrap{width:min(980px, 100%);}
+
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:8px 0 14px;
+    }
+    .title{
+      display:flex;
+      align-items:baseline;
+      gap:10px;
+    }
+    h1{margin:0; font-size:2rem; letter-spacing:.2px;}
+    .sub{color:var(--muted); font-size:.95rem}
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:800;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      transition:transform .12s ease, filter .2s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color:#03130a;
+      box-shadow:0 10px 24px rgba(62,227,140,0.14);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .btn.danger{
+      background:rgba(255,77,109,.10);
+      border-color:rgba(255,77,109,.30);
+      color:#ffd6de;
+    }
+
+    .panel{
       background:var(--panel);
       border:1px solid var(--border);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
-      padding:28px;
+      padding:18px;
+      margin-bottom:14px;
     }
-    h1{margin:0 0 16px; font-size:2.1rem; letter-spacing:.2px;}
-    p{margin:0 0 18px; color:var(--muted);}
-    .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;}
-    a.btn{
-      text-decoration:none;
+
+    .sectionHead{
       display:flex;
       align-items:center;
-      justify-content:center;
-      gap:10px;
-      padding:14px 16px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.10);
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color:#03130a;
-      font-weight:800;
-      box-shadow:0 10px 24px rgba(62,227,140,0.14);
-      transition: transform .15s ease, filter .2s ease;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
     }
-    a.btn:hover{filter:brightness(1.03)}
-    a.btn:active{transform:translateY(1px)}
-    a.btn.secondary{
+    .sectionHead h2{
+      margin:0;
+      font-size:1.15rem;
+      letter-spacing:.2px;
+    }
+    .hint{color:var(--muted); font-size:.92rem}
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));
+      gap:12px;
+    }
+
+    .tile, .folderCard{
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,0.06);
-      color:var(--text);
+      padding:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
       box-shadow:none;
+      min-height:58px;
+    }
+    .tile.primary{
+      background: linear-gradient(180deg, rgba(62,227,140,0.95), rgba(47,206,122,0.95));
+      color:#03130a;
+      border-color:rgba(255,255,255,.14);
+    }
+    .tile .left, .folderCard .left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .icon{
+      width:36px; height:36px;
+      border-radius:12px;
+      display:grid; place-items:center;
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+      font-size:18px;
+    }
+    .tile.primary .icon{background:rgba(0,0,0,.14)}
+    .nameWrap{min-width:0}
+    .name{font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .meta{color:var(--muted); font-size:.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+    .miniBtns{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
+    .mini{
+      width:36px; height:36px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+    }
+    .mini:active{transform:translateY(1px)}
+    .mini.drag{cursor:grab}
+    .mini.drag:active{cursor:grabbing}
+
+    .dropHover{
+      outline:2px dashed rgba(62,227,140,.6);
+      outline-offset:2px;
+      background:rgba(62,227,140,.08);
+    }
+
+    /* Modal */
+    .modalBack{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding:18px 12px;
+      z-index:9999;
+    }
+    .modalBack.show{display:flex;}
+    .modal{
+      width:min(620px, 100%);
+      background:rgba(10,14,22,.92);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:22px;
+      box-shadow:0 22px 70px rgba(0,0,0,.65);
+      padding:16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      max-height:85vh;
+      overflow:auto;
+    }
+    .modalTop{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom:10px;
+    }
+    .modalTop h3{margin:0; font-size:1.1rem}
+    .xbtn{
+      width:40px; height:40px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      display:grid; place-items:center;
+      cursor:pointer;
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .inp{
+      width:100%;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:12px 12px;
+      font-weight:700;
+      outline:none;
+    }
+    .sep{height:1px; background:rgba(255,255,255,.10); margin:12px 0;}
+    .muted{color:var(--muted)}
+    .err{color:#ffd6de; background:rgba(255,77,109,.10); border:1px solid rgba(255,77,109,.30); padding:10px 12px; border-radius:14px}
+    .ok{color:#d7ffe9; background:rgba(62,227,140,.10); border:1px solid rgba(62,227,140,.22); padding:10px 12px; border-radius:14px}
+
+    @media (min-width: 780px){
+      .modalBack{align-items:center;}
     }
   </style>
 </head>
+
 <body>
-  <div class="card">
-    <h1>Home</h1>
-    <p>Wähle einen Bereich:</p>
-    <div class="grid">
-      <a class="btn secondary" href="settings.html">Einstellungen</a>
-      <a class="btn secondary" href="vokabeln.html">Vokabeln</a>
-      <a class="btn secondary" href="/lernen">📚 Lernen</a>
-      <a class="btn" href="packliste.html">Packliste</a>
-      <a class="btn" href="/einkaufsliste">🛒 Einkaufsliste</a>
-      <a class="btn" href="todo.html">🧾 ToDo</a>
-      <a class="btn" href="MisterX.html">❌</a>
-      <a href="/webcam-live" class="home-btn">📷 Webcam</a>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">
+        <h1>Home</h1>
+        <div class="sub" id="statusText">lädt…</div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="editBtn">✏️ Bearbeiten: AUS</button>
+        <button class="btn primary" id="addFolderBtn">➕ Ordner</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="sectionHead">
+        <h2>Ordner</h2>
+        <div class="hint">Zieh Kacheln in Ordner (Bearbeiten AN).</div>
+      </div>
+      <div class="grid" id="foldersGrid"></div>
+      <div id="noFolders" class="hint" style="margin-top:10px; display:none;">Noch keine Ordner. Klick auf „➕ Ordner“.</div>
+    </div>
+
+    <div class="panel">
+      <div class="sectionHead">
+        <h2>Kacheln</h2>
+        <div class="hint">Deine Bereiche</div>
+      </div>
+      <div class="grid" id="tilesGrid"></div>
     </div>
   </div>
 
-  <script>
-  // Wenn der Browser per "Zurück" eine gecachte Seite zeigt -> sofort Auth prüfen
-  async function enforceAuth() {
-    try {
-      const r = await fetch("/api/me", { credentials: "include" });
-      if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-    } catch (_) {
-      location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-    }
+  <!-- Folder Modal -->
+  <div class="modalBack" id="folderModalBack" aria-hidden="true">
+    <div class="modal">
+      <div class="modalTop">
+        <h3 id="folderTitle">Ordner</h3>
+        <button class="xbtn" id="folderCloseBtn">✕</button>
+      </div>
+
+      <div id="folderInfo" class="muted" style="margin-bottom:10px;"></div>
+
+      <div id="folderLockedBox" style="display:none;">
+        <div class="err" id="folderLockedMsg" style="margin-bottom:10px;">Dieser Ordner ist gesperrt.</div>
+        <input class="inp" id="pinInput" inputmode="numeric" pattern="[0-9]*" placeholder="PIN eingeben" />
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" id="unlockBtn">🔓 Entsperren</button>
+          <button class="btn" id="cancelUnlockBtn">Abbrechen</button>
+        </div>
+      </div>
+
+      <div id="folderContentBox" style="display:none;">
+        <div class="row" style="justify-content:space-between;">
+          <div class="muted">Inhalt</div>
+          <button class="btn" id="folderSettingsBtn">⚙️ Einstellungen</button>
+        </div>
+        <div style="height:10px"></div>
+        <div class="grid" id="folderTilesGrid"></div>
+        <div class="hint" id="folderEmptyHint" style="display:none; margin-top:10px;">Leer. Zieh Kacheln rein.</div>
+      </div>
+
+      <div id="folderSettingsBox" style="display:none;">
+        <div class="sep"></div>
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div style="font-weight:900">Ordner-Einstellungen</div>
+            <div class="muted" id="folderSettingsMeta"></div>
+          </div>
+          <button class="btn" id="closeSettingsBtn">Zurück</button>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div class="muted" style="margin-bottom:6px;">Name</div>
+        <input class="inp" id="renameInput" placeholder="Ordnername" />
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" id="renameBtn">Speichern</button>
+        </div>
+
+        <div class="sep"></div>
+
+        <div id="pinStateBox" class="muted" style="margin-bottom:6px;"></div>
+        <input class="inp" id="newPinInput" inputmode="numeric" pattern="[0-9]*" placeholder="Neue PIN (z.B. 1234)" />
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary" id="setPinBtn">🔒 PIN setzen/ändern</button>
+          <button class="btn danger" id="removePinBtn">🔓 PIN entfernen</button>
+        </div>
+
+        <div class="sep"></div>
+
+        <button class="btn danger" id="deleteFolderBtn">🗑️ Ordner löschen</button>
+      </div>
+
+      <div class="sep"></div>
+      <div id="folderToast" class="muted"></div>
+    </div>
+  </div>
+
+<script>
+/* ---------------------------
+   App Registry (deine Kacheln)
+---------------------------- */
+const APP_REGISTRY = {
+  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html",  style:"secondary" },
+  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html",  style:"secondary" },
+  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen",        style:"secondary" },
+  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html", style:"primary"   },
+  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste", style:"primary"   },
+  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html",      style:"primary"   },
+  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html",  style:"primary"   },
+  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live",  style:"secondary" }
+};
+
+const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
+
+/* ---------------------------
+   State
+---------------------------- */
+let editMode = false;
+
+let layout = {
+  folders: [],           // [{id, name}]
+  unassigned: [...DEFAULT_UNASSIGNED] // app ids
+};
+
+let folderLockMap = {};  // folderId -> true/false
+let folderCounts = {};   // folderId -> number
+let openFolderId = null;
+let openFolderItems = [];    // items for currently opened folder (loaded)
+let openFolderUnlocked = false;
+let unlockToken = null;      // token for currently opened folder (if locked)
+
+const statusText = document.getElementById("statusText");
+const editBtn = document.getElementById("editBtn");
+const addFolderBtn = document.getElementById("addFolderBtn");
+
+const foldersGrid = document.getElementById("foldersGrid");
+const tilesGrid = document.getElementById("tilesGrid");
+const noFolders = document.getElementById("noFolders");
+
+const folderModalBack = document.getElementById("folderModalBack");
+const folderCloseBtn = document.getElementById("folderCloseBtn");
+const folderTitle = document.getElementById("folderTitle");
+const folderInfo = document.getElementById("folderInfo");
+
+const folderLockedBox = document.getElementById("folderLockedBox");
+const pinInput = document.getElementById("pinInput");
+const unlockBtn = document.getElementById("unlockBtn");
+const cancelUnlockBtn = document.getElementById("cancelUnlockBtn");
+
+const folderContentBox = document.getElementById("folderContentBox");
+const folderTilesGrid = document.getElementById("folderTilesGrid");
+const folderEmptyHint = document.getElementById("folderEmptyHint");
+const folderSettingsBtn = document.getElementById("folderSettingsBtn");
+
+const folderSettingsBox = document.getElementById("folderSettingsBox");
+const folderSettingsMeta = document.getElementById("folderSettingsMeta");
+const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+const renameInput = document.getElementById("renameInput");
+const renameBtn = document.getElementById("renameBtn");
+const pinStateBox = document.getElementById("pinStateBox");
+const newPinInput = document.getElementById("newPinInput");
+const setPinBtn = document.getElementById("setPinBtn");
+const removePinBtn = document.getElementById("removePinBtn");
+const deleteFolderBtn = document.getElementById("deleteFolderBtn");
+
+const folderToast = document.getElementById("folderToast");
+
+function toast(msg){
+  folderToast.textContent = msg || "";
+}
+
+function setEditMode(on){
+  editMode = !!on;
+  editBtn.textContent = editMode ? "✏️ Bearbeiten: AN" : "✏️ Bearbeiten: AUS";
+  renderAll();
+}
+
+editBtn.addEventListener("click", () => setEditMode(!editMode));
+
+addFolderBtn.addEventListener("click", async () => {
+  const name = prompt("Ordnername?");
+  if (!name) return;
+  const id = "f_" + cryptoRandomId();
+  layout.folders.unshift({ id, name: name.trim().slice(0, 40) });
+  folderCounts[id] = 0;
+  folderLockMap[id] = false;
+  await apiPutLayout();
+  renderAll();
+});
+
+function cryptoRandomId(){
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,16);
+}
+
+/* ---------------------------
+   API helpers (Cloudflare Worker)
+---------------------------- */
+async function apiGetLayout(){
+  const r = await fetch("/api/home/layout", { credentials:"include" });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_load_failed");
+  return j;
+}
+
+async function apiPutLayout(){
+  const body = { folders: layout.folders, unassigned: layout.unassigned };
+  const r = await fetch("/api/home/layout", {
+    method:"PUT",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify(body)
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_save_failed");
+  statusText.textContent = "gespeichert";
+  setTimeout(()=> statusText.textContent = "", 1200);
+}
+
+async function apiGetFolderItems(folderId, token=null){
+  const u = new URL(location.origin + "/api/home/folder/items");
+  u.searchParams.set("folderId", folderId);
+  if (token) u.searchParams.set("token", token);
+  const r = await fetch(u.toString(), { credentials:"include" });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_load_failed");
+  return j.items || [];
+}
+
+async function apiPutFolderItems(folderId, items, token=null){
+  const body = { folderId, items };
+  if (token) body.token = token;
+  const r = await fetch("/api/home/folder/items", {
+    method:"PUT",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify(body)
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_save_failed");
+}
+
+async function apiUnlockFolder(folderId, pin){
+  const r = await fetch("/api/home/folder/unlock", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, pin })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "unlock_failed");
+  return j.token;
+}
+
+async function apiSetFolderPin(folderId, pin){
+  const r = await fetch("/api/home/folder/setPin", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, pin })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "set_pin_failed");
+}
+
+async function apiRemoveFolderPin(folderId){
+  const r = await fetch("/api/home/folder/removePin", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "remove_pin_failed");
+}
+
+/* ---------------------------
+   Rendering
+---------------------------- */
+function makeTileEl(appId){
+  const app = APP_REGISTRY[appId];
+  if (!app) return null;
+
+  const el = document.createElement("div");
+  el.className = "tile" + (app.style === "primary" ? " primary" : "");
+  el.dataset.appId = appId;
+  el.draggable = editMode; // drag only in edit mode
+
+  el.addEventListener("dragstart", (e) => {
+    if (!editMode) return;
+    e.dataTransfer.setData("text/plain", JSON.stringify({ type:"app", appId }));
+    e.dataTransfer.effectAllowed = "move";
+  });
+
+  const left = document.createElement("div");
+  left.className = "left";
+  const icon = document.createElement("div");
+  icon.className = "icon";
+  icon.textContent = app.icon || "⬛";
+  const nameWrap = document.createElement("div");
+  nameWrap.className = "nameWrap";
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = app.name;
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = app.href;
+  nameWrap.appendChild(name);
+  nameWrap.appendChild(meta);
+
+  left.appendChild(icon);
+  left.appendChild(nameWrap);
+
+  const right = document.createElement("div");
+  right.className = "miniBtns";
+
+  if (editMode){
+    const drag = document.createElement("div");
+    drag.className = "mini drag";
+    drag.title = "Ziehen";
+    drag.textContent = "⠿";
+    right.appendChild(drag);
+  } else {
+    const go = document.createElement("div");
+    go.className = "mini";
+    go.title = "Öffnen";
+    go.textContent = "➡️";
+    go.addEventListener("click", () => location.href = app.href);
+    right.appendChild(go);
+
+    el.style.cursor = "pointer";
+    el.addEventListener("click", (ev) => {
+      // don't trigger when clicking the mini button
+      if (ev.target && ev.target.classList && ev.target.classList.contains("mini")) return;
+      location.href = app.href;
+    });
   }
 
-  window.addEventListener("pageshow", (e) => {
-      if (e.persisted) enforceAuth(); // BFCache
+  el.appendChild(left);
+  el.appendChild(right);
+
+  return el;
+}
+
+function makeFolderEl(folder){
+  const el = document.createElement("div");
+  el.className = "folderCard";
+  el.dataset.folderId = folder.id;
+
+  const locked = !!folderLockMap[folder.id];
+  const cnt = Number(folderCounts[folder.id] || 0);
+
+  el.addEventListener("click", (e) => {
+    // in edit mode, click still opens modal (easier)
+    openFolder(folder.id);
+  });
+
+  // drop support (apps -> folder)
+  el.addEventListener("dragover", (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+    el.classList.add("dropHover");
+    e.dataTransfer.dropEffect = "move";
+  });
+  el.addEventListener("dragleave", () => el.classList.remove("dropHover"));
+  el.addEventListener("drop", async (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+    el.classList.remove("dropHover");
+
+    const raw = e.dataTransfer.getData("text/plain");
+    let data=null;
+    try{ data = JSON.parse(raw); }catch{}
+    if (data?.type !== "app") return;
+
+    // If folder is locked, require unlock first
+    if (locked){
+      toast("Ordner ist gesperrt – erst entsperren.");
+      openFolder(folder.id);
+      return;
+    }
+
+    // move from unassigned -> folder
+    const appId = data.appId;
+    if (!appId) return;
+
+    // remove from unassigned
+    layout.unassigned = layout.unassigned.filter(x => x !== appId);
+
+    // add to folder items in DB
+    try{
+      const items = await apiGetFolderItems(folder.id, null);
+      if (!items.includes(appId)) items.push(appId);
+      await apiPutFolderItems(folder.id, items, null);
+      folderCounts[folder.id] = items.length;
+      await apiPutLayout();
+      renderAll();
+      toast("Verschoben.");
+    }catch(err){
+      console.log(err);
+      toast("Fehler beim Verschieben.");
+    }
+  });
+
+  const left = document.createElement("div");
+  left.className = "left";
+
+  const icon = document.createElement("div");
+  icon.className = "icon";
+  icon.textContent = locked ? "🔒" : "📁";
+
+  const nameWrap = document.createElement("div");
+  nameWrap.className = "nameWrap";
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = folder.name || "Ordner";
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = cnt + " Elemente";
+  nameWrap.appendChild(name);
+  nameWrap.appendChild(meta);
+
+  left.appendChild(icon);
+  left.appendChild(nameWrap);
+
+  const right = document.createElement("div");
+  right.className = "miniBtns";
+
+  if (editMode){
+    const drag = document.createElement("div");
+    drag.className = "mini drag";
+    drag.title = "Ordner verschieben";
+    drag.textContent = "⠿";
+    right.appendChild(drag);
+  } else {
+    const go = document.createElement("div");
+    go.className = "mini";
+    go.title = "Öffnen";
+    go.textContent = "➡️";
+    right.appendChild(go);
+  }
+
+  el.appendChild(left);
+  el.appendChild(right);
+
+  // allow folder reordering in edit mode by dragging folder cards (optional simple)
+  el.draggable = editMode;
+  el.addEventListener("dragstart", (e) => {
+    if (!editMode) return;
+    e.dataTransfer.setData("text/plain", JSON.stringify({ type:"folder", folderId: folder.id }));
+    e.dataTransfer.effectAllowed = "move";
+  });
+
+  return el;
+}
+
+function renderFolders(){
+  foldersGrid.innerHTML = "";
+  noFolders.style.display = layout.folders.length ? "none" : "block";
+
+  for (const folder of layout.folders){
+    foldersGrid.appendChild(makeFolderEl(folder));
+  }
+
+  // drop for folder reordering (drop on grid)
+  foldersGrid.addEventListener("dragover", (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+  });
+  foldersGrid.addEventListener("drop", async (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+    const raw = e.dataTransfer.getData("text/plain");
+    let data=null;
+    try{ data = JSON.parse(raw); }catch{}
+    if (data?.type !== "folder") return;
+
+    // If dropped on a folder card, reorder to that position
+    const targetCard = e.target.closest(".folderCard");
+    const fromId = data.folderId;
+    if (!fromId) return;
+
+    const fromIdx = layout.folders.findIndex(f => f.id === fromId);
+    if (fromIdx < 0) return;
+
+    let toIdx = layout.folders.length - 1;
+    if (targetCard){
+      const toId = targetCard.dataset.folderId;
+      const idx = layout.folders.findIndex(f => f.id === toId);
+      if (idx >= 0) toIdx = idx;
+    }
+
+    const [moved] = layout.folders.splice(fromIdx, 1);
+    layout.folders.splice(toIdx, 0, moved);
+
+    try{
+      await apiPutLayout();
+      renderAll();
+    }catch(err){
+      console.log(err);
+      toast("Fehler beim Speichern.");
+    }
+  });
+}
+
+function renderTiles(){
+  tilesGrid.innerHTML = "";
+
+  // drop support: folder items -> unassigned
+  tilesGrid.addEventListener("dragover", (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+  });
+  tilesGrid.addEventListener("drop", async (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+    const raw = e.dataTransfer.getData("text/plain");
+    let data=null;
+    try{ data = JSON.parse(raw); }catch{}
+    if (!data) return;
+
+    if (data.type === "app"){
+      // already from unassigned -> ignore (or reorder)
+      return;
+    }
+    if (data.type === "folderApp"){
+      // move from open folder -> unassigned
+      const appId = data.appId;
+      if (!appId || !openFolderId) return;
+
+      // remove from folder items (needs token if locked)
+      try{
+        const items = await apiGetFolderItems(openFolderId, unlockToken);
+        const newItems = items.filter(x => x !== appId);
+        await apiPutFolderItems(openFolderId, newItems, unlockToken);
+        folderCounts[openFolderId] = newItems.length;
+
+        if (!layout.unassigned.includes(appId)) layout.unassigned.push(appId);
+        await apiPutLayout();
+
+        // refresh open folder view
+        openFolderItems = newItems;
+        renderAll();
+        renderFolderModalContent();
+        toast("Rausgezogen.");
+      }catch(err){
+        console.log(err);
+        toast("Fehler beim Rausziehen.");
+      }
+    }
+  });
+
+  for (const appId of layout.unassigned){
+    const el = makeTileEl(appId);
+    if (el) tilesGrid.appendChild(el);
+  }
+}
+
+function renderAll(){
+  renderFolders();
+  renderTiles();
+}
+
+/* ---------------------------
+   Folder modal + content
+---------------------------- */
+function showFolderModal(){
+  folderModalBack.classList.add("show");
+  folderModalBack.setAttribute("aria-hidden", "false");
+}
+function hideFolderModal(){
+  folderModalBack.classList.remove("show");
+  folderModalBack.setAttribute("aria-hidden", "true");
+  openFolderId = null;
+  openFolderItems = [];
+  openFolderUnlocked = false;
+  unlockToken = null;
+  pinInput.value = "";
+  toast("");
+}
+folderCloseBtn.addEventListener("click", hideFolderModal);
+folderModalBack.addEventListener("click", (e) => {
+  if (e.target === folderModalBack) hideFolderModal();
+});
+cancelUnlockBtn.addEventListener("click", hideFolderModal);
+
+folderSettingsBtn.addEventListener("click", () => {
+  folderContentBox.style.display = "none";
+  folderSettingsBox.style.display = "block";
+  updateSettingsUI();
+});
+
+closeSettingsBtn.addEventListener("click", () => {
+  folderSettingsBox.style.display = "none";
+  folderContentBox.style.display = "block";
+});
+
+renameBtn.addEventListener("click", async () => {
+  const folder = layout.folders.find(f => f.id === openFolderId);
+  if (!folder) return;
+  const v = (renameInput.value || "").trim().slice(0, 40);
+  if (!v) return;
+  folder.name = v;
+  try{
+    await apiPutLayout();
+    renderAll();
+    folderTitle.textContent = v;
+    toast("Umbenannt.");
+    updateSettingsUI();
+  }catch(err){
+    console.log(err);
+    toast("Fehler beim Speichern.");
+  }
+});
+
+setPinBtn.addEventListener("click", async () => {
+  const pin = String(newPinInput.value || "").trim();
+  if (!pin || pin.length < 4) { toast("PIN min. 4 Ziffern."); return; }
+  try{
+    await apiSetFolderPin(openFolderId, pin);
+    folderLockMap[openFolderId] = true;
+    openFolderUnlocked = false;
+    unlockToken = null;
+    newPinInput.value = "";
+    toast("PIN gesetzt.");
+    renderAll();
+    updateSettingsUI();
+  }catch(err){
+    console.log(err);
+    toast("Fehler beim PIN setzen.");
+  }
+});
+
+removePinBtn.addEventListener("click", async () => {
+  if (!confirm("PIN wirklich entfernen?")) return;
+  try{
+    await apiRemoveFolderPin(openFolderId);
+    folderLockMap[openFolderId] = false;
+    unlockToken = null;
+    openFolderUnlocked = true; // not locked anymore
+    toast("PIN entfernt.");
+    renderAll();
+    updateSettingsUI();
+  }catch(err){
+    console.log(err);
+    toast("Fehler beim Entfernen.");
+  }
+});
+
+deleteFolderBtn.addEventListener("click", async () => {
+  if (!confirm("Ordner löschen? (Inhalt wird gelöscht)")) return;
+  const id = openFolderId;
+  // remove from layout
+  layout.folders = layout.folders.filter(f => f.id !== id);
+  // delete folder items server-side by saving empty items + removing pin
+  try{
+    await apiPutFolderItems(id, [], unlockToken);
+  }catch{}
+  try{
+    await apiRemoveFolderPin(id);
+  }catch{}
+  try{
+    await apiPutLayout();
+    renderAll();
+    hideFolderModal();
+  }catch(err){
+    console.log(err);
+    toast("Fehler beim Löschen.");
+  }
+});
+
+unlockBtn.addEventListener("click", async () => {
+  const pin = String(pinInput.value || "").trim();
+  if (!pin) return;
+  try{
+    const tok = await apiUnlockFolder(openFolderId, pin);
+    unlockToken = tok;
+    openFolderUnlocked = true;
+    toast("Entsperrt.");
+    await loadFolderItemsAndShow();
+  }catch(err){
+    console.log(err);
+    toast("Falsche PIN oder gesperrt.");
+  }
+});
+
+async function openFolder(folderId){
+  openFolderId = folderId;
+  const folder = layout.folders.find(f => f.id === folderId);
+  folderTitle.textContent = folder?.name || "Ordner";
+  folderInfo.textContent = "";
+  folderSettingsBox.style.display = "none";
+  showFolderModal();
+
+  const locked = !!folderLockMap[folderId];
+
+  if (locked && !openFolderUnlocked){
+    folderLockedBox.style.display = "block";
+    folderContentBox.style.display = "none";
+    pinInput.focus();
+    updateSettingsUI();
+    return;
+  }
+  await loadFolderItemsAndShow();
+}
+
+async function loadFolderItemsAndShow(){
+  folderLockedBox.style.display = "none";
+  folderContentBox.style.display = "block";
+  try{
+    openFolderItems = await apiGetFolderItems(openFolderId, unlockToken);
+    folderCounts[openFolderId] = openFolderItems.length;
+    renderAll();
+    renderFolderModalContent();
+    updateSettingsUI();
+  }catch(err){
+    console.log(err);
+    toast("Fehler beim Laden.");
+  }
+}
+
+function renderFolderModalContent(){
+  folderTilesGrid.innerHTML = "";
+  folderEmptyHint.style.display = openFolderItems.length ? "none" : "block";
+
+  for (const appId of openFolderItems){
+    const app = APP_REGISTRY[appId];
+    if (!app) continue;
+
+    const el = document.createElement("div");
+    el.className = "tile" + (app.style === "primary" ? " primary" : "");
+    el.dataset.appId = appId;
+    el.draggable = editMode; // only movable in edit mode
+
+    el.addEventListener("dragstart", (e) => {
+      if (!editMode) return;
+      e.dataTransfer.setData("text/plain", JSON.stringify({ type:"folderApp", appId }));
+      e.dataTransfer.effectAllowed = "move";
     });
 
-    (function(){
-    const p = new URLSearchParams(location.search);
-    if (p.get("msg") === "loadfail") {
-      alert("Laden der Webseite fehlgeschlagen. Zurück zum Home.");
-      // URL wieder sauber machen, damit es nicht bei jedem Reload nochmal kommt
-      history.replaceState({}, "", location.pathname);
+    const left = document.createElement("div");
+    left.className = "left";
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    icon.textContent = app.icon || "⬛";
+    const nameWrap = document.createElement("div");
+    nameWrap.className = "nameWrap";
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = app.name;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = app.href;
+    nameWrap.appendChild(name); nameWrap.appendChild(meta);
+    left.appendChild(icon); left.appendChild(nameWrap);
+
+    const right = document.createElement("div");
+    right.className = "miniBtns";
+
+    if (editMode){
+      const drag = document.createElement("div");
+      drag.className = "mini drag";
+      drag.title = "Ziehen";
+      drag.textContent = "⠿";
+      right.appendChild(drag);
+    } else {
+      const go = document.createElement("div");
+      go.className = "mini";
+      go.title = "Öffnen";
+      go.textContent = "➡️";
+      go.addEventListener("click", () => location.href = app.href);
+      right.appendChild(go);
+
+      el.style.cursor="pointer";
+      el.addEventListener("click", (ev) => {
+        if (ev.target && ev.target.classList && ev.target.classList.contains("mini")) return;
+        location.href = app.href;
+      });
     }
-  })();
-  
+
+    el.appendChild(left);
+    el.appendChild(right);
+
+    folderTilesGrid.appendChild(el);
+  }
+
+  // allow dropping apps into folder modal grid from unassigned
+  folderTilesGrid.addEventListener("dragover", (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+  });
+
+  folderTilesGrid.addEventListener("drop", async (e) => {
+    if (!editMode) return;
+    e.preventDefault();
+
+    const raw = e.dataTransfer.getData("text/plain");
+    let data=null;
+    try{ data = JSON.parse(raw); }catch{}
+    if (!data) return;
+
+    if (data.type === "app"){
+      const appId = data.appId;
+      if (!appId) return;
+
+      // if locked folder and not unlocked, block
+      if (folderLockMap[openFolderId] && !unlockToken){
+        toast("Erst entsperren.");
+        return;
+      }
+
+      // move from unassigned to folder
+      layout.unassigned = layout.unassigned.filter(x => x !== appId);
+      const next = openFolderItems.slice();
+      if (!next.includes(appId)) next.push(appId);
+
+      try{
+        await apiPutFolderItems(openFolderId, next, unlockToken);
+        openFolderItems = next;
+        folderCounts[openFolderId] = next.length;
+        await apiPutLayout();
+        renderAll();
+        renderFolderModalContent();
+        toast("Rein gezogen.");
+      }catch(err){
+        console.log(err);
+        toast("Fehler beim Speichern.");
+      }
+    }
+  });
+
+  const folder = layout.folders.find(f=>f.id===openFolderId);
+  folderInfo.textContent = (folderLockMap[openFolderId] ? "🔒 Gesperrt" : "📁 Offen") + " • " + (openFolderItems.length || 0) + " Elemente";
+}
+
+function updateSettingsUI(){
+  const folder = layout.folders.find(f => f.id === openFolderId);
+  if (!folder) return;
+
+  renameInput.value = folder.name || "";
+  folderSettingsMeta.textContent = "ID: " + folder.id;
+
+  const locked = !!folderLockMap[openFolderId];
+  pinStateBox.textContent = locked ? "Status: 🔒 PIN aktiv" : "Status: 🔓 keine PIN";
+}
+
+/* ---------------------------
+   Initial load
+---------------------------- */
+async function init(){
+  // Auth gate like before (but no alert spam)
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+  } catch (_) {
+    location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+  }
+
+  try{
+    statusText.textContent = "lädt…";
+    const data = await apiGetLayout();
+
+    // meta layout
+    layout.folders = Array.isArray(data.layout?.folders) ? data.layout.folders : [];
+    layout.unassigned = Array.isArray(data.layout?.unassigned) ? data.layout.unassigned : [...DEFAULT_UNASSIGNED];
+
+    // lock map + counts
+    folderLockMap = data.locks || {};
+    folderCounts = data.counts || {};
+
+    // keep only valid app ids (and ensure uniqueness)
+    const validSet = new Set(Object.keys(APP_REGISTRY));
+    layout.unassigned = Array.from(new Set(layout.unassigned.filter(id => validSet.has(id))));
+    // auto-add missing apps to unassigned
+    for (const id of validSet){
+      const inUnassigned = layout.unassigned.includes(id);
+      const inFoldersMeta = false; // items are stored in DB per folder
+      if (!inUnassigned && !inFoldersMeta){
+        // do nothing: could be inside folder items; the server owns that
+      }
+    }
+
+    statusText.textContent = "";
+    renderAll();
+  }catch(err){
+    console.log(err);
+    statusText.textContent = "Fehler";
+  }
+}
+
+init();
 </script>
 
 </body>

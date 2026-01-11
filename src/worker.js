@@ -206,6 +206,130 @@ async function verifyPass(password, record) {
   return timingSafeEq(got, expected);
 }
 
+// --------------------
+// HOME LAYOUT (Folders + PIN lock) — D1
+// Tables:
+// - home_layout(user_id PRIMARY KEY, json, updated_at)
+// - home_folder_items(user_id, folder_id, json, updated_at) PK(user_id, folder_id)
+// - home_folder_locks(user_id, folder_id, pin_record, attempts, locked_until, updated_at) PK(user_id, folder_id)
+// Notes:
+// - PIN is stored ONLY as PBKDF2 record (see makePassRecord/verifyPass). No plain PIN stored.
+// - Locked folder items are NEVER returned unless a valid unlock token is provided.
+// --------------------
+async function ensureHomeTables(env){
+  if (!env.DB) throw new Error("DB not bound");
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS home_layout (" +
+      "user_id TEXT PRIMARY KEY, " +
+      "json TEXT NOT NULL, " +
+      "updated_at TEXT NOT NULL" +
+    ")"
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS home_folder_items (" +
+      "user_id TEXT NOT NULL, " +
+      "folder_id TEXT NOT NULL, " +
+      "json TEXT NOT NULL, " +
+      "updated_at TEXT NOT NULL, " +
+      "PRIMARY KEY (user_id, folder_id)" +
+    ")"
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE TABLE IF NOT EXISTS home_folder_locks (" +
+      "user_id TEXT NOT NULL, " +
+      "folder_id TEXT NOT NULL, " +
+      "pin_record TEXT NOT NULL, " +
+      "attempts INTEGER NOT NULL DEFAULT 0, " +
+      "locked_until INTEGER NOT NULL DEFAULT 0, " +
+      "updated_at TEXT NOT NULL, " +
+      "PRIMARY KEY (user_id, folder_id)" +
+    ")"
+  ).run();
+}
+
+function defaultHomeLayout(){
+  return {
+    folders: [],
+    unassigned: ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"]
+  };
+}
+
+async function d1GetHomeLayout(env, uid){
+  await ensureHomeTables(env);
+  const row = await env.DB.prepare("SELECT json FROM home_layout WHERE user_id = ?").bind(uid).first();
+  if (!row?.json) return defaultHomeLayout();
+  try{ return JSON.parse(row.json); }catch{ return defaultHomeLayout(); }
+}
+
+async function d1PutHomeLayout(env, uid, layoutObj){
+  await ensureHomeTables(env);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO home_layout (user_id, json, updated_at) VALUES (?, ?, ?) " +
+    "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+  ).bind(uid, JSON.stringify(layoutObj), now).run();
+}
+
+async function d1GetFolderItems(env, uid, folderId){
+  await ensureHomeTables(env);
+  const row = await env.DB.prepare(
+    "SELECT json FROM home_folder_items WHERE user_id = ? AND folder_id = ?"
+  ).bind(uid, folderId).first();
+  if (!row?.json) return [];
+  try{
+    const parsed = JSON.parse(row.json);
+    return Array.isArray(parsed) ? parsed : [];
+  }catch{
+    return [];
+  }
+}
+
+async function d1PutFolderItems(env, uid, folderId, items){
+  await ensureHomeTables(env);
+  const now = new Date().toISOString();
+  const safe = Array.isArray(items) ? items : [];
+  await env.DB.prepare(
+    "INSERT INTO home_folder_items (user_id, folder_id, json, updated_at) VALUES (?, ?, ?, ?) " +
+    "ON CONFLICT(user_id, folder_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+  ).bind(uid, folderId, JSON.stringify(safe), now).run();
+}
+
+async function d1GetFolderLock(env, uid, folderId){
+  await ensureHomeTables(env);
+  return await env.DB.prepare(
+    "SELECT pin_record, attempts, locked_until FROM home_folder_locks WHERE user_id = ? AND folder_id = ?"
+  ).bind(uid, folderId).first();
+}
+
+async function d1SetFolderLock(env, uid, folderId, pinRecord){
+  await ensureHomeTables(env);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    "INSERT INTO home_folder_locks (user_id, folder_id, pin_record, attempts, locked_until, updated_at) VALUES (?, ?, ?, 0, 0, ?) " +
+    "ON CONFLICT(user_id, folder_id) DO UPDATE SET pin_record=excluded.pin_record, attempts=0, locked_until=0, updated_at=excluded.updated_at"
+  ).bind(uid, folderId, pinRecord, now).run();
+}
+
+async function d1RemoveFolderLock(env, uid, folderId){
+  await ensureHomeTables(env);
+  await env.DB.prepare(
+    "DELETE FROM home_folder_locks WHERE user_id = ? AND folder_id = ?"
+  ).bind(uid, folderId).run();
+}
+
+// Unlock token (HMAC) to avoid sending folder items to locked folders without PIN.
+async function makeFolderUnlockToken(env, uid, folderId, ttlSec=15*60){
+  const now = Math.floor(Date.now()/1000);
+  return makeConfirmToken(env, { t:"home_unlock", uid, folderId, exp: now + ttlSec });
+}
+async function readFolderUnlockToken(env, token){
+  const obj = await readConfirmToken(env, token);
+  if (!obj || obj.t !== "home_unlock") return null;
+  return obj;
+}
+
 async function makeToken(env, userId) {
   if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
   const header = b64urlEncode(encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
@@ -582,6 +706,191 @@ async function handleApi(req, env) {
       const uid = await readToken(env, req);
       if (!uid) return json({ loggedIn: false }, 401);
       return json({ loggedIn: true, userId: uid });
+    }
+
+
+    // ===== HOME (anpassbarer Homescreen: Ordner + Kacheln + PIN-Lock) =====
+    if (path.startsWith("/api/home/")) {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      await ensureHomeTables(env);
+
+      // GET layout meta + lock map + counts
+      if (path === "/api/home/layout" && req.method === "GET") {
+        const layout = await d1GetHomeLayout(env, uid);
+
+        // locks map
+        const locksRes = await env.DB.prepare(
+          "SELECT folder_id FROM home_folder_locks WHERE user_id = ?"
+        ).bind(uid).all();
+        const locks = {};
+        for (const row of (locksRes?.results || [])) locks[row.folder_id] = true;
+
+        // counts
+        const countsRes = await env.DB.prepare(
+          "SELECT folder_id, json FROM home_folder_items WHERE user_id = ?"
+        ).bind(uid).all();
+        const counts = {};
+        for (const row of (countsRes?.results || [])) {
+          try{
+            const arr = JSON.parse(row.json);
+            counts[row.folder_id] = Array.isArray(arr) ? arr.length : 0;
+          }catch{
+            counts[row.folder_id] = 0;
+          }
+        }
+
+        return json({ ok: true, layout, locks, counts }, 200, { "Cache-Control": "no-store" });
+      }
+
+      // PUT layout meta (folders list + unassigned list)
+      if (path === "/api/home/layout" && req.method === "PUT") {
+        const body = await safeReadJson(req);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        const folders = Array.isArray(body.folders) ? body.folders : [];
+        const unassigned = Array.isArray(body.unassigned) ? body.unassigned : [];
+
+        // minimal sanitize
+        const safeFolders = [];
+        for (const f of folders) {
+          const id = String(f?.id || "").trim();
+          const name = String(f?.name || "Ordner").trim().slice(0, 40);
+          if (!id) continue;
+          safeFolders.push({ id, name });
+        }
+
+        const safeUnassigned = [];
+        const seen = new Set();
+        for (const a of unassigned) {
+          const id = String(a || "").trim();
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          safeUnassigned.push(id);
+        }
+
+        await d1PutHomeLayout(env, uid, { folders: safeFolders, unassigned: safeUnassigned });
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      // GET folder items (locked folders require unlock token)
+      if (path === "/api/home/folder/items" && req.method === "GET") {
+        const folderId = String(url.searchParams.get("folderId") || "").trim();
+        if (!folderId) return json({ error: "folderId_required" }, 400);
+
+        const lock = await d1GetFolderLock(env, uid, folderId);
+        const isLocked = !!lock;
+
+        if (isLocked) {
+          const token = String(url.searchParams.get("token") || "").trim();
+          const tok = await readFolderUnlockToken(env, token);
+          if (!tok || tok.uid !== uid || tok.folderId !== folderId) return json({ error: "locked" }, 403);
+        }
+
+        const items = await d1GetFolderItems(env, uid, folderId);
+        return json({ ok: true, items }, 200, { "Cache-Control": "no-store" });
+      }
+
+      // PUT folder items (locked folders require unlock token)
+      if (path === "/api/home/folder/items" && req.method === "PUT") {
+        const body = await safeReadJson(req);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        const folderId = String(body.folderId || "").trim();
+        if (!folderId) return json({ error: "folderId_required" }, 400);
+
+        const lock = await d1GetFolderLock(env, uid, folderId);
+        const isLocked = !!lock;
+
+        if (isLocked) {
+          const token = String(body.token || "").trim();
+          const tok = await readFolderUnlockToken(env, token);
+          if (!tok || tok.uid !== uid || tok.folderId !== folderId) return json({ error: "locked" }, 403);
+        }
+
+        const items = Array.isArray(body.items) ? body.items.map(x => String(x || "").trim()).filter(Boolean) : [];
+        // de-dupe
+        const seen = new Set();
+        const safeItems = [];
+        for (const it of items) {
+          if (seen.has(it)) continue;
+          seen.add(it);
+          safeItems.push(it);
+        }
+
+        await d1PutFolderItems(env, uid, folderId, safeItems);
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      // POST set/replace PIN
+      if (path === "/api/home/folder/setPin" && req.method === "POST") {
+        const body = await safeReadJson(req);
+        const folderId = String(body?.folderId || "").trim();
+        const pin = String(body?.pin || "").trim();
+        if (!folderId) return json({ error: "folderId_required" }, 400);
+        if (!pin || pin.length < 4) return json({ error: "pin_too_short" }, 400);
+
+        const rec = await makePassRecord(pin);
+        await d1SetFolderLock(env, uid, folderId, rec);
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      // POST remove PIN
+      if (path === "/api/home/folder/removePin" && req.method === "POST") {
+        const body = await safeReadJson(req);
+        const folderId = String(body?.folderId || "").trim();
+        if (!folderId) return json({ error: "folderId_required" }, 400);
+        await d1RemoveFolderLock(env, uid, folderId);
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      // POST unlock (verify PIN -> returns short-lived token)
+      if (path === "/api/home/folder/unlock" && req.method === "POST") {
+        const body = await safeReadJson(req);
+        const folderId = String(body?.folderId || "").trim();
+        const pin = String(body?.pin || "").trim();
+        if (!folderId) return json({ error: "folderId_required" }, 400);
+        if (!pin) return json({ error: "pin_required" }, 400);
+
+        const lock = await d1GetFolderLock(env, uid, folderId);
+        if (!lock) return json({ error: "not_locked" }, 400);
+
+        const nowSec = Math.floor(Date.now()/1000);
+        const lockedUntil = Number(lock.locked_until || 0);
+        if (lockedUntil && lockedUntil > nowSec) {
+          return json({ error: "too_many_attempts", lockedUntil }, 429);
+        }
+
+        const ok = await verifyPass(pin, lock.pin_record);
+
+        if (!ok) {
+          const attempts = Number(lock.attempts || 0) + 1;
+          // backoff: after 5 wrong attempts -> 60 seconds lock
+          let nextLockedUntil = 0;
+          if (attempts >= 5) nextLockedUntil = nowSec + 60;
+
+          const upd = new Date().toISOString();
+          await env.DB.prepare(
+            "UPDATE home_folder_locks SET attempts = ?, locked_until = ?, updated_at = ? WHERE user_id = ? AND folder_id = ?"
+          ).bind(attempts, nextLockedUntil, upd, uid, folderId).run();
+
+          return json({ error: "invalid_pin", attempts, lockedUntil: nextLockedUntil }, 401);
+        }
+
+        // success: reset attempts/lock + return token
+        const upd = new Date().toISOString();
+        await env.DB.prepare(
+          "UPDATE home_folder_locks SET attempts = 0, locked_until = 0, updated_at = ? WHERE user_id = ? AND folder_id = ?"
+        ).bind(upd, uid, folderId).run();
+
+        const token = await makeFolderUnlockToken(env, uid, folderId, 15 * 60);
+        return json({ ok: true, token }, 200, { "Cache-Control": "no-store" });
+      }
+
+      return json({ error: "not_found", path }, 404);
     }
 
 
