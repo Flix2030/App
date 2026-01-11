@@ -17,6 +17,7 @@
       --bg0:#05080f; --bg1:#070c16;
       --panel:rgba(17,24,39,.72);
       --border:rgba(255,255,255,.10);
+      --border2:rgba(255,255,255,.14);
       --text:rgba(255,255,255,.92);
       --muted:rgba(255,255,255,.62);
       --accent:#3ee38c; --accent2:#2fce7a;
@@ -85,6 +86,7 @@
       gap:12px;
     }
 
+    /* All tiles identical (no green) */
     .tile{
       border-radius:18px;
       border:1px solid rgba(255,255,255,.10);
@@ -96,14 +98,10 @@
       min-height:62px;
       cursor:pointer;
       user-select:none;
-      transition:transform .12s ease, filter .2s ease;
+      transition:transform .12s ease, filter .2s ease, border-color .2s ease;
     }
+    .tile:hover{border-color:rgba(255,255,255,.16); filter:brightness(1.02)}
     .tile:active{transform:translateY(1px)}
-    .tile.primary{
-      background: linear-gradient(180deg, rgba(62,227,140,0.95), rgba(47,206,122,0.95));
-      color:#03130a;
-      border-color:rgba(255,255,255,.14);
-    }
     .icon{
       width:40px; height:40px;
       border-radius:14px;
@@ -113,7 +111,6 @@
       flex:0 0 auto;
       font-size:18px;
     }
-    .tile.primary .icon{background:rgba(0,0,0,.14)}
     .label{
       font-weight:900;
       font-size:1.05rem;
@@ -122,8 +119,8 @@
       text-overflow:ellipsis;
     }
 
-    /* Edit drag handle */
-    .handle{
+    /* Edit drag handle + settings */
+    .handle, .gear{
       margin-left:auto;
       width:38px; height:38px;
       border-radius:14px;
@@ -132,11 +129,12 @@
       color:var(--text);
       display:none;
       place-items:center;
-      cursor:grab;
       flex:0 0 auto;
     }
+    .handle{cursor:grab}
     .handle:active{cursor:grabbing}
-    .editing .handle{display:grid;}
+    .gear{cursor:pointer; margin-left:10px}
+    .editing .handle, .editing .gear{display:grid;}
     .editing .tile{cursor:default;}
     .editing .tile:active{transform:none;}
     .dropHover{
@@ -145,7 +143,7 @@
       background:rgba(62,227,140,.08);
     }
 
-    /* Modal base */
+    /* Modal */
     .modalBack{
       position:fixed; inset:0;
       background:rgba(0,0,0,.55);
@@ -157,7 +155,7 @@
     }
     .modalBack.show{display:flex;}
     .modal{
-      width:min(620px, 100%);
+      width:min(640px, 100%);
       background:rgba(10,14,22,.92);
       border:1px solid rgba(255,255,255,.14);
       border-radius:22px;
@@ -165,6 +163,8 @@
       padding:16px;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
+      max-height:85vh;
+      overflow:auto;
     }
     .modalTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
     .modalTop h3{margin:0; font-size:1.1rem}
@@ -187,8 +187,26 @@
       font-weight:700;
       outline:none;
     }
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end; margin-top:10px;}
+    .row{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:10px;}
     .muted{color:var(--muted)}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:800;
+      cursor:pointer;
+      user-select:none;
+    }
+    .danger{
+      background:rgba(255,77,109,.10);
+      border-color:rgba(255,77,109,.30);
+      color:#ffd6de;
+    }
   </style>
 </head>
 
@@ -214,8 +232,19 @@
         <h3>Ordner erstellen</h3>
         <button class="xbtn" id="createClose">✕</button>
       </div>
-      <div class="muted" style="margin-bottom:8px;">Name (z.B. Schule, Lernen)</div>
+      <div class="muted" style="margin-bottom:8px;">Name</div>
       <input class="inp" id="folderNameInput" placeholder="Ordnername" maxlength="40" />
+      <div class="muted" style="margin:12px 0 8px;">Icon</div>
+      <div class="row" style="justify-content:flex-start;">
+        <span class="pill" data-icon="📁">📁</span>
+        <span class="pill" data-icon="🎓">🎓</span>
+        <span class="pill" data-icon="📚">📚</span>
+        <span class="pill" data-icon="🧠">🧠</span>
+        <span class="pill" data-icon="🗂️">🗂️</span>
+        <span class="pill" data-icon="✏️">✏️</span>
+      </div>
+      <div class="muted" style="margin:12px 0 8px;">oder eigenes Emoji</div>
+      <input class="inp" id="folderIconInput" placeholder="z.B. 🏫" maxlength="8" />
       <div class="row">
         <button class="btn" id="createCancel">Abbrechen</button>
         <button class="btn primary" id="createOk">Erstellen</button>
@@ -223,30 +252,78 @@
     </div>
   </div>
 
+  <!-- Folder settings modal -->
+  <div class="modalBack" id="settingsBack" aria-hidden="true">
+    <div class="modal">
+      <div class="modalTop">
+        <h3>Ordner bearbeiten</h3>
+        <button class="xbtn" id="settingsClose">✕</button>
+      </div>
+
+      <div class="muted" style="margin-bottom:8px;">Name</div>
+      <input class="inp" id="renameInput" maxlength="40" />
+
+      <div class="muted" style="margin:12px 0 8px;">Icon</div>
+      <div class="row" style="justify-content:flex-start;">
+        <span class="pill" data-icon="📁">📁</span>
+        <span class="pill" data-icon="🏫">🏫</span>
+        <span class="pill" data-icon="🎓">🎓</span>
+        <span class="pill" data-icon="📚">📚</span>
+        <span class="pill" data-icon="🧠">🧠</span>
+        <span class="pill" data-icon="🗂️">🗂️</span>
+        <span class="pill" data-icon="✏️">✏️</span>
+      </div>
+      <div class="muted" style="margin:12px 0 8px;">oder eigenes Emoji</div>
+      <input class="inp" id="iconInput" maxlength="8" placeholder="z.B. 🏫" />
+
+      <div class="row" style="justify-content:space-between; margin-top:14px;">
+        <div class="muted" id="pinState">PIN: …</div>
+        <button class="btn" id="gotoPinBtn">🔒 PIN verwalten</button>
+      </div>
+
+      <div class="row">
+        <button class="btn danger" id="deleteFolderBtn">🗑️ Ordner löschen</button>
+        <button class="btn primary" id="saveFolderBtn">Speichern</button>
+      </div>
+
+      <div id="pinBox" style="display:none; margin-top:14px;">
+        <div style="height:1px; background:rgba(255,255,255,.10); margin:12px 0;"></div>
+        <div style="font-weight:900;">PIN</div>
+        <div class="muted">Zum Ändern/Entfernen musst du den Ordner vorher entsperren (in der Ordner-Seite).</div>
+        <div class="muted" style="margin-top:10px;">Neue PIN setzen</div>
+        <input class="inp" id="newPinInput" inputmode="numeric" pattern="[0-9]*" placeholder="z.B. 1234" />
+        <div class="row">
+          <button class="btn primary" id="setPinBtn">PIN setzen</button>
+          <button class="btn danger" id="removePinBtn">PIN entfernen</button>
+        </div>
+        <div class="muted" id="pinMsg" style="margin-top:8px;"></div>
+      </div>
+
+    </div>
+  </div>
+
 <script>
-/* ===== Registry ===== */
 const APP_REGISTRY = {
-  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html",  style:"secondary" },
-  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html",  style:"secondary" },
-  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen",        style:"secondary" },
-  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html", style:"primary"   },
-  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste", style:"primary"   },
-  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html",      style:"primary"   },
-  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html",  style:"primary"   },
-  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live",  style:"secondary" }
+  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html"  },
+  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html"  },
+  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen"        },
+  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html" },
+  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste" },
+  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html"      },
+  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html"  },
+  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live"  }
 };
 const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
 
-/* ===== State ===== */
 let editMode = false;
 let layout = { folders: [], unassigned: [...DEFAULT_UNASSIGNED] };
 let folderLockMap = {}; // folderId -> true/false
-let folderCounts = {};  // folderId -> number
 
 const grid = document.getElementById("grid");
 const editBtn = document.getElementById("editBtn");
 const addFolderBtn = document.getElementById("addFolderBtn");
 
+/* ===== Edit mode ===== */
 function setEditMode(on){
   editMode = !!on;
   editBtn.textContent = editMode ? "✏️ Bearbeiten: AN" : "✏️ Bearbeiten: AUS";
@@ -255,15 +332,23 @@ function setEditMode(on){
 }
 editBtn.addEventListener("click", () => setEditMode(!editMode));
 
-/* ===== Create folder modal ===== */
+/* ===== Modals ===== */
 const createBack = document.getElementById("createBack");
 const createClose = document.getElementById("createClose");
 const createCancel = document.getElementById("createCancel");
 const createOk = document.getElementById("createOk");
 const folderNameInput = document.getElementById("folderNameInput");
+const folderIconInput = document.getElementById("folderIconInput");
+
+let createPickedIcon = "📁";
+createBack.querySelectorAll("[data-icon]").forEach(p=>{
+  p.addEventListener("click", ()=>{ createPickedIcon = p.getAttribute("data-icon") || "📁"; });
+});
 
 function openCreate(){
   folderNameInput.value = "";
+  folderIconInput.value = "";
+  createPickedIcon = "📁";
   createBack.classList.add("show");
   createBack.setAttribute("aria-hidden", "false");
   setTimeout(()=>folderNameInput.focus(), 0);
@@ -277,16 +362,53 @@ createCancel.addEventListener("click", closeCreate);
 createBack.addEventListener("click", (e)=>{ if(e.target===createBack) closeCreate(); });
 
 addFolderBtn.addEventListener("click", openCreate);
-createOk.addEventListener("click", async () => {
-  const name = (folderNameInput.value || "").trim().slice(0,40);
-  if (!name) return;
-  const id = "f_" + cryptoRandomId();
-  layout.folders.unshift({ id, name });
-  folderCounts[id] = 0;
-  folderLockMap[id] = false;
-  closeCreate();
-  await apiPutLayout();
-  render();
+
+/* Settings modal */
+const settingsBack = document.getElementById("settingsBack");
+const settingsClose = document.getElementById("settingsClose");
+const renameInput = document.getElementById("renameInput");
+const iconInput = document.getElementById("iconInput");
+const saveFolderBtn = document.getElementById("saveFolderBtn");
+const deleteFolderBtn = document.getElementById("deleteFolderBtn");
+const pinState = document.getElementById("pinState");
+const gotoPinBtn = document.getElementById("gotoPinBtn");
+
+const pinBox = document.getElementById("pinBox");
+const newPinInput = document.getElementById("newPinInput");
+const setPinBtn = document.getElementById("setPinBtn");
+const removePinBtn = document.getElementById("removePinBtn");
+const pinMsg = document.getElementById("pinMsg");
+
+let settingsFolderId = null;
+let settingsPickedIcon = "📁";
+
+settingsBack.querySelectorAll("[data-icon]").forEach(p=>{
+  p.addEventListener("click", ()=>{ settingsPickedIcon = p.getAttribute("data-icon") || "📁"; });
+});
+
+function openSettings(folderId){
+  settingsFolderId = folderId;
+  const f = layout.folders.find(x => x.id === folderId);
+  renameInput.value = f?.name || "";
+  settingsPickedIcon = f?.icon || "📁";
+  iconInput.value = f?.icon || "";
+  pinState.textContent = "PIN: " + (folderLockMap[folderId] ? "aktiv" : "aus");
+  pinBox.style.display = "none";
+  pinMsg.textContent = "";
+  newPinInput.value = "";
+  settingsBack.classList.add("show");
+  settingsBack.setAttribute("aria-hidden","false");
+}
+function closeSettings(){
+  settingsBack.classList.remove("show");
+  settingsBack.setAttribute("aria-hidden","true");
+  settingsFolderId = null;
+}
+settingsClose.addEventListener("click", closeSettings);
+settingsBack.addEventListener("click", (e)=>{ if(e.target===settingsBack) closeSettings(); });
+
+gotoPinBtn.addEventListener("click", ()=>{
+  pinBox.style.display = (pinBox.style.display === "none") ? "block" : "none";
 });
 
 /* ===== API ===== */
@@ -325,18 +447,108 @@ async function apiPutFolderItems(folderId, items){
   const j = await r.json().catch(()=>null);
   if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_save_failed");
 }
+async function apiSetFolderPin(folderId, pin){
+  const r = await fetch("/api/home/folder/setPin", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, pin })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "set_pin_failed");
+}
+async function apiRemoveFolderPin(folderId){
+  const r = await fetch("/api/home/folder/removePin", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "remove_pin_failed");
+}
 
-/* ===== Utils ===== */
+/* ===== Create folder ===== */
 function cryptoRandomId(){
   const bytes = new Uint8Array(10);
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,16);
 }
+createOk.addEventListener("click", async () => {
+  const name = (folderNameInput.value || "").trim().slice(0,40);
+  if (!name) return;
+  const icon = (folderIconInput.value || "").trim().slice(0,8) || createPickedIcon || "📁";
+  const id = "f_" + cryptoRandomId();
+  layout.folders.unshift({ id, name, icon });
+  folderLockMap[id] = false;
+  closeCreate();
+  await apiPutLayout();
+  render();
+});
 
-/* ===== Render ===== */
-function tileEl({icon,label,primary,onClick,draggable,data}){
+/* ===== Folder settings actions ===== */
+saveFolderBtn.addEventListener("click", async ()=>{
+  const f = layout.folders.find(x => x.id === settingsFolderId);
+  if (!f) return;
+  const name = (renameInput.value || "").trim().slice(0,40) || "Ordner";
+  const icon = (iconInput.value || "").trim().slice(0,8) || settingsPickedIcon || "📁";
+  f.name = name;
+  f.icon = icon;
+  try{
+    await apiPutLayout();
+    render();
+    closeSettings();
+  }catch(e){ console.log(e); }
+});
+
+deleteFolderBtn.addEventListener("click", async ()=>{
+  if (!settingsFolderId) return;
+  if (!confirm("Ordner löschen?")) return;
+
+  const id = settingsFolderId;
+  layout.folders = layout.folders.filter(x => x.id !== id);
+  try{ await apiPutFolderItems(id, []); }catch{}
+  // if pinned, remove pin might fail (requires unlock token) -> user can remove in folder page
+  try{ await apiPutLayout(); }catch(e){ console.log(e); }
+  render();
+  closeSettings();
+});
+
+setPinBtn.addEventListener("click", async ()=>{
+  if (!settingsFolderId) return;
+  const pin = String(newPinInput.value||"").trim();
+  if (!pin || pin.length < 4) { pinMsg.textContent = "PIN min. 4 Ziffern."; return; }
+  try{
+    await apiSetFolderPin(settingsFolderId, pin);
+    folderLockMap[settingsFolderId] = true;
+    pinState.textContent = "PIN: aktiv";
+    pinMsg.textContent = "PIN gesetzt. (Ändern/Entfernen später im Ordner nach Entsperren)";
+    newPinInput.value = "";
+    render();
+  }catch(e){
+    console.log(e);
+    pinMsg.textContent = "Fehler (bei aktivem PIN musst du im Ordner entsperren und dort ändern).";
+  }
+});
+
+removePinBtn.addEventListener("click", async ()=>{
+  if (!settingsFolderId) return;
+  try{
+    await apiRemoveFolderPin(settingsFolderId);
+    folderLockMap[settingsFolderId] = false;
+    pinState.textContent = "PIN: aus";
+    pinMsg.textContent = "PIN entfernt.";
+    render();
+  }catch(e){
+    console.log(e);
+    pinMsg.textContent = "Nicht möglich ohne Entsperren. Geh in den Ordner und entsperr ihn, dann PIN entfernen.";
+  }
+});
+
+/* ===== UI ===== */
+function tileEl({icon,label,onClick,draggable,data,showGear,gearClick}){
   const el = document.createElement("div");
-  el.className = "tile" + (primary ? " primary" : "");
+  el.className = "tile";
   el.tabIndex = 0;
 
   const ic = document.createElement("div");
@@ -352,8 +564,19 @@ function tileEl({icon,label,primary,onClick,draggable,data}){
   handle.textContent = "⠿";
   handle.title = "Ziehen";
 
+  const gear = document.createElement("div");
+  gear.className = "gear";
+  gear.textContent = "⚙️";
+  gear.title = "Ordner bearbeiten";
+
   el.appendChild(ic);
   el.appendChild(lb);
+
+  if (showGear){
+    el.appendChild(gear);
+    gear.addEventListener("click", (e)=>{ e.stopPropagation(); gearClick(); });
+  }
+
   el.appendChild(handle);
 
   if (!editMode){
@@ -373,28 +596,30 @@ function tileEl({icon,label,primary,onClick,draggable,data}){
 }
 
 async function moveAppToFolder(appId, folderId){
-  if (folderLockMap[folderId]) return; // locked: user must unlock inside folder page
+  if (folderLockMap[folderId]) return; // locked: must move inside folder after unlock
   layout.unassigned = layout.unassigned.filter(x => x !== appId);
   const items = await apiGetFolderItems(folderId);
   if (!items.includes(appId)) items.push(appId);
   await apiPutFolderItems(folderId, items);
-  folderCounts[folderId] = items.length;
   await apiPutLayout();
 }
 
 function render(){
   grid.innerHTML = "";
 
-  // 1) folders first (look like normal tiles)
+  // folders first
   for (const folder of layout.folders){
     const locked = !!folderLockMap[folder.id];
+    const icon = folder.icon || (locked ? "🔒" : "📁");
+
     const el = tileEl({
-      icon: locked ? "🔒" : "📁",
+      icon: locked ? "🔒" : icon,
       label: folder.name || "Ordner",
-      primary: false,
       onClick: ()=> location.href = "/home-folder.html?folderId=" + encodeURIComponent(folder.id),
       draggable: editMode,
-      data: { type:"folder", folderId: folder.id }
+      data: { type:"folder", folderId: folder.id },
+      showGear: editMode,
+      gearClick: ()=> openSettings(folder.id)
     });
 
     // drop apps into folder (edit mode)
@@ -412,10 +637,7 @@ function render(){
       let data=null;
       try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
       if (data?.type !== "app") return;
-      if (locked){
-        // locked folders: user has to move inside folder page after unlock
-        return;
-      }
+      if (locked) return;
       try{
         await moveAppToFolder(data.appId, folder.id);
         render();
@@ -425,7 +647,7 @@ function render(){
     grid.appendChild(el);
   }
 
-  // 2) unassigned apps
+  // apps
   for (const appId of layout.unassigned){
     const app = APP_REGISTRY[appId];
     if (!app) continue;
@@ -433,44 +655,19 @@ function render(){
     const el = tileEl({
       icon: app.icon || "⬛",
       label: app.name,
-      primary: app.style === "primary",
       onClick: ()=> location.href = app.href,
       draggable: editMode,
-      data: { type:"app", appId }
+      data: { type:"app", appId },
+      showGear: false,
+      gearClick: ()=>{}
     });
+
     grid.appendChild(el);
   }
-
-  // reorder folders by dropping folder on grid
-  grid.addEventListener("dragover", (e)=>{ if(editMode) e.preventDefault(); }, { once:true });
-  grid.addEventListener("drop", async (e)=>{
-    if (!editMode) return;
-    let data=null;
-    try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
-    if (data?.type !== "folder") return;
-
-    const target = e.target.closest(".tile");
-    if (!target) return;
-
-    // find target folder index if dropped on folder tile
-    const targetIdx = Array.from(grid.children).indexOf(target);
-    // folders are at the start
-    const fromIdx = layout.folders.findIndex(f => f.id === data.folderId);
-    if (fromIdx < 0) return;
-
-    // compute toIdx among folders range
-    let toIdx = Math.min(layout.folders.length - 1, Math.max(0, targetIdx));
-    const [moved] = layout.folders.splice(fromIdx, 1);
-    layout.folders.splice(toIdx, 0, moved);
-
-    try{ await apiPutLayout(); }catch(err){ console.log(err); }
-    render();
-  }, { once:true });
 }
 
 /* ===== Init ===== */
 async function init(){
-  // auth check like before
   try {
     const r = await fetch("/api/me", { credentials: "include" });
     if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
@@ -483,7 +680,6 @@ async function init(){
     layout.folders = Array.isArray(data.layout?.folders) ? data.layout.folders : [];
     layout.unassigned = Array.isArray(data.layout?.unassigned) ? data.layout.unassigned : [...DEFAULT_UNASSIGNED];
     folderLockMap = data.locks || {};
-    folderCounts = data.counts || {};
   }catch(err){
     console.log(err);
   }

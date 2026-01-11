@@ -760,7 +760,8 @@ async function handleApi(req, env) {
           const id = String(f?.id || "").trim();
           const name = String(f?.name || "Ordner").trim().slice(0, 40);
           if (!id) continue;
-          safeFolders.push({ id, name });
+          const icon = String(f?.icon || "📁").trim().slice(0, 8) || "📁";
+          safeFolders.push({ id, name, icon });
         }
 
         const safeUnassigned = [];
@@ -825,13 +826,21 @@ async function handleApi(req, env) {
         return json({ ok: true }, 200, { "Cache-Control": "no-store" });
       }
 
-      // POST set/replace PIN
+            // POST set/replace PIN
+      // If folder is already locked, you must be unlocked (token) to change the PIN.
       if (path === "/api/home/folder/setPin" && req.method === "POST") {
         const body = await safeReadJson(req);
         const folderId = String(body?.folderId || "").trim();
         const pin = String(body?.pin || "").trim();
+        const token = String(body?.token || "").trim(); // optional unlock token
         if (!folderId) return json({ error: "folderId_required" }, 400);
         if (!pin || pin.length < 4) return json({ error: "pin_too_short" }, 400);
+
+        const existing = await d1GetFolderLock(env, uid, folderId);
+        if (existing) {
+          const tok = await readFolderUnlockToken(env, token);
+          if (!tok || tok.uid !== uid || tok.folderId !== folderId) return json({ error: "locked" }, 403);
+        }
 
         const rec = await makePassRecord(pin);
         await d1SetFolderLock(env, uid, folderId, rec);
@@ -839,10 +848,19 @@ async function handleApi(req, env) {
       }
 
       // POST remove PIN
+      // Requires unlock token if folder is locked.
       if (path === "/api/home/folder/removePin" && req.method === "POST") {
         const body = await safeReadJson(req);
         const folderId = String(body?.folderId || "").trim();
+        const token = String(body?.token || "").trim();
         if (!folderId) return json({ error: "folderId_required" }, 400);
+
+        const existing = await d1GetFolderLock(env, uid, folderId);
+        if (existing) {
+          const tok = await readFolderUnlockToken(env, token);
+          if (!tok || tok.uid !== uid || tok.folderId !== folderId) return json({ error: "locked" }, 403);
+        }
+
         await d1RemoveFolderLock(env, uid, folderId);
         return json({ ok: true }, 200, { "Cache-Control": "no-store" });
       }

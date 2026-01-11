@@ -22,7 +22,6 @@
       --accent:#3ee38c; --accent2:#2fce7a;
       --shadow:0 18px 60px rgba(0,0,0,.55);
       --radius:18px;
-      --danger:#ff4d6d;
     }
     *{box-sizing:border-box}
     body{
@@ -46,7 +45,7 @@
       gap:12px;
       margin:8px 0 14px;
     }
-    h1{margin:0; font-size:2rem; letter-spacing:.2px;}
+    h1{margin:0; font-size:2rem; letter-spacing:.2px; display:flex; align-items:center; gap:10px;}
     .actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
     .btn{
       border:1px solid rgba(255,255,255,.12);
@@ -69,6 +68,12 @@
       box-shadow:0 10px 24px rgba(62,227,140,0.14);
       border:1px solid rgba(255,255,255,.10);
     }
+    .btn.danger{
+      background:rgba(255,77,109,.10);
+      border-color:rgba(255,77,109,.30);
+      color:#ffd6de;
+    }
+
     .panel{
       background:var(--panel);
       border:1px solid var(--border);
@@ -94,14 +99,10 @@
       min-height:62px;
       cursor:pointer;
       user-select:none;
-      transition:transform .12s ease, filter .2s ease;
+      transition:transform .12s ease, filter .2s ease, border-color .2s ease;
     }
+    .tile:hover{border-color:rgba(255,255,255,.16); filter:brightness(1.02)}
     .tile:active{transform:translateY(1px)}
-    .tile.primary{
-      background: linear-gradient(180deg, rgba(62,227,140,0.95), rgba(47,206,122,0.95));
-      color:#03130a;
-      border-color:rgba(255,255,255,.14);
-    }
     .icon{
       width:40px; height:40px;
       border-radius:14px;
@@ -111,7 +112,6 @@
       flex:0 0 auto;
       font-size:18px;
     }
-    .tile.primary .icon{background:rgba(0,0,0,.14)}
     .label{
       font-weight:900;
       font-size:1.05rem;
@@ -119,12 +119,13 @@
       overflow:hidden;
       text-overflow:ellipsis;
     }
-
+    .muted{color:var(--muted)}
     .lockCard{
       border-radius:18px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,0.06);
       padding:16px;
+      margin-bottom:12px;
     }
     .inp{
       width:100%;
@@ -139,16 +140,63 @@
     }
     .row{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:10px;}
     .err{color:#ffd6de; background:rgba(255,77,109,.10); border:1px solid rgba(255,77,109,.30); padding:10px 12px; border-radius:14px; margin-top:10px;}
-    .muted{color:var(--muted)}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:800;
+      cursor:pointer;
+      user-select:none;
+    }
+    /* Modal */
+    .modalBack{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding:18px 12px;
+      z-index:9999;
+    }
+    .modalBack.show{display:flex;}
+    .modal{
+      width:min(640px, 100%);
+      background:rgba(10,14,22,.92);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:22px;
+      box-shadow:0 22px 70px rgba(0,0,0,.65);
+      padding:16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      max-height:85vh;
+      overflow:auto;
+    }
+    .modalTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+    .modalTop h3{margin:0; font-size:1.1rem}
+    .xbtn{
+      width:40px; height:40px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      display:grid; place-items:center;
+      cursor:pointer;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div class="top">
-      <h1 id="title">Ordner</h1>
+      <h1><span id="folderIcon">📁</span> <span id="title">Ordner</span></h1>
       <div class="actions">
         <button class="btn" id="backBtn">⬅️ Home</button>
+        <button class="btn" id="settingsBtn">⚙️</button>
       </div>
     </div>
 
@@ -168,19 +216,68 @@
     </div>
   </div>
 
+  <!-- Settings modal (rename, icon, pin remove/change when unlocked) -->
+  <div class="modalBack" id="settingsBack" aria-hidden="true">
+    <div class="modal">
+      <div class="modalTop">
+        <h3>Ordner-Einstellungen</h3>
+        <button class="xbtn" id="settingsClose">✕</button>
+      </div>
+
+      <div class="muted" style="margin-bottom:8px;">Name</div>
+      <input class="inp" id="renameInput" maxlength="40" />
+
+      <div class="muted" style="margin:12px 0 8px;">Icon</div>
+      <div class="row" style="justify-content:flex-start;">
+        <span class="pill" data-icon="📁">📁</span>
+        <span class="pill" data-icon="🏫">🏫</span>
+        <span class="pill" data-icon="🎓">🎓</span>
+        <span class="pill" data-icon="📚">📚</span>
+        <span class="pill" data-icon="🧠">🧠</span>
+        <span class="pill" data-icon="🗂️">🗂️</span>
+        <span class="pill" data-icon="✏️">✏️</span>
+      </div>
+      <div class="muted" style="margin:12px 0 8px;">oder eigenes Emoji</div>
+      <input class="inp" id="iconInput" maxlength="8" placeholder="z.B. 🏫" />
+
+      <div class="row" style="justify-content:space-between;">
+        <div class="muted" id="pinState">PIN: …</div>
+      </div>
+
+      <div style="height:1px; background:rgba(255,255,255,.10); margin:12px 0;"></div>
+
+      <div style="font-weight:900;">PIN verwalten</div>
+      <div class="muted">Du musst entsperrt sein, um PIN zu ändern/entfernen.</div>
+
+      <div class="muted" style="margin-top:10px;">Neue PIN setzen</div>
+      <input class="inp" id="newPinInput" inputmode="numeric" pattern="[0-9]*" placeholder="z.B. 1234" />
+      <div class="row">
+        <button class="btn primary" id="setPinBtn">PIN setzen</button>
+        <button class="btn danger" id="removePinBtn">PIN entfernen</button>
+      </div>
+      <div class="muted" id="msg" style="margin-top:8px;"></div>
+
+      <div class="row">
+        <button class="btn primary" id="saveBtn">Speichern</button>
+      </div>
+
+    </div>
+  </div>
+
 <script>
 const APP_REGISTRY = {
-  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html",  style:"secondary" },
-  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html",  style:"secondary" },
-  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen",        style:"secondary" },
-  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html", style:"primary"   },
-  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste", style:"primary"   },
-  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html",      style:"primary"   },
-  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html",  style:"primary"   },
-  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live",  style:"secondary" }
+  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html"  },
+  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html"  },
+  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen"        },
+  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html" },
+  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste" },
+  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html"      },
+  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html"  },
+  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live"  }
 };
 
 const titleEl = document.getElementById("title");
+const iconEl = document.getElementById("folderIcon");
 const backBtn = document.getElementById("backBtn");
 const grid = document.getElementById("grid");
 const empty = document.getElementById("empty");
@@ -189,19 +286,67 @@ const pinInput = document.getElementById("pinInput");
 const unlockBtn = document.getElementById("unlockBtn");
 const errBox = document.getElementById("err");
 
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsBack = document.getElementById("settingsBack");
+const settingsClose = document.getElementById("settingsClose");
+const renameInput = document.getElementById("renameInput");
+const iconInput = document.getElementById("iconInput");
+const pinState = document.getElementById("pinState");
+const newPinInput = document.getElementById("newPinInput");
+const setPinBtn = document.getElementById("setPinBtn");
+const removePinBtn = document.getElementById("removePinBtn");
+const saveBtn = document.getElementById("saveBtn");
+const msg = document.getElementById("msg");
+
 backBtn.addEventListener("click", ()=> location.href="/home.html");
 
 const params = new URLSearchParams(location.search);
 const folderId = params.get("folderId");
 let unlockToken = null;
-let layoutFolders = [];
+let layout = null;
 let locks = {};
+let pickedIcon = "📁";
+
+settingsBack.querySelectorAll("[data-icon]").forEach(p=>{
+  p.addEventListener("click", ()=>{ pickedIcon = p.getAttribute("data-icon") || "📁"; });
+});
+
+function openSettings(){
+  if (!layout) return;
+  const f = (layout.folders || []).find(x => x.id === folderId);
+  renameInput.value = f?.name || "Ordner";
+  iconInput.value = f?.icon || "";
+  pickedIcon = f?.icon || "📁";
+  pinState.textContent = "PIN: " + (locks[folderId] ? "aktiv" : "aus");
+  msg.textContent = "";
+  newPinInput.value = "";
+  settingsBack.classList.add("show");
+  settingsBack.setAttribute("aria-hidden","false");
+}
+function closeSettings(){
+  settingsBack.classList.remove("show");
+  settingsBack.setAttribute("aria-hidden","true");
+}
+
+settingsBtn.addEventListener("click", openSettings);
+settingsClose.addEventListener("click", closeSettings);
+settingsBack.addEventListener("click", (e)=>{ if(e.target===settingsBack) closeSettings(); });
 
 async function apiGetLayout(){
   const r = await fetch("/api/home/layout", { credentials:"include" });
   const j = await r.json().catch(()=>null);
   if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_load_failed");
   return j;
+}
+async function apiPutLayout(layoutObj){
+  const r = await fetch("/api/home/layout", {
+    method:"PUT",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify(layoutObj)
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_save_failed");
 }
 async function apiGetFolderItems(token=null){
   const u = new URL(location.origin + "/api/home/folder/items");
@@ -223,6 +368,26 @@ async function apiUnlock(pin){
   if (!r.ok || !j?.ok) throw new Error(j?.error || "unlock_failed");
   return j.token;
 }
+async function apiSetPin(pin){
+  const r = await fetch("/api/home/folder/setPin", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, pin, token: unlockToken })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "set_pin_failed");
+}
+async function apiRemovePin(){
+  const r = await fetch("/api/home/folder/removePin", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, token: unlockToken })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "remove_pin_failed");
+}
 
 function render(items){
   grid.innerHTML = "";
@@ -233,7 +398,7 @@ function render(items){
     if (!app) continue;
 
     const el = document.createElement("div");
-    el.className = "tile" + (app.style === "primary" ? " primary" : "");
+    el.className = "tile";
     const ic = document.createElement("div");
     ic.className = "icon";
     ic.textContent = app.icon || "⬛";
@@ -244,7 +409,6 @@ function render(items){
     el.appendChild(ic);
     el.appendChild(lb);
     el.addEventListener("click", ()=> location.href = app.href);
-    el.addEventListener("keydown", (e)=>{ if(e.key==="Enter") location.href=app.href; });
     el.tabIndex = 0;
 
     grid.appendChild(el);
@@ -264,10 +428,12 @@ async function init(){
 
   try{
     const data = await apiGetLayout();
-    layoutFolders = Array.isArray(data.layout?.folders) ? data.layout.folders : [];
+    layout = data.layout || { folders: [], unassigned: [] };
     locks = data.locks || {};
-    const f = layoutFolders.find(x => x.id === folderId);
+    const f = (layout.folders || []).find(x => x.id === folderId);
     titleEl.textContent = f?.name || "Ordner";
+    iconEl.textContent = (f?.icon || "📁");
+    pickedIcon = (f?.icon || "📁");
 
     const isLocked = !!locks[folderId];
 
@@ -296,10 +462,64 @@ unlockBtn.addEventListener("click", async ()=>{
     grid.style.display = "grid";
     const items = await apiGetFolderItems(unlockToken);
     render(items);
+
+    // refresh locks state in UI
+    const data = await apiGetLayout();
+    locks = data.locks || locks;
   }catch(err){
     console.log(err);
     errBox.textContent = "Falsche PIN oder kurz gesperrt.";
     errBox.style.display = "block";
+  }
+});
+
+setPinBtn.addEventListener("click", async ()=>{
+  msg.textContent = "";
+  const pin = String(newPinInput.value || "").trim();
+  if (!pin || pin.length < 4) { msg.textContent = "PIN min. 4 Ziffern."; return; }
+  try{
+    await apiSetPin(pin);
+    locks[folderId] = true;
+    pinState.textContent = "PIN: aktiv";
+    msg.textContent = "PIN gesetzt.";
+    newPinInput.value = "";
+  }catch(e){
+    console.log(e);
+    msg.textContent = "Du musst entsperrt sein (Token). Erst PIN eingeben und entsperren.";
+  }
+});
+
+removePinBtn.addEventListener("click", async ()=>{
+  msg.textContent = "";
+  try{
+    await apiRemovePin();
+    locks[folderId] = false;
+    pinState.textContent = "PIN: aus";
+    msg.textContent = "PIN entfernt.";
+  }catch(e){
+    console.log(e);
+    msg.textContent = "Du musst entsperrt sein. Erst PIN eingeben und entsperren.";
+  }
+});
+
+saveBtn.addEventListener("click", async ()=>{
+  if (!layout) return;
+  const f = (layout.folders || []).find(x => x.id === folderId);
+  if (!f) return;
+
+  const name = (renameInput.value || "").trim().slice(0,40) || "Ordner";
+  const icon = (iconInput.value || "").trim().slice(0,8) || pickedIcon || "📁";
+  f.name = name;
+  f.icon = icon;
+
+  try{
+    await apiPutLayout({ folders: layout.folders, unassigned: layout.unassigned });
+    titleEl.textContent = name;
+    iconEl.textContent = icon;
+    closeSettings();
+  }catch(e){
+    console.log(e);
+    msg.textContent = "Fehler beim Speichern.";
   }
 });
 
