@@ -196,11 +196,16 @@
       <h1><span id="folderIcon">📁</span> <span id="title">Ordner</span></h1>
       <div class="actions">
         <button class="btn" id="backBtn">⬅️ Home</button>
+        <button class="btn" id="editBtn">✏️ Bearbeiten: AUS</button>
         <button class="btn" id="settingsBtn">⚙️</button>
       </div>
     </div>
 
     <div class="panel">
+      <div id="dropOut" class="lockCard" style="display:none; border-style:dashed;">
+        <div style="font-weight:900;">📤 Herausziehen</div>
+        <div class="muted">Zieh eine Kachel hierher, um sie zurück auf Home zu legen.</div>
+      </div>
       <div id="lockedBox" class="lockCard" style="display:none;">
         <div style="font-weight:900;">🔒 Dieser Ordner ist gesperrt</div>
         <div class="muted">PIN eingeben</div>
@@ -286,6 +291,8 @@ const pinInput = document.getElementById("pinInput");
 const unlockBtn = document.getElementById("unlockBtn");
 const errBox = document.getElementById("err");
 
+const editBtn = document.getElementById("editBtn");
+const dropOut = document.getElementById("dropOut");
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsBack = document.getElementById("settingsBack");
 const settingsClose = document.getElementById("settingsClose");
@@ -306,6 +313,9 @@ let unlockToken = null;
 let layout = null;
 let locks = {};
 let pickedIcon = "📁";
+let editMode = false;
+let currentItems = [];
+
 
 settingsBack.querySelectorAll("[data-icon]").forEach(p=>{
   p.addEventListener("click", ()=>{ pickedIcon = p.getAttribute("data-icon") || "📁"; });
@@ -326,6 +336,45 @@ function openSettings(){
 function closeSettings(){
   settingsBack.classList.remove("show");
   settingsBack.setAttribute("aria-hidden","true");
+function setEditMode(on){
+  editMode = !!on;
+  editBtn.textContent = editMode ? "✏️ Bearbeiten: AN" : "✏️ Bearbeiten: AUS";
+  dropOut.style.display = editMode ? "block" : "none";
+  // when locked, keep dropOut hidden
+  if (locks[folderId]) dropOut.style.display = "none";
+  render(currentItems);
+}
+editBtn.addEventListener("click", ()=> setEditMode(!editMode));
+
+// Drop zone to move item back to Home
+dropOut.addEventListener("dragover", (e)=>{ if(editMode){ e.preventDefault(); dropOut.classList.add("dropHover"); }});
+dropOut.addEventListener("dragleave", ()=> dropOut.classList.remove("dropHover"));
+dropOut.addEventListener("drop", async (e)=>{
+  if (!editMode) return;
+  e.preventDefault();
+  dropOut.classList.remove("dropHover");
+  let data=null;
+  try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
+  if (data?.type !== "app") return;
+  const appId = data.appId;
+
+  // remove from folder
+  currentItems = currentItems.filter(x => x !== appId);
+  try{
+    await apiPutFolderItems(folderId, currentItems, unlockToken);
+  }catch(err){ console.log(err); return; }
+
+  // add back to home unassigned (end)
+  try{
+    const dataL = await apiGetLayout();
+    const lay = dataL.layout || { folders: [], unassigned: [] };
+    if (!Array.isArray(lay.unassigned)) lay.unassigned = [];
+    if (!lay.unassigned.includes(appId)) lay.unassigned.push(appId);
+    await apiPutLayout({ folders: lay.folders, unassigned: lay.unassigned });
+  }catch(err){ console.log(err); }
+
+  render(currentItems);
+});
 }
 
 settingsBtn.addEventListener("click", openSettings);
@@ -357,6 +406,16 @@ async function apiGetFolderItems(token=null){
   if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_load_failed");
   return j.items || [];
 }
+async function apiPutFolderItems(folderId, items, token=null){
+  const r = await fetch("/api/home/folder/items", {
+    method:"PUT",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, items, token })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_save_failed");
+}
 async function apiUnlock(pin){
   const r = await fetch("/api/home/folder/unlock", {
     method:"POST",
@@ -365,7 +424,12 @@ async function apiUnlock(pin){
     body: JSON.stringify({ folderId, pin })
   });
   const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "unlock_failed");
+  if (!r.ok || !j?.ok){
+    const err = new Error(j?.error || "unlock_failed");
+    err.code = j?.error || "unlock_failed";
+    err.lockedUntil = j?.lockedUntil || null;
+    throw err;
+  }
   return j.token;
 }
 async function apiSetPin(pin){
@@ -399,17 +463,59 @@ function render(items){
 
     const el = document.createElement("div");
     el.className = "tile";
+    el.tabIndex = 0;
+
     const ic = document.createElement("div");
     ic.className = "icon";
     ic.textContent = app.icon || "⬛";
+
     const lb = document.createElement("div");
     lb.className = "label";
     lb.textContent = app.name;
 
+    const handle = document.createElement("div");
+    handle.className = "pill";
+    handle.textContent = "⠿";
+    handle.title = "Ziehen";
+    handle.style.marginLeft = "auto";
+    handle.style.display = editMode ? "inline-flex" : "none";
+
     el.appendChild(ic);
     el.appendChild(lb);
-    el.addEventListener("click", ()=> location.href = app.href);
-    el.tabIndex = 0;
+    el.appendChild(handle);
+
+    if (!editMode){
+      el.addEventListener("click", ()=> location.href = app.href);
+      el.addEventListener("keydown", (e)=>{ if(e.key==="Enter") location.href=app.href; });
+    }
+
+    if (editMode){
+      el.draggable = true;
+      el.addEventListener("dragstart", (e)=>{
+        e.dataTransfer.setData("text/plain", JSON.stringify({ type:"app", appId }));
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      // reorder drop target
+      el.addEventListener("dragover", (e)=>{ e.preventDefault(); el.classList.add("dropHover"); });
+      el.addEventListener("dragleave", ()=> el.classList.remove("dropHover"));
+      el.addEventListener("drop", async (e)=>{
+        e.preventDefault();
+        el.classList.remove("dropHover");
+        let data=null;
+        try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
+        if (data?.type !== "app") return;
+        const fromIdx = currentItems.indexOf(data.appId);
+        const toIdx = currentItems.indexOf(appId);
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+        const [moved] = currentItems.splice(fromIdx, 1);
+        currentItems.splice(toIdx, 0, moved);
+        try{
+          await apiPutFolderItems(folderId, currentItems, unlockToken);
+          render(currentItems);
+        }catch(err){ console.log(err); }
+      });
+    }
 
     grid.appendChild(el);
   }
@@ -441,12 +547,15 @@ async function init(){
       lockedBox.style.display = "block";
       grid.style.display = "none";
       empty.style.display = "none";
+      dropOut.style.display = "none";
+      editBtn.style.display = "none";
       pinInput.focus();
       return;
     }
 
-    const items = await apiGetFolderItems(null);
-    render(items);
+    currentItems = await apiGetFolderItems(null);
+    render(currentItems);
+    setEditMode(false);
   }catch(err){
     console.log(err);
   }
@@ -456,23 +565,64 @@ unlockBtn.addEventListener("click", async ()=>{
   errBox.style.display = "none";
   const pin = String(pinInput.value || "").trim();
   if (!pin) return;
+
+  unlockBtn.disabled = true;
+  unlockBtn.textContent = "…";
+
+  let inCooldown = false;
+
   try{
     unlockToken = await apiUnlock(pin);
     lockedBox.style.display = "none";
     grid.style.display = "grid";
-    const items = await apiGetFolderItems(unlockToken);
-    render(items);
+    editBtn.style.display = "inline-flex";
 
-    // refresh locks state in UI
+    currentItems = await apiGetFolderItems(unlockToken);
+    render(currentItems);
+    setEditMode(false);
+
     const data = await apiGetLayout();
     locks = data.locks || locks;
   }catch(err){
     console.log(err);
-    errBox.textContent = "Falsche PIN oder kurz gesperrt.";
+
+    if (err.code === "too_many_attempts" && err.lockedUntil){
+      const now = Math.floor(Date.now()/1000);
+      let left = Math.max(1, Number(err.lockedUntil) - now);
+      inCooldown = true;
+
+      errBox.style.display = "block";
+      errBox.textContent = "Zu viele Versuche. Warte " + left + "s.";
+      unlockBtn.disabled = true;
+      unlockBtn.textContent = "Warte…";
+
+      const t = setInterval(()=>{
+        left -= 1;
+        if (left <= 0){
+          clearInterval(t);
+          errBox.style.display = "none";
+          unlockBtn.disabled = false;
+          unlockBtn.textContent = "Entsperren";
+          pinInput.focus();
+          pinInput.select();
+        } else {
+          errBox.textContent = "Zu viele Versuche. Warte " + left + "s.";
+        }
+      }, 1000);
+      return;
+    }
+
+    errBox.textContent = "Falsche PIN.";
     errBox.style.display = "block";
+  }finally{
+    if (!inCooldown){
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = "Entsperren";
+    }
+    pinInput.focus();
+    pinInput.select();
   }
 });
-
 setPinBtn.addEventListener("click", async ()=>{
   msg.textContent = "";
   const pin = String(newPinInput.value || "").trim();

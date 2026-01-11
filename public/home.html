@@ -607,22 +607,10 @@ async function moveAppToFolder(appId, folderId){
 function render(){
   grid.innerHTML = "";
 
-  // folders first
-  for (const folder of layout.folders){
-    const locked = !!folderLockMap[folder.id];
-    const icon = folder.icon || (locked ? "🔒" : "📁");
+  const folderCount = layout.folders.length;
 
-    const el = tileEl({
-      icon: locked ? "🔒" : icon,
-      label: folder.name || "Ordner",
-      onClick: ()=> location.href = "/home-folder.html?folderId=" + encodeURIComponent(folder.id),
-      draggable: editMode,
-      data: { type:"folder", folderId: folder.id },
-      showGear: editMode,
-      gearClick: ()=> openSettings(folder.id)
-    });
-
-    // drop apps into folder (edit mode)
+  function addDropReorder(el, target){
+    // target: {kind:'folder', id} or {kind:'app', id}
     el.addEventListener("dragover", (e)=>{
       if (!editMode) return;
       e.preventDefault();
@@ -634,16 +622,60 @@ function render(){
       if (!editMode) return;
       e.preventDefault();
       el.classList.remove("dropHover");
+
       let data=null;
       try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
-      if (data?.type !== "app") return;
-      if (locked) return;
-      try{
-        await moveAppToFolder(data.appId, folder.id);
+      if (!data?.type) return;
+
+      // 1) app -> folder (move into folder)
+      if (data.type === "app" && target.kind === "folder"){
+        if (folderLockMap[target.id]) return;
+        try{ await moveAppToFolder(data.appId, target.id); render(); }catch(err){ console.log(err); }
+        return;
+      }
+
+      // 2) reorder folders
+      if (data.type === "folder" && target.kind === "folder"){
+        const fromIdx = layout.folders.findIndex(f => f.id === data.folderId);
+        const toIdx   = layout.folders.findIndex(f => f.id === target.id);
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+        const [moved] = layout.folders.splice(fromIdx, 1);
+        layout.folders.splice(toIdx, 0, moved);
+        try{ await apiPutLayout(); }catch(err){ console.log(err); }
         render();
-      }catch(err){ console.log(err); }
+        return;
+      }
+
+      // 3) reorder apps (unassigned)
+      if (data.type === "app" && target.kind === "app"){
+        const fromIdx = layout.unassigned.indexOf(data.appId);
+        const toIdx   = layout.unassigned.indexOf(target.id);
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+        const [moved] = layout.unassigned.splice(fromIdx, 1);
+        layout.unassigned.splice(toIdx, 0, moved);
+        try{ await apiPutLayout(); }catch(err){ console.log(err); }
+        render();
+        return;
+      }
+    });
+  }
+
+  // folders first
+  for (const folder of layout.folders){
+    const locked = !!folderLockMap[folder.id];
+    const icon = folder.icon || "📁";
+
+    const el = tileEl({
+      icon: locked ? "🔒" : icon,
+      label: folder.name || "Ordner",
+      onClick: ()=> location.href = "/home-folder.html?folderId=" + encodeURIComponent(folder.id),
+      draggable: editMode,
+      data: { type:"folder", folderId: folder.id },
+      showGear: editMode,
+      gearClick: ()=> openSettings(folder.id)
     });
 
+    addDropReorder(el, { kind:"folder", id: folder.id });
     grid.appendChild(el);
   }
 
@@ -662,6 +694,7 @@ function render(){
       gearClick: ()=>{}
     });
 
+    addDropReorder(el, { kind:"app", id: appId });
     grid.appendChild(el);
   }
 }
