@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ordner</title>
+
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="/app.css">
+
+  <style>
+    :root{
+      --bg0:#05080f; --bg1:#070c16;
+      --panel:rgba(17,24,39,.72);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --accent:#3ee38c; --accent2:#2fce7a;
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
+      --danger:#ff4d6d;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Segoe UI', Tahoma, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:22px 14px 38px;
+    }
+    .wrap{width:min(980px, 100%);}
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:8px 0 14px;
+    }
+    h1{margin:0; font-size:2rem; letter-spacing:.2px;}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
+    .btn{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:800;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      transition:transform .12s ease, filter .2s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color:#03130a;
+      box-shadow:0 10px 24px rgba(62,227,140,0.14);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+    }
+    .tile{
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,0.06);
+      padding:14px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-height:62px;
+      cursor:pointer;
+      user-select:none;
+      transition:transform .12s ease, filter .2s ease;
+    }
+    .tile:active{transform:translateY(1px)}
+    .tile.primary{
+      background: linear-gradient(180deg, rgba(62,227,140,0.95), rgba(47,206,122,0.95));
+      color:#03130a;
+      border-color:rgba(255,255,255,.14);
+    }
+    .icon{
+      width:40px; height:40px;
+      border-radius:14px;
+      display:grid; place-items:center;
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+      font-size:18px;
+    }
+    .tile.primary .icon{background:rgba(0,0,0,.14)}
+    .label{
+      font-weight:900;
+      font-size:1.05rem;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .lockCard{
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,0.06);
+      padding:16px;
+    }
+    .inp{
+      width:100%;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      padding:12px 12px;
+      font-weight:700;
+      outline:none;
+      margin-top:10px;
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:10px;}
+    .err{color:#ffd6de; background:rgba(255,77,109,.10); border:1px solid rgba(255,77,109,.30); padding:10px 12px; border-radius:14px; margin-top:10px;}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1 id="title">Ordner</h1>
+      <div class="actions">
+        <button class="btn" id="backBtn">⬅️ Home</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="lockedBox" class="lockCard" style="display:none;">
+        <div style="font-weight:900;">🔒 Dieser Ordner ist gesperrt</div>
+        <div class="muted">PIN eingeben</div>
+        <input class="inp" id="pinInput" inputmode="numeric" pattern="[0-9]*" placeholder="PIN" />
+        <div class="row">
+          <button class="btn primary" id="unlockBtn">Entsperren</button>
+        </div>
+        <div id="err" class="err" style="display:none;"></div>
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <div id="empty" class="muted" style="display:none; margin-top:10px;">Leer.</div>
+    </div>
+  </div>
+
+<script>
+const APP_REGISTRY = {
+  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html",  style:"secondary" },
+  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html",  style:"secondary" },
+  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen",        style:"secondary" },
+  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html", style:"primary"   },
+  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste", style:"primary"   },
+  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html",      style:"primary"   },
+  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html",  style:"primary"   },
+  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live",  style:"secondary" }
+};
+
+const titleEl = document.getElementById("title");
+const backBtn = document.getElementById("backBtn");
+const grid = document.getElementById("grid");
+const empty = document.getElementById("empty");
+const lockedBox = document.getElementById("lockedBox");
+const pinInput = document.getElementById("pinInput");
+const unlockBtn = document.getElementById("unlockBtn");
+const errBox = document.getElementById("err");
+
+backBtn.addEventListener("click", ()=> location.href="/home.html");
+
+const params = new URLSearchParams(location.search);
+const folderId = params.get("folderId");
+let unlockToken = null;
+let layoutFolders = [];
+let locks = {};
+
+async function apiGetLayout(){
+  const r = await fetch("/api/home/layout", { credentials:"include" });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_load_failed");
+  return j;
+}
+async function apiGetFolderItems(token=null){
+  const u = new URL(location.origin + "/api/home/folder/items");
+  u.searchParams.set("folderId", folderId);
+  if (token) u.searchParams.set("token", token);
+  const r = await fetch(u.toString(), { credentials:"include" });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_load_failed");
+  return j.items || [];
+}
+async function apiUnlock(pin){
+  const r = await fetch("/api/home/folder/unlock", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ folderId, pin })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "unlock_failed");
+  return j.token;
+}
+
+function render(items){
+  grid.innerHTML = "";
+  empty.style.display = items.length ? "none" : "block";
+
+  for (const appId of items){
+    const app = APP_REGISTRY[appId];
+    if (!app) continue;
+
+    const el = document.createElement("div");
+    el.className = "tile" + (app.style === "primary" ? " primary" : "");
+    const ic = document.createElement("div");
+    ic.className = "icon";
+    ic.textContent = app.icon || "⬛";
+    const lb = document.createElement("div");
+    lb.className = "label";
+    lb.textContent = app.name;
+
+    el.appendChild(ic);
+    el.appendChild(lb);
+    el.addEventListener("click", ()=> location.href = app.href);
+    el.addEventListener("keydown", (e)=>{ if(e.key==="Enter") location.href=app.href; });
+    el.tabIndex = 0;
+
+    grid.appendChild(el);
+  }
+}
+
+async function init(){
+  // auth check
+  try {
+    const r = await fetch("/api/me", { credentials: "include" });
+    if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+  } catch (_) {
+    location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
+  }
+
+  if (!folderId){ titleEl.textContent = "Ordner"; lockedBox.style.display="none"; return; }
+
+  try{
+    const data = await apiGetLayout();
+    layoutFolders = Array.isArray(data.layout?.folders) ? data.layout.folders : [];
+    locks = data.locks || {};
+    const f = layoutFolders.find(x => x.id === folderId);
+    titleEl.textContent = f?.name || "Ordner";
+
+    const isLocked = !!locks[folderId];
+
+    if (isLocked){
+      lockedBox.style.display = "block";
+      grid.style.display = "none";
+      empty.style.display = "none";
+      pinInput.focus();
+      return;
+    }
+
+    const items = await apiGetFolderItems(null);
+    render(items);
+  }catch(err){
+    console.log(err);
+  }
+}
+
+unlockBtn.addEventListener("click", async ()=>{
+  errBox.style.display = "none";
+  const pin = String(pinInput.value || "").trim();
+  if (!pin) return;
+  try{
+    unlockToken = await apiUnlock(pin);
+    lockedBox.style.display = "none";
+    grid.style.display = "grid";
+    const items = await apiGetFolderItems(unlockToken);
+    render(items);
+  }catch(err){
+    console.log(err);
+    errBox.textContent = "Falsche PIN oder kurz gesperrt.";
+    errBox.style.display = "block";
+  }
+});
+
+init();
+</script>
+</body>
+</html>
