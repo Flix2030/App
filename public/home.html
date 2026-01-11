@@ -503,13 +503,30 @@ saveFolderBtn.addEventListener("click", async ()=>{
 
 deleteFolderBtn.addEventListener("click", async ()=>{
   if (!settingsFolderId) return;
-  if (!confirm("Ordner löschen?")) return;
+  if (!confirm("Ordner löschen? (Inhalt kommt zurück auf Home)")) return;
 
   const id = settingsFolderId;
-  layout.folders = layout.folders.filter(x => x.id !== id);
-  try{ await apiPutFolderItems(id, []); }catch{}
-  // if pinned, remove pin might fail (requires unlock token) -> user can remove in folder page
-  try{ await apiPutLayout(); }catch(e){ console.log(e); }
+
+  try{
+    // 1) hole Inhalte aus dem Ordner
+    const items = await apiGetFolderItems(id).catch(()=>[]);
+    // 2) lege sie zurück auf Home (unassigned)
+    for (const appId of items){
+      if (!layout.unassigned.includes(appId)) layout.unassigned.push(appId);
+    }
+    // 3) Ordner aus Layout entfernen
+    layout.folders = layout.folders.filter(x => x.id !== id);
+
+    // 4) Layout speichern
+    await apiPutLayout();
+
+    // 5) Ordner-Inhalte serverseitig leeren (optional cleanup)
+    await apiPutFolderItems(id, []).catch(()=>{});
+
+  }catch(e){
+    console.log(e);
+  }
+
   render();
   closeSettings();
 });
