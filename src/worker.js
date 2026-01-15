@@ -920,6 +920,28 @@ async function handleApi(req, env) {
         return json({ ok: true, token }, 200, { "Cache-Control": "no-store" });
       }
 
+// POST reset home layout (admin password, separate from folder PIN)
+if (path === "/api/home/reset" && req.method === "POST") {
+  const body = await safeReadJson(req);
+  const password = String(body?.password || "");
+  const expected = env.ADMIN_RESET_PASSWORD ? String(env.ADMIN_RESET_PASSWORD) : "";
+  if (!expected) return json({ error: "admin_password_not_set" }, 500);
+  if (!timingSafeEqual(password, expected)) return json({ error: "forbidden" }, 403);
+
+  const defaultLayout = { folders: [], unassigned: DEFAULT_UNASSIGNED };
+  await env.DB.prepare(
+    "INSERT INTO home_layout (user_id, json, updated_at) VALUES (?, ?, ?) " +
+    "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
+  ).bind(uid, JSON.stringify(defaultLayout), new Date().toISOString()).run();
+
+  await env.DB.prepare("DELETE FROM home_folder_items WHERE user_id = ?").bind(uid).run();
+  await env.DB.prepare("DELETE FROM home_folder_locks WHERE user_id = ?").bind(uid).run();
+  await env.DB.prepare("DELETE FROM home_unlock_tokens WHERE user_id = ?").bind(uid).run();
+
+  return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+}
+
+
       return json({ error: "not_found", path }, 404);
     }
 
@@ -1435,25 +1457,4 @@ const uid = await readToken(env, req);
     }
   },
 }
-      // POST reset home layout (admin password, separate from folder PIN)
-      if (path === "/api/home/reset" && req.method === "POST") {
-        const body = await safeReadJson(req);
-        const password = String(body?.password || "");
-        const expected = env.ADMIN_RESET_PASSWORD ? String(env.ADMIN_RESET_PASSWORD) : "";
-        if (!expected) return json({ error: "admin_password_not_set" }, 500);
-        if (!timingSafeEqual(password, expected)) return json({ error: "forbidden" }, 403);
-
-        const defaultLayout = { folders: [], unassigned: DEFAULT_UNASSIGNED };
-        await env.DB.prepare(
-          "INSERT INTO home_layout (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(uid, JSON.stringify(defaultLayout), new Date().toISOString()).run();
-
-        await env.DB.prepare("DELETE FROM home_folder_items WHERE user_id = ?").bind(uid).run();
-        await env.DB.prepare("DELETE FROM home_folder_locks WHERE user_id = ?").bind(uid).run();
-        await env.DB.prepare("DELETE FROM home_unlock_tokens WHERE user_id = ?").bind(uid).run();
-
-        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
-      }
-
 ;
