@@ -856,6 +856,8 @@
       }
 
       async function ensurePushSubscribed(deviceId){
+        // Ensure stable deviceId so the server can de-duplicate subscriptions
+        if (!deviceId) deviceId = getOrCreateDeviceId();
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("push_not_supported");
         if (!VAPID_PUBLIC_KEY){
           await fetchVapidPublicKey();
@@ -893,12 +895,13 @@
       async function pushToPhone(message){
         // Sends a push to THE subscription stored for your account/device.
         try{
-          if (!pushReady) await ensurePushSubscribed();
+          const deviceId = getOrCreateDeviceId();
+          if (!pushReady) await ensurePushSubscribed(deviceId);
           const r = await fetch("/api/push/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ body: String(message || "") })
+            body: JSON.stringify({ body: String(message || ""), deviceId: String(deviceId||"") })
           });
           const j = await r.json().catch(()=>null);
           return !!(r.ok && j && j.ok === true);
