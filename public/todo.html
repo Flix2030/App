@@ -788,9 +788,19 @@
           if ("serviceWorker" in navigator){
             const reg = await navigator.serviceWorker.getRegistration();
             if (reg && reg.showNotification){
+              const t = tag || "todo";
+
+              // Avoid duplicates: close existing notifications with the same tag
+              try{
+                if (typeof reg.getNotifications === "function"){
+                  const existing = await reg.getNotifications({ tag: t });
+                  (existing || []).forEach(n => { try{ n.close(); }catch(e){} });
+                }
+              }catch(e){}
+
               await reg.showNotification(title, {
                 body: body || "",
-                tag: tag || "todo",
+                tag: t,
                 renotify: true
               });
               return true;
@@ -952,7 +962,7 @@
             try{
               await ensurePushSubscribed(deviceId); // registers + enables
               await setServerPushEnabled(deviceId, true);
-              showNotify("Aufgaben", "Erinnerung\nBenachrichtigungen sind aktiv.", "push_on");
+              showNotify("Benachrichtigungen", "Benachrichtigungen sind aktiv.", "push_on");
             }catch(e){
               cb.checked = false;
               try{ localStorage.setItem("todo_push_receive", "0"); }catch{}
@@ -1035,7 +1045,7 @@
             changed = true;
 
             const whenTxt = task.time ? (task.time) : "";
-            showNotify("Aufgaben", "Erinnerung\n" + (task.title || "Aufgabe"), "todo_rem_" + task.id);
+            showNotify("Erinnerung", (task.title || "Aufgabe"), "todo_rem_" + task.id);
           }
         });
 
@@ -1063,7 +1073,7 @@
 		  if (isPushEnabled()){
 			await pushToPhone(msg);
 		  } else {
-			await showNotify("Aufgaben", "Erinnerung\n" + msg, "todo_rem_" + task.id);
+			await showNotify("Erinnerung", msg, "todo_rem_" + task.id);
 		  }
 		}
 
@@ -1073,7 +1083,7 @@
           const ok = await pushToPhone(msg);
           if (!ok){
             // Fallback: lokale Notification
-            await showNotify("Aufgaben", "Erinnerung\n" + msg, "todo_created_" + task.id);
+            await showNotify("Erinnerung", msg, "todo_created_" + task.id);
           }
       }
 
@@ -1758,11 +1768,7 @@ function promptText(msg, placeholder, onOk){
           remindBtn.textContent = "Erinnern";
           remindBtn.addEventListener("click", async (e)=>{
             e.stopPropagation();
-            const ok = await pushToPhone(task.title || "To-Do");
-            if (!ok){
-              // fallback: local notification (if allowed)
-              await showNotify("Aufgaben", "Erinnerung\n" + (task.title || "Aufgabe"), "todo_rem_fallback_" + task.id);
-            }
+            await remindTask(task);
           });
           actions.appendChild(remindBtn);
 
