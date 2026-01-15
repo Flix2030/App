@@ -216,6 +216,7 @@
       <h1>Home</h1>
       <div class="actions">
         <button class="btn" id="editBtn">✏️ Bearbeiten: AUS</button>
+        <button class="btn" id="resetBtn">🔄 Zurücksetzen</button>
         <button class="btn primary" id="addFolderBtn">➕ Ordner</button>
       </div>
     </div>
@@ -322,6 +323,7 @@ let folderLockMap = {}; // folderId -> true/false
 const grid = document.getElementById("grid");
 const editBtn = document.getElementById("editBtn");
 const addFolderBtn = document.getElementById("addFolderBtn");
+const resetBtn = document.getElementById("resetBtn");
 
 /* ===== Edit mode ===== */
 function setEditMode(on){
@@ -341,6 +343,49 @@ const folderNameInput = document.getElementById("folderNameInput");
 const folderIconInput = document.getElementById("folderIconInput");
 
 let createPickedIcon = "📁";
+// Reset modal refs
+const resetBack = document.getElementById("resetBack");
+const resetClose = document.getElementById("resetClose");
+const resetCancel = document.getElementById("resetCancel");
+const resetDo = document.getElementById("resetDo");
+const resetPw = document.getElementById("resetPw");
+const resetMsg = document.getElementById("resetMsg");
+
+function openReset(){
+  resetPw.value = "";
+  resetMsg.textContent = "";
+  resetBack.classList.add("show");
+  resetBack.setAttribute("aria-hidden","false");
+  setTimeout(()=>resetPw.focus(),0);
+}
+function closeReset(){
+  resetBack.classList.remove("show");
+  resetBack.setAttribute("aria-hidden","true");
+}
+resetBtn.addEventListener("click", openReset);
+resetClose.addEventListener("click", closeReset);
+resetCancel.addEventListener("click", closeReset);
+resetBack.addEventListener("click", (e)=>{ if(e.target===resetBack) closeReset(); });
+
+
+resetDo.addEventListener("click", async ()=>{
+  resetMsg.textContent = "";
+  const pw = String(resetPw.value || "");
+  if (!pw) { resetMsg.textContent = "Passwort fehlt."; return; }
+  resetDo.disabled = true;
+  try{
+    await apiResetHome(pw);
+    closeReset();
+    location.href = "/home.html";
+  }catch(e){
+    resetMsg.textContent = "Falsches Passwort.";
+    resetPw.focus();
+    resetPw.select();
+  }finally{
+    resetDo.disabled = false;
+  }
+});
+
 createBack.querySelectorAll("[data-icon]").forEach(p=>{
   p.addEventListener("click", ()=>{ createPickedIcon = p.getAttribute("data-icon") || "📁"; });
 });
@@ -466,6 +511,21 @@ async function apiRemoveFolderPin(folderId){
   });
   const j = await r.json().catch(()=>null);
   if (!r.ok || !j?.ok) throw new Error(j?.error || "remove_pin_failed");
+async function apiResetHome(password){
+  const r = await fetch("/api/home/reset", {
+    method:"POST",
+    credentials:"include",
+    headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ password })
+  });
+  const j = await r.json().catch(()=>null);
+  if (!r.ok || !j?.ok){
+    const err = new Error(j?.error || "reset_failed");
+    err.code = j?.error || "reset_failed";
+    throw err;
+  }
+}
+
 }
 
 /* ===== Create folder ===== */
@@ -737,5 +797,23 @@ async function init(){
 }
 init();
 </script>
+
+  <!-- Reset modal -->
+  <div class="modalBack" id="resetBack" aria-hidden="true">
+    <div class="modal">
+      <div class="modalTop">
+        <h3>Home zurücksetzen</h3>
+        <button class="xbtn" id="resetClose">✕</button>
+      </div>
+      <div class="muted" style="margin-bottom:8px;">Admin-Passwort</div>
+      <input class="inp" id="resetPw" type="password" placeholder="Passwort" />
+      <div class="muted" id="resetMsg" style="margin-top:10px;"></div>
+      <div class="row">
+        <button class="btn" id="resetCancel">Abbrechen</button>
+        <button class="btn danger" id="resetDo">Zurücksetzen</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
