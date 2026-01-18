@@ -103,7 +103,7 @@
       background:var(--panel2);
       border:1px solid var(--border);
       border-radius:14px;
-      padding:12px 14px;
+      padding:14px 14px;
       margin-bottom:10px;
       gap:12px;
       user-select:none;
@@ -124,35 +124,12 @@
       flex:0 0 auto;
     }
 
-    .main{
-      flex:1 1 auto;
-      min-width:220px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
     .title{
       font-weight:900;
-      font-size:1.05rem;
+      font-size:1.10rem;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
-    }
-    .meta{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      color:rgba(255,255,255,0.82);
-      font-weight:800;
-      font-size:0.86rem;
-    }
-    .tag{
-      border:1px solid rgba(255,255,255,0.12);
-      background:rgba(255,255,255,0.06);
-      border-radius:999px;
-      padding:6px 10px;
-      white-space:nowrap;
-      font-variant-numeric:tabular-nums;
     }
 
     .empty{
@@ -177,7 +154,7 @@
       </div>
     </div>
 
-    <!-- Ordner-Sektion bleibt drin, aber wird automatisch ausgeblendet, wenn keine Ordner existieren -->
+    <!-- Ordner-Sektion wird ausgeblendet, wenn keine Ordner existieren -->
     <div id="foldersSection" style="display:none;">
       <h2 style="margin-top:0;">Ordner</h2>
       <ul id="folders"></ul>
@@ -191,8 +168,7 @@
   <script>
     (function(){
       // Anzeige-only: kein Bearbeiten, keine Buttons, kein Löschen.
-      // Layout:
-      //   GET /api/home/layout  -> { ok:true, layout:{ folders:[{id,name,icon}], unassigned:[appId...] } }
+      // Keine Pfad-Anzeige (packliste.html etc. wird NICHT gezeigt).
 
       const APP_REGISTRY = {
         settings:  { id:"settings",  name:"Einstellungen",  icon:"⚙️", href:"/settings.html" },
@@ -237,12 +213,6 @@
         return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
       }
 
-      function removeLeadingSlash(path){
-        // UI: "/packliste.html" -> "packliste.html"
-        path = String(path || "");
-        return path.replace(/^\/+/, "");
-      }
-
       function appCard(appId){
         const app = APP_REGISTRY[appId];
         if (!app) return null;
@@ -255,25 +225,12 @@
         ic.className = "icon";
         ic.textContent = app.icon || "🧩";
 
-        const main = document.createElement("div");
-        main.className = "main";
-
         const title = document.createElement("div");
         title.className = "title";
         title.textContent = app.name || appId;
 
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        const tag = document.createElement("span");
-        tag.className = "tag";
-        tag.textContent = removeLeadingSlash(normHref(app.href));
-        meta.appendChild(tag);
-
-        main.appendChild(title);
-        main.appendChild(meta);
-
         li.appendChild(ic);
-        li.appendChild(main);
+        li.appendChild(title);
         return li;
       }
 
@@ -285,25 +242,12 @@
         ic.className = "icon";
         ic.textContent = folder.icon || "📁";
 
-        const main = document.createElement("div");
-        main.className = "main";
-
         const title = document.createElement("div");
         title.className = "title";
-        title.textContent = folder.name || "Ordner";
-
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        const tag = document.createElement("span");
-        tag.className = "tag";
-        tag.textContent = String(count || 0) + " Apps";
-        meta.appendChild(tag);
-
-        main.appendChild(title);
-        main.appendChild(meta);
+        title.textContent = (folder.name || "Ordner") + " (" + String(count || 0) + ")";
 
         li.appendChild(ic);
-        li.appendChild(main);
+        li.appendChild(title);
         return li;
       }
 
@@ -311,7 +255,7 @@
         const r = await fetch("/api/home/layout", { credentials:"include" });
         const j = await r.json().catch(()=>null);
         if (!r.ok || !j?.ok) throw new Error(j?.error || ("layout_http_" + r.status));
-        return j; // { ok:true, layout:{folders,unassigned}, locks:{} }
+        return j;
       }
 
       async function apiGetFolderItems(folderId){
@@ -342,7 +286,6 @@
       }
 
       function renderFromLayout(layout, folderItemsMap){
-        // Ordner: Wenn keine Ordner existieren -> komplett ausblenden.
         foldersUl.innerHTML = "";
         const folders = Array.isArray(layout?.folders) ? layout.folders : [];
         if (!folders.length){
@@ -350,14 +293,12 @@
           appsHeading.style.marginTop = "0";
         } else {
           foldersSection.style.display = "block";
-          appsHeading.style.marginTop = "";
           for (const f of folders){
             const count = (folderItemsMap?.[f.id]?.length || 0);
             foldersUl.appendChild(folderCard(f, count));
           }
         }
 
-        // Apps
         appsUl.innerHTML = "";
         const inFolders = new Set();
         for (const fid in (folderItemsMap||{})){
@@ -393,7 +334,6 @@
 
       async function init(){
         setStatus("loading");
-
         try{
           const data = await apiGetLayout();
           const layout = data.layout || { folders:[], unassigned:[...DEFAULT_UNASSIGNED] };
