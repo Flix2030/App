@@ -127,17 +127,22 @@
       border:1px solid rgba(255,255,255,.12);
       background:rgba(255,255,255,.06);
       color:var(--text);
-      display:none;
+      display:grid;
       place-items:center;
       flex:0 0 auto;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .15s ease;
     }
     .handle{cursor:grab}
     .handle:active{cursor:grabbing}
     .gear{cursor:pointer; margin-left:10px}
-    .editing .handle, .editing .gear{display:grid;}
-    .editing .tile{cursor:default;}
-    .editing .tile:active{transform:none;}
-    .dropHover{
+
+    .tile:hover .handle, .tile:hover .gear{opacity:1; pointer-events:auto;}
+    @media (hover: none), (pointer: coarse){
+      .handle, .gear{opacity:1; pointer-events:auto;}
+    }
+.dropHover{
       outline:2px dashed rgba(62,227,140,.6);
       outline-offset:2px;
       background:rgba(62,227,140,.08);
@@ -215,8 +220,7 @@
     <div class="top">
       <h1>Home</h1>
       <div class="actions">
-        <button class="btn" id="editBtn">✏️ Bearbeiten: AUS</button>
-        <button class="btn" id="resetBtn">🔄 Zurücksetzen</button>
+<button class="btn" id="resetBtn">🔄 Zurücksetzen</button>
         <button class="btn primary" id="addFolderBtn">➕ Ordner</button>
       </div>
     </div>
@@ -316,23 +320,12 @@ const APP_REGISTRY = {
 };
 const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
 
-let editMode = false;
 let layout = { folders: [], unassigned: [...DEFAULT_UNASSIGNED] };
 let folderLockMap = {}; // folderId -> true/false
 
 const grid = document.getElementById("grid");
-const editBtn = document.getElementById("editBtn");
 const addFolderBtn = document.getElementById("addFolderBtn");
 const resetBtn = document.getElementById("resetBtn");
-
-/* ===== Edit mode ===== */
-function setEditMode(on){
-  editMode = !!on;
-  editBtn.textContent = editMode ? "✏️ Bearbeiten: AN" : "✏️ Bearbeiten: AUS";
-  document.body.classList.toggle("editing", editMode);
-  render();
-}
-editBtn.addEventListener("click", () => setEditMode(!editMode));
 
 /* ===== Modals ===== */
 const createBack = document.getElementById("createBack");
@@ -652,21 +645,26 @@ function tileEl({icon,label,onClick,draggable,data,showGear,gearClick}){
   if (showGear){
     el.appendChild(gear);
     gear.addEventListener("click", (e)=>{ e.stopPropagation(); gearClick(); });
+    gear.addEventListener("mousedown", (e)=> e.stopPropagation());
+    gear.addEventListener("touchstart", (e)=> e.stopPropagation(), {passive:true});
   }
 
+  // Klick öffnet immer
+  el.addEventListener("click", onClick);
+  el.addEventListener("keydown", (e)=>{ if(e.key==="Enter") onClick(); });
+
+  // Drag nur über den Ziehgriff
   el.appendChild(handle);
-
-  if (!editMode){
-    el.addEventListener("click", onClick);
-    el.addEventListener("keydown", (e)=>{ if(e.key==="Enter") onClick(); });
-  }
-
   if (draggable){
-    el.draggable = true;
-    el.addEventListener("dragstart", (e)=>{
+    handle.draggable = true;
+    handle.addEventListener("dragstart", (e)=>{
+      e.stopPropagation();
       e.dataTransfer.setData("text/plain", JSON.stringify(data));
       e.dataTransfer.effectAllowed = "move";
     });
+    handle.addEventListener("mousedown", (e)=> e.stopPropagation());
+    handle.addEventListener("click", (e)=> e.stopPropagation());
+    handle.addEventListener("touchstart", (e)=> e.stopPropagation(), {passive:true});
   }
 
   return el;
@@ -689,14 +687,14 @@ function render(){
   function addDropReorder(el, target){
     // target: {kind:'folder', id} or {kind:'app', id}
     el.addEventListener("dragover", (e)=>{
-      if (!editMode) return;
+      if (!false) return;
       e.preventDefault();
       el.classList.add("dropHover");
       e.dataTransfer.dropEffect = "move";
     });
     el.addEventListener("dragleave", ()=> el.classList.remove("dropHover"));
     el.addEventListener("drop", async (e)=>{
-      if (!editMode) return;
+      if (!false) return;
       e.preventDefault();
       el.classList.remove("dropHover");
 
@@ -746,9 +744,9 @@ function render(){
       icon: locked ? "🔒" : icon,
       label: folder.name || "Ordner",
       onClick: ()=> location.href = "/home-folder.html?folderId=" + encodeURIComponent(folder.id),
-      draggable: editMode,
+      draggable: false,
       data: { type:"folder", folderId: folder.id },
-      showGear: editMode,
+      showGear: true,
       gearClick: ()=> openSettings(folder.id)
     });
 
@@ -765,7 +763,7 @@ function render(){
       icon: app.icon || "⬛",
       label: app.name,
       onClick: ()=> location.href = app.href,
-      draggable: editMode,
+      draggable: false,
       data: { type:"app", appId },
       showGear: false,
       gearClick: ()=>{}
