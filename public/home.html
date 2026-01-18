@@ -237,6 +237,12 @@
         return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
       }
 
+      function removeLeadingSlash(path){
+        // UI: "/packliste.html" -> "packliste.html"
+        path = String(path || "");
+        return path.replace(/^\/+/, "");
+      }
+
       function appCard(appId){
         const app = APP_REGISTRY[appId];
         if (!app) return null;
