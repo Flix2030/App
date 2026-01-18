@@ -88,6 +88,16 @@ async function sha256B64Url(inputStr) {
   return b64urlEncode(new Uint8Array(buf));
 }
 
+async function sha256Hex(inputStr) {
+  const buf = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(String(inputStr || ""))
+  );
+  return [...new Uint8Array(buf)]
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function makeConfirmToken(env, payloadObj) {
   if (!env.AUTH_SECRET) throw new Error("AUTH_SECRET not set");
   const payloadStr = JSON.stringify(payloadObj);
@@ -741,21 +751,33 @@ async function handleApi(req, env) {
         const locks = {};
         for (const row of (locksRes?.results || [])) locks[row.folder_id] = true;
 
-        // counts
+        // counts + folder item ids (used by the UI to hide apps that are inside folders)
         const countsRes = await env.DB.prepare(
           "SELECT folder_id, json FROM home_folder_items WHERE user_id = ?"
         ).bind(uid).all();
         const counts = {};
+        const folderItems = {};
         for (const row of (countsRes?.results || [])) {
           try{
             const arr = JSON.parse(row.json);
-            counts[row.folder_id] = Array.isArray(arr) ? arr.length : 0;
+            const list = Array.isArray(arr) ? arr.map(x => String(x || "").trim()).filter(Boolean) : [];
+            // de-dupe
+            const seen = new Set();
+            const safe = [];
+            for (const it of list){
+              if (seen.has(it)) continue;
+              seen.add(it);
+              safe.push(it);
+            }
+            folderItems[row.folder_id] = safe;
+            counts[row.folder_id] = safe.length;
           }catch{
+            folderItems[row.folder_id] = [];
             counts[row.folder_id] = 0;
           }
         }
 
-        return json({ ok: true, layout, locks, counts }, 200, { "Cache-Control": "no-store" });
+        return json({ ok: true, layout, locks, counts, folderItems }, 200, { "Cache-Control": "no-store" });
       }
 
       // PUT layout meta (folders list + unassigned list)
@@ -894,7 +916,18 @@ async function handleApi(req, env) {
           return json({ error: "too_many_attempts", lockedUntil }, 429);
         }
 
-        const ok = await verifyPass(pin, lock.pin_record);
+        let ok = false;
+
+        // Special: folders with pin_record="ADMIN_SECRET" are unlocked via the global admin code
+        // stored as SHA-256 hex in env.ADMIN_CODE_SHA256. (User enters the memorable code; we compare hashes.)
+        if (String(lock.pin_record || "") === "ADMIN_SECRET") {
+          const expected = String(env.ADMIN_CODE_SHA256 || "").trim();
+          if (!expected) return json({ error: "admin_code_not_set" }, 500);
+          const got = await sha256Hex(pin);
+          ok = timingSafeEqual(got, expected);
+        } else {
+          ok = await verifyPass(pin, lock.pin_record);
+        }
 
         if (!ok) {
           const attempts = Number(lock.attempts || 0) + 1;

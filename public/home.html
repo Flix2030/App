@@ -169,6 +169,7 @@
     (function(){
       // Anzeige-only: kein Bearbeiten, keine Buttons, kein Löschen.
       // Keine Pfad-Anzeige (packliste.html etc. wird NICHT gezeigt).
+      // Update: Ordner anklickbar + gesperrte Ordner per Code entsperren (Code wird NICHT gespeichert, nur ein Kurzzeit-Token).
 
       const APP_REGISTRY = {
         settings:  { id:"settings",  name:"Einstellungen",  icon:"⚙️", href:"/settings.html" },
@@ -181,6 +182,98 @@
         webcam:    { id:"webcam",    name:"Webcam",         icon:"📷", href:"/webcam-live" }
       };
       const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
+
+      // --- small CSS for overlay + modal (no alerts) ---
+      const style = document.createElement("style");
+      style.textContent = `
+        .overlayWrap{
+          position: fixed; inset: 0; display: none;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          z-index: 9999;
+          padding: 18px;
+        }
+        .overlayCard{
+          max-width: 720px;
+          margin: 0 auto;
+          background: rgba(22,24,30,0.92);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+          overflow: hidden;
+        }
+        .overlayTop{
+          display:flex; align-items:center; justify-content:space-between;
+          padding: 14px 14px;
+          border-bottom: 1px solid rgba(255,255,255,0.10);
+        }
+        .overlayTitle{
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          display:flex; gap:10px; align-items:center;
+        }
+        .btn{
+          appearance:none; border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.92);
+          padding: 8px 10px;
+          border-radius: 12px;
+          cursor:pointer;
+          font-weight: 650;
+        }
+        .btn:active{ transform: scale(0.98); }
+        .muted{ color: rgba(255,255,255,0.65); font-size: 13px; }
+        .lockBadge{
+          margin-left: 8px;
+          display:inline-flex; align-items:center; gap:6px;
+          font-size: 12px; font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          color: rgba(255,255,255,0.78);
+        }
+        .modalWrap{
+          position: fixed; inset: 0; display: none;
+          background: rgba(0,0,0,0.60);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          z-index: 10000;
+          padding: 18px;
+        }
+        .modalCard{
+          max-width: 520px;
+          margin: 12vh auto 0 auto;
+          background: rgba(22,24,30,0.94);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+          overflow: hidden;
+        }
+        .modalHead{ padding: 14px 14px; border-bottom: 1px solid rgba(255,255,255,0.10); font-weight: 800; }
+        .modalBody{ padding: 14px 14px; }
+        .field{
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          color: rgba(255,255,255,0.92);
+          padding: 10px 12px;
+          outline: none;
+          font-size: 15px;
+        }
+        .rowFlex{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
+        .modalFoot{
+          padding: 14px 14px;
+          border-top: 1px solid rgba(255,255,255,0.10);
+          display:flex; gap:10px; justify-content:flex-end; flex-wrap: wrap;
+        }
+        label.chk{ display:flex; gap:8px; align-items:center; user-select:none; cursor:pointer; }
+        label.chk input{ transform: scale(1.1); }
+        .errText{ color: rgba(255,77,109,0.95); font-size: 13px; min-height: 18px; margin-top: 8px; }
+      `;
+      document.head.appendChild(style);
 
       const dot = document.getElementById("dot");
       const statusText = document.getElementById("statusText");
@@ -234,23 +327,112 @@
         return li;
       }
 
-      function folderCard(folder, count){
-        const li = document.createElement("li");
-        li.className = "row";
+      // --- Overlay (Folder view) ---
+      const overlay = document.createElement("div");
+      overlay.className = "overlayWrap";
+      overlay.innerHTML = `
+        <div class="overlayCard">
+          <div class="overlayTop">
+            <div class="overlayTitle">
+              <span id="ovIcon">📁</span>
+              <span id="ovName">Ordner</span>
+              <span id="ovLock" class="lockBadge" style="display:none;">🔒 gesperrt</span>
+            </div>
+            <button class="btn" id="ovBack">Zurück</button>
+          </div>
+          <div style="padding: 14px 14px;">
+            <div id="ovHint" class="muted" style="margin-bottom:10px;"></div>
+            <ul id="ovList" class="list"></ul>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      const ovIcon = overlay.querySelector("#ovIcon");
+      const ovName = overlay.querySelector("#ovName");
+      const ovLock = overlay.querySelector("#ovLock");
+      const ovBack = overlay.querySelector("#ovBack");
+      const ovHint = overlay.querySelector("#ovHint");
+      const ovList = overlay.querySelector("#ovList");
+      ovBack.addEventListener("click", ()=> closeFolder());
 
-        const ic = document.createElement("div");
-        ic.className = "icon";
-        ic.textContent = folder.icon || "📁";
+      // --- Modal (Unlock) ---
+      const modal = document.createElement("div");
+      modal.className = "modalWrap";
+      modal.innerHTML = `
+        <div class="modalCard">
+          <div class="modalHead">Ordner entsperren</div>
+          <div class="modalBody">
+            <div class="muted" id="mInfo">Bitte Code eingeben.</div>
+            <div style="height:10px"></div>
+            <input id="mPin" class="field" type="password" placeholder="Code" autocomplete="current-password" />
+            <div class="rowFlex" style="margin-top:10px;">
+              <label class="chk"><input id="mRemember" type="checkbox" checked> <span class="muted">Merken (15 Min)</span></label>
+            </div>
+            <div class="errText" id="mErr"></div>
+          </div>
+          <div class="modalFoot">
+            <button class="btn" id="mCancel">Abbrechen</button>
+            <button class="btn" id="mOk">Entsperren</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      const mInfo = modal.querySelector("#mInfo");
+      const mPin = modal.querySelector("#mPin");
+      const mRemember = modal.querySelector("#mRemember");
+      const mErr = modal.querySelector("#mErr");
+      const mCancel = modal.querySelector("#mCancel");
+      const mOk = modal.querySelector("#mOk");
 
-        const title = document.createElement("div");
-        title.className = "title";
-        title.textContent = (folder.name || "Ordner") + " (" + String(count || 0) + ")";
+      function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 30); }
+      function hideModal(){ modal.style.display = "none"; mPin.value = ""; mErr.textContent = ""; }
+      mCancel.addEventListener("click", hideModal);
 
-        li.appendChild(ic);
-        li.appendChild(title);
-        return li;
+      // --- Token storage (rememberable without storing the code) ---
+      function tokenKey(folderId){ return "home_unlock_token:" + String(folderId || ""); }
+
+      function b64urlToUtf8(b64url){
+        b64url = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
+        const pad = b64url.length % 4 ? "=".repeat(4 - (b64url.length % 4)) : "";
+        const b64 = b64url + pad;
+        const bin = atob(b64);
+        // utf-8 decode
+        const bytes = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
       }
 
+      function readTokenPayload(token){
+        try{
+          const p = String(token || "").split(".")[0] || "";
+          return JSON.parse(b64urlToUtf8(p));
+        }catch{ return null; }
+      }
+
+      function getStoredToken(folderId){
+        try{
+          const raw = localStorage.getItem(tokenKey(folderId));
+          if (!raw) return "";
+          const obj = JSON.parse(raw);
+          if (!obj?.token) return "";
+          const exp = Number(obj.exp || 0);
+          const now = Math.floor(Date.now()/1000);
+          if (exp && exp <= now + 5){ localStorage.removeItem(tokenKey(folderId)); return ""; }
+          return String(obj.token);
+        }catch{ return ""; }
+      }
+
+      function storeToken(folderId, token){
+        const payload = readTokenPayload(token);
+        const exp = Number(payload?.exp || 0);
+        localStorage.setItem(tokenKey(folderId), JSON.stringify({ token, exp }));
+      }
+
+      function clearToken(folderId){
+        localStorage.removeItem(tokenKey(folderId));
+      }
+
+      // --- API ---
       async function apiGetLayout(){
         const r = await fetch("/api/home/layout", { credentials:"include" });
         const j = await r.json().catch(()=>null);
@@ -258,9 +440,22 @@
         return j;
       }
 
-      async function apiGetFolderItems(folderId){
+      async function apiUnlockFolder(folderId, pin){
+        const r = await fetch("/api/home/folder/unlock", {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type":"application/json" },
+          body: JSON.stringify({ folderId, pin })
+        });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("unlock_http_" + r.status));
+        return String(j.token || "");
+      }
+
+      async function apiGetFolderItems(folderId, token){
         const u = new URL(location.origin + "/api/home/folder/items");
         u.searchParams.set("folderId", folderId);
+        if (token) u.searchParams.set("token", token);
         const r = await fetch(u.toString(), { credentials:"include" });
         const j = await r.json().catch(()=>null);
         if (!r.ok || !j?.ok) throw new Error(j?.error || ("items_http_" + r.status));
@@ -285,7 +480,28 @@
         return uniq([...DEFAULT_UNASSIGNED, ...rest]);
       }
 
-      function renderFromLayout(layout, folderItemsMap){
+      // --- UI rendering ---
+      function folderCard(folder, count, isLocked){
+        const li = document.createElement("li");
+        li.className = "row click";
+
+        const ic = document.createElement("div");
+        ic.className = "icon";
+        ic.textContent = folder.icon || "📁";
+
+        const title = document.createElement("div");
+        title.className = "title";
+        const lockTxt = isLocked ? " 🔒" : "";
+        title.textContent = (folder.name || "Ordner") + " (" + String(count || 0) + ")" + lockTxt;
+
+        li.appendChild(ic);
+        li.appendChild(title);
+
+        li.addEventListener("click", ()=> openFolder(folder, isLocked));
+        return li;
+      }
+
+      function renderFromLayout(layout, locks, counts, folderItemsMap){
         foldersUl.innerHTML = "";
         const folders = Array.isArray(layout?.folders) ? layout.folders : [];
         if (!folders.length){
@@ -294,8 +510,9 @@
         } else {
           foldersSection.style.display = "block";
           for (const f of folders){
-            const count = (folderItemsMap?.[f.id]?.length || 0);
-            foldersUl.appendChild(folderCard(f, count));
+            const count = Number(counts?.[f.id] || 0);
+            const isLocked = !!locks?.[f.id];
+            foldersUl.appendChild(folderCard(f, count, isLocked));
           }
         }
 
@@ -332,27 +549,148 @@
         }
       }
 
+      // --- Folder open/close ---
+      let currentFolder = null;
+      let currentLayoutData = null;
+
+      function showFolderOverlay(){ overlay.style.display = "block"; }
+      function hideFolderOverlay(){ overlay.style.display = "none"; }
+
+      function closeFolder(){
+        currentFolder = null;
+        hideFolderOverlay();
+      }
+
+      async function openFolder(folder, isLocked){
+        currentFolder = folder;
+        ovIcon.textContent = folder.icon || "📁";
+        ovName.textContent = folder.name || "Ordner";
+        ovLock.style.display = isLocked ? "inline-flex" : "none";
+        ovHint.textContent = "";
+        ovList.innerHTML = "";
+        showFolderOverlay();
+
+        // Try to load items (requires token if locked)
+        await loadFolderItems(folder.id, isLocked);
+      }
+
+      async function loadFolderItems(folderId, isLocked){
+        const fallback = (currentLayoutData?.folderItems?.[folderId] || []).slice(0);
+
+        // Render something immediately (nice UX)
+        if (fallback.length){
+          ovHint.textContent = "Apps im Ordner:";
+          ovList.innerHTML = "";
+          for (const id of fallback){
+            const el = appCard(id);
+            if (el) ovList.appendChild(el);
+          }
+        } else {
+          ovHint.textContent = "Keine Apps im Ordner.";
+        }
+
+        if (!isLocked) return;
+
+        // locked: need token
+        let token = getStoredToken(folderId);
+
+        // If no token, ask for code
+        if (!token){
+          await unlockFlow(folderId);
+          token = getStoredToken(folderId);
+          if (!token) return; // aborted
+        }
+
+        // Verify token by calling API (this also ensures DB enforcement)
+        try{
+          const items = await apiGetFolderItems(folderId, token);
+          ovHint.textContent = "Apps im Ordner:";
+          ovList.innerHTML = "";
+          for (const id of items){
+            const el = appCard(id);
+            if (el) ovList.appendChild(el);
+          }
+        }catch(err){
+          // token invalid/expired -> clear and ask again
+          clearToken(folderId);
+          await unlockFlow(folderId, true);
+          token = getStoredToken(folderId);
+          if (!token) return;
+
+          try{
+            const items2 = await apiGetFolderItems(folderId, token);
+            ovHint.textContent = "Apps im Ordner:";
+            ovList.innerHTML = "";
+            for (const id of items2){
+              const el = appCard(id);
+              if (el) ovList.appendChild(el);
+            }
+          }catch(_){
+            ovHint.textContent = "Gesperrt.";
+          }
+        }
+      }
+
+      function unlockFlow(folderId, retry=false){
+        return new Promise((resolve)=>{
+          mInfo.textContent = retry ? "Code erneut eingeben (Token abgelaufen/ungültig)." : "Bitte Code eingeben.";
+          mErr.textContent = "";
+          mPin.value = "";
+          mRemember.checked = true;
+          showModal();
+
+          async function onOk(){
+            mErr.textContent = "";
+            const pin = String(mPin.value || "").trim();
+            if (!pin) { mErr.textContent = "Code fehlt."; return; }
+            try{
+              const token = await apiUnlockFolder(folderId, pin);
+              if (mRemember.checked) storeToken(folderId, token);
+              hideModal();
+              cleanup();
+              resolve();
+            }catch(e){
+              const msg = String(e && e.message ? e.message : e || "");
+              if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
+              else if (msg.includes("admin_code_not_set")) mErr.textContent = "Admin-Code ist im Worker nicht gesetzt.";
+              else mErr.textContent = "Falscher Code.";
+            }
+          }
+
+          function onKey(e){
+            if (e.key === "Enter") onOk();
+            if (e.key === "Escape") { hideModal(); cleanup(); resolve(); }
+          }
+
+          function cleanup(){
+            mOk.removeEventListener("click", onOk);
+            mPin.removeEventListener("keydown", onKey);
+            modal.removeEventListener("click", onBg);
+          }
+
+          function onBg(e){
+            if (e.target === modal){ hideModal(); cleanup(); resolve(); }
+          }
+
+          mOk.addEventListener("click", onOk);
+          mPin.addEventListener("keydown", onKey);
+          modal.addEventListener("click", onBg);
+        });
+      }
+
       async function init(){
         setStatus("loading");
         try{
           const data = await apiGetLayout();
+          currentLayoutData = data;
           const layout = data.layout || { folders:[], unassigned:[...DEFAULT_UNASSIGNED] };
-
-          const folderItemsMap = {};
-          const folders = Array.isArray(layout.folders) ? layout.folders : [];
-          await Promise.all(folders.map(async (f)=>{
-            try{
-              const items = await apiGetFolderItems(f.id);
-              folderItemsMap[f.id] = Array.isArray(items) ? items : [];
-            }catch(_){
-              folderItemsMap[f.id] = [];
-            }
-          }));
-
-          renderFromLayout(layout, folderItemsMap);
+          const locks = data.locks || {};
+          const counts = data.counts || {};
+          const folderItemsMap = data.folderItems || {}; // NEW (from worker)
+          renderFromLayout(layout, locks, counts, folderItemsMap);
           setStatus("loaded");
         }catch(err){
-          renderFromLayout({ folders:[], unassigned: allKnownAppIds() }, {});
+          renderFromLayout({ folders:[], unassigned: allKnownAppIds() }, {}, {}, {});
           setStatus("error");
         }
       }
