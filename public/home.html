@@ -177,11 +177,13 @@
       </div>
     </div>
 
-    <h2 style="margin-top:0;">Ordner</h2>
-    <ul id="folders"></ul>
-    <div id="foldersEmpty" class="empty" style="display:none;">Keine Ordner.</div>
+    <!-- Ordner-Sektion bleibt drin, aber wird automatisch ausgeblendet, wenn keine Ordner existieren -->
+    <div id="foldersSection" style="display:none;">
+      <h2 style="margin-top:0;">Ordner</h2>
+      <ul id="folders"></ul>
+    </div>
 
-    <h2>Apps</h2>
+    <h2 id="appsHeading" style="margin-top:0;">Apps</h2>
     <ul id="apps"></ul>
     <div id="appsEmpty" class="empty" style="display:none;">Keine Apps.</div>
   </div>
@@ -189,12 +191,9 @@
   <script>
     (function(){
       // Anzeige-only: kein Bearbeiten, keine Buttons, kein Löschen.
-      // Holt DEIN bestehendes Layout:
-      //   GET /api/home/layout  -> { ok:true, layout:{ folders:[{id,name,icon}], unassigned:[appId...] }, locks:{} }
-      // Folder-Inhalte:
-      //   GET /api/home/folder/items?folderId=... -> { ok:true, items:[appId...] }
+      // Layout:
+      //   GET /api/home/layout  -> { ok:true, layout:{ folders:[{id,name,icon}], unassigned:[appId...] } }
 
-      /* ===== Registry (aus deinem Home) ===== */
       const APP_REGISTRY = {
         settings:  { id:"settings",  name:"Einstellungen",  icon:"⚙️", href:"/settings.html" },
         vokabeln:  { id:"vokabeln",  name:"Vokabeln",       icon:"🗂️", href:"/vokabeln.html" },
@@ -207,7 +206,6 @@
       };
       const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
 
-      /* ===== Status ===== */
       const dot = document.getElementById("dot");
       const statusText = document.getElementById("statusText");
       function setStatus(mode){
@@ -226,19 +224,23 @@
         }
       }
 
-      /* ===== UI ===== */
+      const foldersSection = document.getElementById("foldersSection");
       const foldersUl = document.getElementById("folders");
       const appsUl = document.getElementById("apps");
-      const foldersEmpty = document.getElementById("foldersEmpty");
       const appsEmpty = document.getElementById("appsEmpty");
+      const appsHeading = document.getElementById("appsHeading");
 
       function normHref(href){
         href = String(href || "/");
         if (href.startsWith("http://") || href.startsWith("https://")) return href;
-        // absolute
         if (href.startsWith("/")) return href;
-        // relative -> mache safe absolut
         return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
+      }
+
+      function removeLeadingSlash(path){
+        // UI: "/packliste.html" -> "packliste.html"
+        path = String(path || "");
+        return path.replace(/^\/+/, "");
       }
 
       function appCard(appId){
@@ -264,7 +266,7 @@
         meta.className = "meta";
         const tag = document.createElement("span");
         tag.className = "tag";
-        tag.textContent = normHref(app.href);
+        tag.textContent = removeLeadingSlash(normHref(app.href));
         meta.appendChild(tag);
 
         main.appendChild(title);
@@ -305,7 +307,6 @@
         return li;
       }
 
-      /* ===== API ===== */
       async function apiGetLayout(){
         const r = await fetch("/api/home/layout", { credentials:"include" });
         const j = await r.json().catch(()=>null);
@@ -335,27 +336,28 @@
       }
 
       function allKnownAppIds(){
-        // Reihenfolge: DEFAULT_UNASSIGNED dann Rest
         const ids = Object.keys(APP_REGISTRY);
         const rest = ids.filter(x=>!DEFAULT_UNASSIGNED.includes(x)).sort();
         return uniq([...DEFAULT_UNASSIGNED, ...rest]);
       }
 
       function renderFromLayout(layout, folderItemsMap){
-        // Ordner
+        // Ordner: Wenn keine Ordner existieren -> komplett ausblenden.
         foldersUl.innerHTML = "";
         const folders = Array.isArray(layout?.folders) ? layout.folders : [];
         if (!folders.length){
-          foldersEmpty.style.display = "block";
+          foldersSection.style.display = "none";
+          appsHeading.style.marginTop = "0";
         } else {
-          foldersEmpty.style.display = "none";
+          foldersSection.style.display = "block";
+          appsHeading.style.marginTop = "";
           for (const f of folders){
             const count = (folderItemsMap?.[f.id]?.length || 0);
             foldersUl.appendChild(folderCard(f, count));
           }
         }
 
-        // Apps (unassigned + alles was sonst nirgends ist)
+        // Apps
         appsUl.innerHTML = "";
         const inFolders = new Set();
         for (const fid in (folderItemsMap||{})){
@@ -365,15 +367,12 @@
         const unassigned = Array.isArray(layout?.unassigned) ? layout.unassigned.map(String) : [];
         const baseOrder = allKnownAppIds();
 
-        // Alles was NICHT in folder ist:
         const visible = [];
-        // zuerst layout.unassigned in layout-Reihenfolge
         for (const id of unassigned){
           if (!APP_REGISTRY[id]) continue;
-          if (inFolders.has(id)) continue; // falls doppelt
+          if (inFolders.has(id)) continue;
           visible.push(id);
         }
-        // dann rest in default order, was noch nicht gezeigt wurde und nicht im folder ist
         for (const id of baseOrder){
           if (!APP_REGISTRY[id]) continue;
           if (inFolders.has(id)) continue;
@@ -399,7 +398,6 @@
           const data = await apiGetLayout();
           const layout = data.layout || { folders:[], unassigned:[...DEFAULT_UNASSIGNED] };
 
-          // hole Items pro Folder (damit Count stimmt)
           const folderItemsMap = {};
           const folders = Array.isArray(layout.folders) ? layout.folders : [];
           await Promise.all(folders.map(async (f)=>{
@@ -414,7 +412,6 @@
           renderFromLayout(layout, folderItemsMap);
           setStatus("loaded");
         }catch(err){
-          // Fallback: zeige einfach alles aus Registry (ohne Ordner)
           renderFromLayout({ folders:[], unassigned: allKnownAppIds() }, {});
           setStatus("error");
         }
