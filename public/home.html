@@ -13,59 +13,52 @@
   <meta name="color-scheme" content="dark" />
 
   <style>
-    :root {
-      --bg0: #05080f;
-      --bg1: #070c16;
-      --panel: rgba(17, 24, 39, 0.72);
-      --panel2: rgba(20, 28, 46, 0.78);
-      --border: rgba(255,255,255,0.10);
-      --text: rgba(255,255,255,0.92);
-      --muted: rgba(255,255,255,0.62);
-      --accent: #3ee38c;
-      --accent2: #2fce7a;
-      --shadow: 0 18px 60px rgba(0,0,0,0.55);
-      --radius: 18px;
+    :root{
+      --bg0:#05080f; --bg1:#070c16;
+      --panel:rgba(17,24,39,.72);
+      --panel2:rgba(20,28,46,.78);
+      --border:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.62);
+      --shadow:0 18px 60px rgba(0,0,0,.55);
+      --radius:18px;
     }
 
-    html, body{
-      min-height: 100vh;
-      overflow-x: hidden;
-      overflow-y: auto;
-      color-scheme: dark;
-    }
+    html,body{min-height:100vh; overflow-x:hidden; overflow-y:auto; color-scheme:dark;}
     body{
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      color: var(--text);
-      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
-                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
-                  linear-gradient(180deg, var(--bg0), var(--bg1));
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      margin:0;
+      font-family:"Segoe UI", Tahoma, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
+        radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
       padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 28px);
-      box-sizing: border-box;
+      box-sizing:border-box;
     }
     body::before{
       content:"";
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: env(safe-area-inset-top);
-      background: #070c16;
-      z-index: 999999;
+      position:fixed;
+      top:0;left:0;right:0;
+      height:env(safe-area-inset-top);
+      background:#070c16;
+      z-index:999999;
       pointer-events:none;
     }
 
     .container{
-      background: var(--panel);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      padding: 26px 26px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      max-width: 1100px;
-      width: 100%;
+      background:var(--panel);
+      border:1px solid var(--border);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      padding:26px 26px;
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      max-width:1100px;
+      width:100%;
     }
 
     .topbar{
@@ -73,199 +66,101 @@
       align-items:center;
       justify-content:space-between;
       gap:12px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
+      margin-bottom:14px;
+      flex-wrap:wrap;
     }
-    h1{ margin:0; font-size: 2rem; letter-spacing: .2px; }
-    h2{ margin: 18px 0 10px; font-size: 1.45rem; letter-spacing: .2px; }
+    h1{margin:0; font-size:2rem; letter-spacing:.2px;}
+    h2{margin:18px 0 10px; font-size:1.45rem; letter-spacing:.2px;}
 
-    .btn{
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color: #03130a;
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 12px;
-      padding: 10px 16px;
-      font-size: 0.92rem;
-      font-weight: 800;
-      cursor: pointer;
-      transition: transform 0.15s ease, filter 0.2s ease;
-      box-shadow: 0 10px 24px rgba(62,227,140,0.14);
-      user-select: none;
-      white-space: nowrap;
-    }
-    .btn:hover{ filter: brightness(1.03); }
-    .btn:active{ transform: translateY(1px); }
-    .btn-small{ padding: 8px 14px; font-size: .9rem; }
-    .btn-secondary{
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      border: 1px solid var(--border);
-      box-shadow: none;
-    }
-    .btn-secondary:hover{ filter: brightness(1.06); }
-
-    .sync-pill{
+    .status-pill{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.06);
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.10);
+      background:rgba(255,255,255,0.06);
       user-select:none;
-      white-space: nowrap;
+      white-space:nowrap;
+    }
+    .dot{
+      width:9px; height:9px; border-radius:999px;
+      background:rgba(255,255,255,0.35);
+      box-shadow:0 0 12px rgba(255,255,255,0.12);
+      flex:0 0 auto;
+    }
+    .status-text{
+      color:rgba(255,255,255,0.80);
+      font-weight:900;
+      font-size:12px;
     }
 
-    .status{
-      margin: 6px 0 14px;
-      color: var(--muted);
-      font-weight: 900;
-    }
-
-    ul{ list-style:none; padding:0; margin:0; }
+    ul{list-style:none; padding:0; margin:0;}
     .row{
       display:flex;
       align-items:center;
-      background: var(--panel2);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
+      background:var(--panel2);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px 14px;
+      margin-bottom:10px;
       gap:12px;
       user-select:none;
-      flex-wrap: wrap;
-      cursor: pointer;
-      transition: transform 0.12s ease, filter 0.2s ease;
+      cursor:pointer;
+      transition:transform .12s ease, filter .2s ease;
     }
-    .row:hover{ filter: brightness(1.03); }
-    .row:active{ transform: translateY(1px); }
+    .row:hover{filter:brightness(1.03);}
+    .row:active{transform:translateY(1px);}
 
     .icon{
-      width:44px;
-      height:44px;
+      width:44px; height:44px;
       border-radius:14px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(0,0,0,0.22);
-      font-size: 20px;
-      flex: 0 0 auto;
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(0,0,0,0.22);
+      font-size:20px;
+      flex:0 0 auto;
     }
 
     .main{
-      flex: 1 1 320px;
-      min-width: 220px;
+      flex:1 1 auto;
+      min-width:220px;
       display:flex;
-      flex-direction: column;
-      gap: 6px;
+      flex-direction:column;
+      gap:6px;
     }
     .title{
-      font-weight: 900;
-      font-size: 1.05rem;
+      font-weight:900;
+      font-size:1.05rem;
       overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
     .meta{
       display:flex;
       gap:8px;
-      flex-wrap: wrap;
-      color: rgba(255,255,255,0.82);
-      font-weight: 800;
-      font-size: 0.86rem;
+      flex-wrap:wrap;
+      color:rgba(255,255,255,0.82);
+      font-weight:800;
+      font-size:0.86rem;
     }
     .tag{
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      border-radius: 999px;
-      padding: 6px 10px;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .actions{
-      display:flex;
-      gap:8px;
-      flex-wrap: wrap;
-      margin-left: auto;
-      align-items: center;
-    }
-
-    /* Popup */
-    .popup-overlay{
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.5);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index: 1000;
-      overscroll-behavior: contain;
-      padding: 12px;
-    }
-    .popup-overlay.active{ display:flex; }
-    body.modal-open, html.modal-open{ overflow:hidden; }
-
-    .popup{
-      position: relative;
-      background: rgba(15, 20, 34, 0.92);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 20px 22px;
-      border-radius: 16px;
-      box-shadow: 0 18px 60px rgba(0,0,0,0.55);
-      min-width: 300px;
-      max-width: min(720px, 92vw);
-      max-height: 86vh;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-    .popup-close{
-      position:absolute;
-      top:10px;
-      right:12px;
-      width:36px;
-      height:36px;
-      border-radius:12px;
       border:1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.85);
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:18px;
-      user-select:none;
-    }
-    .popup h3{ margin:0 0 12px; font-weight: 900; }
-    .popup p{ margin:0 0 10px; color: var(--text); font-weight: 900; }
-
-    input[type="text"]{
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(0,0,0,0.25);
-      color: var(--text);
-      box-sizing: border-box;
-      font-size: 16px;
-      outline: none;
-    }
-    input::placeholder{ color: rgba(235,244,255,0.55); }
-
-    .popup-buttons{
-      text-align:right;
-      display:flex;
-      justify-content:flex-end;
-      gap:8px;
-      flex-wrap: wrap;
-      margin-top: 10px;
+      background:rgba(255,255,255,0.06);
+      border-radius:999px;
+      padding:6px 10px;
+      white-space:nowrap;
+      font-variant-numeric:tabular-nums;
     }
 
-    @media (max-width: 640px){
-      .container{ padding: 20px 16px; }
+    .empty{
+      margin-top:10px;
+      color:var(--muted);
+      font-weight:900;
+    }
+
+    @media (max-width:640px){
+      .container{padding:20px 16px;}
     }
   </style>
 </head>
@@ -273,346 +168,152 @@
 <body>
   <div class="container">
     <div class="topbar">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <h1>Home</h1>
-        <div class="sync-pill" id="sync-pill" title="Status">
-          <span id="sync-dot" style="width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,0.35);box-shadow:0 0 12px rgba(255,255,255,0.12);"></span>
-          <span id="sync-text" style="color:rgba(255,255,255,0.80);font-weight:900;font-size:12px;">Lade…</span>
-        </div>
-      </div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button id="add-folder" class="btn btn-small btn-secondary" type="button">+ Ordner</button>
-        <button id="add-app" class="btn btn-small" type="button">+ App</button>
+      <h1>Home</h1>
+      <div class="status-pill" title="Status">
+        <span id="dot" class="dot"></span>
+        <span id="statusText" class="status-text">Laden</span>
       </div>
     </div>
 
-    <h2 style="margin-top:0;">Ordner</h2>
-    <div class="status" id="folders-status"></div>
-    <ul id="folders-list"></ul>
-
-    <h2>Apps</h2>
-    <div class="status" id="apps-status"></div>
-    <ul id="apps-list"></ul>
-  </div>
-
-  <!-- Popup (nur zum Hinzufügen) -->
-  <div id="popup-overlay" class="popup-overlay">
-    <div class="popup">
-      <button class="popup-close" type="button" id="popup-x" aria-label="Schließen">✕</button>
-      <h3 id="popup-title">Popup</h3>
-      <p id="popup-message"></p>
-      <div id="popup-form"></div>
-      <div class="popup-buttons">
-        <button id="popup-cancel" class="btn btn-secondary" type="button">Abbrechen</button>
-        <button id="popup-ok" class="btn" type="button">OK</button>
-      </div>
-    </div>
+    <h2 style="margin-top:0;">Apps</h2>
+    <ul id="apps"></ul>
+    <div id="empty" class="empty" style="display:none;">Keine Apps.</div>
   </div>
 
   <script>
     (function(){
-      // Immer sichtbar: localStorage -> dann optional Cloud (wenn Endpoint existiert)
-      const LS_KEY = "homeData_v1";
+      // Anzeige-only: keine Buttons, kein Bearbeiten, kein Löschen.
+      // Status:
+      //  - Laden (grauer Punkt)
+      //  - Geladen (gruener Punkt)
+      //  - Fehler beim Laden (roter Punkt)
+
+      const LS_KEY = "homeApps_v1";
       const API_URL = "/api/home/data";
 
-      const DEFAULT_DATA = {
-        folders: [],
+      const DEFAULT = {
         apps: [
-          { id: "a_todo", name: "To-Do", icon: "✅", href: "/todo" }
-        ],
-        settings: { useCloud: true }
+          { id:"a_todo", name:"To-Do", icon:"✅", href:"/todo" }
+        ]
       };
 
       let data = null;
 
-      const syncDot = document.getElementById("sync-dot");
-      const syncText = document.getElementById("sync-text");
-      function setSync(state, text){
-        syncDot.style.background = state === "ok" ? "rgba(62,227,140,0.9)"
-                           : state === "bad" ? "rgba(255,77,109,0.9)"
-                           : "rgba(255,255,255,0.75)";
-        syncDot.style.boxShadow = state === "ok" ? "0 0 14px rgba(62,227,140,0.55)"
-                           : state === "bad" ? "0 0 14px rgba(255,77,109,0.55)"
-                           : "0 0 14px rgba(255,255,255,0.35)";
-        syncText.textContent = text;
+      const dot = document.getElementById("dot");
+      const statusText = document.getElementById("statusText");
+      const appsUl = document.getElementById("apps");
+      const empty = document.getElementById("empty");
+
+      function setStatus(mode){
+        if (mode === "loading"){
+          dot.style.background = "rgba(255,255,255,0.45)";
+          dot.style.boxShadow = "0 0 12px rgba(255,255,255,0.20)";
+          statusText.textContent = "Laden";
+        } else if (mode === "loaded"){
+          dot.style.background = "rgba(62,227,140,0.95)";
+          dot.style.boxShadow = "0 0 14px rgba(62,227,140,0.55)";
+          statusText.textContent = "Geladen";
+        } else {
+          dot.style.background = "rgba(255,77,109,0.95)";
+          dot.style.boxShadow = "0 0 14px rgba(255,77,109,0.55)";
+          statusText.textContent = "Fehler beim Laden";
+        }
       }
 
       function clone(x){ return JSON.parse(JSON.stringify(x)); }
-      function safeParse(json, fallback){ try{ return JSON.parse(json); }catch(e){ return fallback; } }
-      function makeId(prefix){
-        return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+      function safeParse(j, fallback){ try{ return JSON.parse(j); }catch(e){ return fallback; } }
+
+      function normalizeApps(apps){
+        if (!Array.isArray(apps)) return [];
+        return apps.map(a=>({
+          id: String(a?.id || ""),
+          name: String(a?.name || "App"),
+          icon: String(a?.icon || "🧩"),
+          href: String(a?.href || "/")
+        }));
       }
 
-      function ensureShape(){
-        if (!data || typeof data !== "object") data = clone(DEFAULT_DATA);
-        if (!Array.isArray(data.folders)) data.folders = [];
-        if (!Array.isArray(data.apps)) data.apps = [];
-        if (!data.settings || typeof data.settings !== "object") data.settings = { useCloud: true };
-        if (typeof data.settings.useCloud !== "boolean") data.settings.useCloud = true;
-
-        data.folders = data.folders.map(f=>({
-          id: String(f.id || makeId("f")),
-          name: String(f.name || "Ordner"),
-          icon: String(f.icon || "📁"),
-          items: Array.isArray(f.items) ? f.items.map(String) : []
-        }));
-
-        data.apps = data.apps.map(a=>({
-          id: String(a.id || makeId("a")),
-          name: String(a.name || "App"),
-          icon: String(a.icon || "🧩"),
-          href: String(a.href || "/")
-        }));
+      function loadLocal(){
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) return clone(DEFAULT);
+        const obj = safeParse(raw, null);
+        if (!obj || typeof obj !== "object") return clone(DEFAULT);
+        return { apps: normalizeApps(obj.apps) };
       }
 
       function saveLocal(){
-        try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){}
+        try{ localStorage.setItem(LS_KEY, JSON.stringify({ apps: data.apps })); }catch(e){}
       }
-      async function loadLocal(){
-        const raw = localStorage.getItem(LS_KEY);
-        if (!raw) return clone(DEFAULT_DATA);
-        const obj = safeParse(raw, null);
-        return obj || clone(DEFAULT_DATA);
-      }
-
-      async function apiGet(){
-        const r = await fetch(API_URL, { credentials: "include" });
-        if (r.status === 401) throw new Error("unauthorized");
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "load_failed");
-        return j.data;
-      }
-      async function apiPut(){
-        const r = await fetch(API_URL, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data)
-        });
-        if (r.status === 401) throw new Error("unauthorized");
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "save_failed");
-      }
-
-      let saveTimer = null;
-      let saving = false;
-      let queued = false;
-
-      function scheduleSave(){
-        saveLocal();
-        if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(()=> saveNow().catch(()=>{}), 250);
-        setSync("work", "Speichere…");
-      }
-      async function saveNow(){
-        if (saving){ queued = true; return; }
-        saving = true;
-        try{
-          if (data.settings.useCloud){
-            await apiPut();
-            setSync("ok","Cloud");
-          } else {
-            setSync("ok","Lokal");
-          }
-        }catch(e){
-          data.settings.useCloud = false;
-          saveLocal();
-          setSync("bad","Lokal (Cloud Fehler)");
-        }finally{
-          saving = false;
-          if (queued){ queued = false; scheduleSave(); }
-        }
-      }
-
-      // ===== Popup (nur Add) =====
-      const popOverlay = document.getElementById("popup-overlay");
-      const popTitle = document.getElementById("popup-title");
-      const popMsg = document.getElementById("popup-message");
-      const popForm = document.getElementById("popup-form");
-      const popOk = document.getElementById("popup-ok");
-      const popCancel = document.getElementById("popup-cancel");
-      const popX = document.getElementById("popup-x");
-
-      function openModal(el){
-        el.classList.add("active");
-        document.body.classList.add("modal-open");
-        document.documentElement.classList.add("modal-open");
-      }
-      function closeModal(el){
-        el.classList.remove("active");
-        document.body.classList.remove("modal-open");
-        document.documentElement.classList.remove("modal-open");
-      }
-
-      function promptForm(title, message, fields){
-        popTitle.textContent = title || "Eingabe";
-        popMsg.textContent = message || "";
-        popForm.innerHTML = "";
-
-        fields.forEach(f=>{
-          const inp = document.createElement("input");
-          inp.type = "text";
-          inp.placeholder = f.placeholder || "";
-          inp.value = f.value || "";
-          inp.setAttribute("data-key", f.key);
-          inp.autocomplete = "off";
-          popForm.appendChild(inp);
-        });
-
-        openModal(popOverlay);
-
-        return new Promise((resolve)=>{
-          const onOk = ()=>{
-            const inputs = Array.from(popForm.querySelectorAll("input"));
-            const out = {};
-            inputs.forEach(i=> out[i.getAttribute("data-key")] = i.value);
-            cleanup();
-            resolve({ ok:true, values: out });
-          };
-          const onCancel = ()=>{ cleanup(); resolve({ ok:false, values:{} }); };
-
-          function cleanup(){
-            popOk.removeEventListener("click", onOk);
-            popCancel.removeEventListener("click", onCancel);
-            popX.removeEventListener("click", onCancel);
-            popOverlay.removeEventListener("click", onOverlay);
-            closeModal(popOverlay);
-          }
-          function onOverlay(e){ if (e.target === popOverlay) onCancel(); }
-
-          popOk.addEventListener("click", onOk);
-          popCancel.addEventListener("click", onCancel);
-          popX.addEventListener("click", onCancel);
-          popOverlay.addEventListener("click", onOverlay);
-
-          const first = popForm.querySelector("input");
-          if (first) setTimeout(()=> first.focus(), 20);
-        });
-      }
-
-      // ===== Render (ohne Löschen) =====
-      const foldersList = document.getElementById("folders-list");
-      const appsList = document.getElementById("apps-list");
-      const foldersStatus = document.getElementById("folders-status");
-      const appsStatus = document.getElementById("apps-status");
 
       function render(){
-        ensureShape();
+        appsUl.innerHTML = "";
+        const apps = normalizeApps(data?.apps);
+        data.apps = apps;
 
-        // Ordner
-        foldersList.innerHTML = "";
-        if (!data.folders.length){
-          foldersStatus.textContent = "Keine Ordner.";
-        } else {
-          foldersStatus.textContent = data.folders.length + " Ordner";
+        if (!apps.length){
+          empty.style.display = "block";
+          return;
         }
+        empty.style.display = "none";
 
-        data.folders.forEach(folder=>{
-          const li = document.createElement("li");
-          li.className = "row";
-
-          const ic = document.createElement("div");
-          ic.className = "icon";
-          ic.textContent = folder.icon || "📁";
-
-          const main = document.createElement("div");
-          main.className = "main";
-          main.innerHTML = '<div class="title"></div><div class="meta"></div>';
-          main.querySelector(".title").textContent = folder.name;
-          const count = (folder.items||[]).length;
-          main.querySelector(".meta").innerHTML = '<span class="tag">' + count + ' Apps</span>';
-
-          // Kein Löschen / keine Aktionen
-          li.appendChild(ic);
-          li.appendChild(main);
-          foldersList.appendChild(li);
-        });
-
-        // Apps
-        appsList.innerHTML = "";
-        if (!data.apps.length){
-          appsStatus.textContent = "Keine Apps.";
-        } else {
-          appsStatus.textContent = data.apps.length + " Apps";
-        }
-
-        data.apps.forEach(app=>{
+        apps.forEach(app=>{
           const li = document.createElement("li");
           li.className = "row";
           li.addEventListener("click", ()=> location.href = app.href);
 
           const ic = document.createElement("div");
           ic.className = "icon";
-          ic.textContent = app.icon || "🧩";
+          ic.textContent = app.icon;
 
           const main = document.createElement("div");
           main.className = "main";
-          main.innerHTML = '<div class="title"></div><div class="meta"></div>';
-          main.querySelector(".title").textContent = app.name;
-          main.querySelector(".meta").innerHTML = '<span class="tag">' + (app.href || "/") + '</span>';
+
+          const title = document.createElement("div");
+          title.className = "title";
+          title.textContent = app.name;
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = app.href;
+          meta.appendChild(tag);
+
+          main.appendChild(title);
+          main.appendChild(meta);
 
           li.appendChild(ic);
           li.appendChild(main);
-          appsList.appendChild(li);
+          appsUl.appendChild(li);
         });
       }
 
-      // Buttons
-      document.getElementById("add-folder").addEventListener("click", async ()=>{
-        const res = await promptForm("Neuer Ordner", "Ordner erstellen:", [
-          { key:"name", placeholder:"Name (z.B. Schule)", value:"" },
-          { key:"icon", placeholder:"Icon (z.B. 📚)", value:"📁" }
-        ]);
-        if (!res.ok) return;
-        const name = (res.values.name||"").trim();
-        const icon = (res.values.icon||"").trim() || "📁";
-        if (!name) return;
-
-        data.folders.unshift({ id: makeId("f"), name, icon, items: [] });
-        scheduleSave();
-        render();
-      });
-
-      document.getElementById("add-app").addEventListener("click", async ()=>{
-        const res = await promptForm("Neue App", "App hinzufügen:", [
-          { key:"name", placeholder:"Name (z.B. Vokabeln)", value:"" },
-          { key:"icon", placeholder:"Icon (z.B. 🧠)", value:"🧩" },
-          { key:"href", placeholder:"Link (z.B. /todo)", value:"/" }
-        ]);
-        if (!res.ok) return;
-        const name = (res.values.name||"").trim();
-        const icon = (res.values.icon||"").trim() || "🧩";
-        const href = (res.values.href||"").trim() || "/";
-        if (!name) return;
-
-        data.apps.unshift({ id: makeId("a"), name, icon, href });
-        scheduleSave();
-        render();
-      });
+      async function cloudGet(){
+        const r = await fetch(API_URL, { credentials: "include" });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j || j.ok !== true) throw new Error(j?.error || "load_failed");
+        const payload = j.data || {};
+        return { apps: normalizeApps(payload.apps) };
+      }
 
       async function init(){
-        setSync("work","Lade…");
+        setStatus("loading");
 
-        // Lokal zuerst -> immer sichtbar
-        data = await loadLocal();
-        ensureShape();
+        // Local sofort -> damit du IMMER was siehst
+        data = loadLocal();
         render();
-        setSync("ok","Lokal");
 
-        // Dann Cloud versuchen (wenn Endpoint existiert)
+        // Cloud versuchen
         try{
-          if (data.settings.useCloud){
-            const cloud = await apiGet();
-            if (cloud){
-              data = cloud;
-              ensureShape();
-              saveLocal();
-              render();
-              setSync("ok","Cloud");
-            }
+          const cloud = await cloudGet();
+          if (cloud && Array.isArray(cloud.apps)){
+            data = cloud;
+            saveLocal();
+            render();
           }
+          setStatus("loaded");
         }catch(e){
-          setSync("bad","Lokal (Cloud Fehler)");
+          setStatus("error");
         }
       }
 
