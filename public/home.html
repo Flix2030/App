@@ -165,256 +165,555 @@
     <div id="appsEmpty" class="empty" style="display:none;">Keine Apps.</div>
   </div>
 
-<script>
-(() => {
-  const APP_REGISTRY = {
-    settings:  { id:"settings",  name:"Einstellungen",  icon:"⚙️", href:"/settings.html" },
-    vokabeln:  { id:"vokabeln",  name:"Vokabeln",       icon:"🗂️", href:"/vokabeln.html" },
-    lernen:    { id:"lernen",    name:"Lernen",         icon:"🧠", href:"/lernen" },
-    packliste: { id:"packliste", name:"Packliste",      icon:"🧳", href:"/packliste.html" },
-    einkauf:   { id:"einkauf",   name:"Einkaufsliste",  icon:"🛒", href:"/einkaufsliste" },
-    todo:      { id:"todo",      name:"ToDo",           icon:"✅", href:"/todo.html" },
-    misterx:   { id:"misterx",   name:"MisterX",        icon:"❌", href:"/MisterX.html" },
-    webcam:    { id:"webcam",    name:"Webcam",         icon:"📷", href:"/webcam-live" }
-  };
-  const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
+  <script>
+    (function(){
 
-  const FOLDER = { id:"f_5e9d0745127ad6dd", name:"Ordner", icon:"📁" };
+      const APP_REGISTRY = {
+        settings:  { id:"settings",  name:"Einstellungen",  icon:"⚙️", href:"/settings.html" },
+        vokabeln:  { id:"vokabeln",  name:"Vokabeln",       icon:"🗂️", href:"/vokabeln.html" },
+        lernen:    { id:"lernen",    name:"Lernen",         icon:"🧠", href:"/lernen" },
+        packliste: { id:"packliste", name:"Packliste",      icon:"🧳", href:"/packliste.html" },
+        einkauf:   { id:"einkauf",   name:"Einkaufsliste",  icon:"🛒", href:"/einkaufsliste" },
+        todo:      { id:"todo",      name:"ToDo",           icon:"✅", href:"/todo.html" },
+        misterx:   { id:"misterx",   name:"MisterX",        icon:"❌", href:"/MisterX.html" },
+        webcam:    { id:"webcam",    name:"Webcam",         icon:"📷", href:"/webcam-live" }
+      };
+      const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
 
-  const dot = document.getElementById("dot");
-  const statusText = document.getElementById("statusText");
-  function setStatus(mode){
-    if (mode === "loading"){
-      dot.style.background = "rgba(255,255,255,0.45)";
-      dot.style.boxShadow = "0 0 12px rgba(255,255,255,0.20)";
-      statusText.textContent = "Laden";
-    } else if (mode === "loaded"){
-      dot.style.background = "rgba(62,227,140,0.95)";
-      dot.style.boxShadow = "0 0 14px rgba(62,227,140,0.55)";
-      statusText.textContent = "Geladen";
-    } else {
-      dot.style.background = "rgba(255,77,109,0.95)";
-      dot.style.boxShadow = "0 0 14px rgba(255,77,109,0.55)";
-      statusText.textContent = "Fehler beim Laden";
-    }
-  }
+      // --- small CSS for overlay + modal (no alerts) ---
+      const style = document.createElement("style");
+      style.textContent = `
+        .overlayWrap{
+          position: fixed; inset: 0; display: none;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          z-index: 9999;
+          padding: 18px;
+        }
+        .overlayCard{
+          max-width: 720px;
+          margin: 0 auto;
+          background: rgba(22,24,30,0.92);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+          overflow: hidden;
+        }
+        .overlayTop{
+          display:flex; align-items:center; justify-content:space-between;
+          padding: 14px 14px;
+          border-bottom: 1px solid rgba(255,255,255,0.10);
+        }
+        .overlayTitle{
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          display:flex; gap:10px; align-items:center;
+        }
+        .btn{
+          appearance:none; border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.92);
+          padding: 8px 10px;
+          border-radius: 12px;
+          cursor:pointer;
+          font-weight: 650;
+        }
+        .btn:active{ transform: scale(0.98); }
+        .muted{ color: rgba(255,255,255,0.65); font-size: 13px; }
+        .lockBadge{
+          margin-left: 8px;
+          display:inline-flex; align-items:center; gap:6px;
+          font-size: 12px; font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          color: rgba(255,255,255,0.78);
+        }
+        .modalWrap{
+          position: fixed; inset: 0; display: none;
+          background: rgba(0,0,0,0.60);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          z-index: 10000;
+          padding: 18px;
+        }
+        .modalCard{
+          max-width: 520px;
+          margin: 12vh auto 0 auto;
+          background: rgba(22,24,30,0.94);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+          overflow: hidden;
+        }
+        .modalHead{ padding: 14px 14px; border-bottom: 1px solid rgba(255,255,255,0.10); font-weight: 800; }
+        .modalBody{ padding: 14px 14px; }
+        .field{
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          color: rgba(255,255,255,0.92);
+          padding: 10px 12px;
+          outline: none;
+          font-size: 15px;
+        }
+        .rowFlex{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
+        .modalFoot{
+          padding: 14px 14px;
+          border-top: 1px solid rgba(255,255,255,0.10);
+          display:flex; gap:10px; justify-content:flex-end; flex-wrap: wrap;
+        }
+        label.chk{ display:flex; gap:8px; align-items:center; user-select:none; cursor:pointer; }
+        label.chk input{ transform: scale(1.1); }
+        .errText{ color: rgba(255,77,109,0.95); font-size: 13px; min-height: 18px; margin-top: 8px; }
+      `;
+      document.head.appendChild(style);
 
-  const foldersSection = document.getElementById("foldersSection");
-  const foldersUl = document.getElementById("folders");
-  const appsUl = document.getElementById("apps");
-  const appsEmpty = document.getElementById("appsEmpty");
-
-  function normHref(href){
-    href = String(href || "/");
-    if (href.startsWith("http://") || href.startsWith("https://")) return href;
-    if (href.startsWith("/")) return href;
-    return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
-  }
-
-  function appCard(appId){
-    const app = APP_REGISTRY[appId];
-    if (!app) return null;
-    const li = document.createElement("li");
-    li.className = "row click";
-    li.addEventListener("click", ()=> location.href = normHref(app.href));
-    const ic = document.createElement("div");
-    ic.className = "icon";
-    ic.textContent = app.icon || "🧩";
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = app.name || appId;
-    li.appendChild(ic);
-    li.appendChild(title);
-    return li;
-  }
-
-  // ===== Folder Overlay (leer) =====
-  const style = document.createElement("style");
-  style.textContent = `
-    .overlayWrap{ position:fixed; inset:0; display:none; background:rgba(0,0,0,.55);
-      backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:9999; padding:18px; }
-    .overlayCard{ max-width:720px; margin:0 auto; background:rgba(22,24,30,.92);
-      border:1px solid rgba(255,255,255,.10); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.55); overflow:hidden; }
-    .overlayTop{ display:flex; align-items:center; justify-content:space-between; padding:14px; border-bottom:1px solid rgba(255,255,255,.10); }
-    .overlayTitle{ display:flex; align-items:center; gap:10px; font-weight:800; }
-    .btn{ appearance:none; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.08);
-      color:rgba(255,255,255,.92); padding:8px 10px; border-radius:12px; cursor:pointer; font-weight:700; }
-    .muted{ color:rgba(255,255,255,.65); font-size:13px; }
-    .modalWrap{ position:fixed; inset:0; display:none; background:rgba(0,0,0,.60);
-      backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:10000; padding:18px; }
-    .modalCard{ max-width:520px; margin:12vh auto 0; background:rgba(22,24,30,.94);
-      border:1px solid rgba(255,255,255,.10); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.55); overflow:hidden; }
-    .modalHead{ padding:14px; border-bottom:1px solid rgba(255,255,255,.10); font-weight:900; }
-    .modalBody{ padding:14px; }
-    .field{ width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06); color:rgba(255,255,255,.92); padding:10px 12px; outline:none; font-size:15px; }
-    .modalFoot{ padding:14px; border-top:1px solid rgba(255,255,255,.10); display:flex; gap:10px; justify-content:flex-end; }
-    .errText{ color:rgba(255,77,109,.95); font-size:13px; min-height:18px; margin-top:8px; }
-  `;
-  document.head.appendChild(style);
-
-  const overlay = document.createElement("div");
-  overlay.className = "overlayWrap";
-  overlay.innerHTML = `
-    <div class="overlayCard">
-      <div class="overlayTop">
-        <div class="overlayTitle">
-          <span id="ovIcon">📁</span>
-          <span id="ovName">Ordner</span>
-        </div>
-        <button class="btn" id="ovBack">Zurück</button>
-      </div>
-      <div style="padding:14px;">
-        <div class="muted" id="ovHint">Ordner ist leer.</div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  overlay.querySelector("#ovBack").addEventListener("click", ()=> overlay.style.display="none");
-  const ovIcon = overlay.querySelector("#ovIcon");
-  const ovName = overlay.querySelector("#ovName");
-
-  // ===== PIN Modal =====
-  const modal = document.createElement("div");
-  modal.className = "modalWrap";
-  modal.innerHTML = `
-    <div class="modalCard">
-      <div class="modalHead">Ordner entsperren</div>
-      <div class="modalBody">
-        <div class="muted">Bitte PIN eingeben.</div>
-        <div style="height:10px"></div>
-        <input id="mPin" class="field" type="password" placeholder="PIN" autocomplete="current-password" />
-        <div class="errText" id="mErr"></div>
-      </div>
-      <div class="modalFoot">
-        <button class="btn" id="mCancel">Abbrechen</button>
-        <button class="btn" id="mOk">Entsperren</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  const mPin = modal.querySelector("#mPin");
-  const mErr = modal.querySelector("#mErr");
-  const mCancel = modal.querySelector("#mCancel");
-  const mOk = modal.querySelector("#mOk");
-
-  function showModal(){ modal.style.display="block"; mErr.textContent=""; mPin.value=""; setTimeout(()=>mPin.focus(),30); }
-  function hideModal(){ modal.style.display="none"; mPin.value=""; mErr.textContent=""; }
-
-  async function apiUnlockFolder(folderId, pin){
-    const r = await fetch("/api/home/folder/unlock", {
-      method:"POST",
-      credentials:"include",
-      headers:{ "content-type":"application/json" },
-      body: JSON.stringify({ folderId, pin })
-    });
-    const j = await r.json().catch(()=>null);
-    if (!r.ok || !j?.ok) throw new Error(j?.error || ("unlock_http_" + r.status));
-    return true; // token ignorieren (du willst ja jedes Mal PIN)
-  }
-
-  function askPinEveryTime(folder){
-    return new Promise((resolve)=>{
-      showModal();
-
-      async function onOk(){
-        const pin = String(mPin.value||"").trim();
-        if (!pin){ mErr.textContent="PIN fehlt."; return; }
-        try{
-          await apiUnlockFolder(folder.id, pin);
-          hideModal();
-          cleanup();
-          resolve(true);
-        }catch(e){
-          const msg = String(e?.message || e || "");
-          if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
-          else mErr.textContent = "Falsche PIN.";
+      const dot = document.getElementById("dot");
+      const statusText = document.getElementById("statusText");
+      function setStatus(mode){
+        if (mode === "loading"){
+          dot.style.background = "rgba(255,255,255,0.45)";
+          dot.style.boxShadow = "0 0 12px rgba(255,255,255,0.20)";
+          statusText.textContent = "Laden";
+        } else if (mode === "loaded"){
+          dot.style.background = "rgba(62,227,140,0.95)";
+          dot.style.boxShadow = "0 0 14px rgba(62,227,140,0.55)";
+          statusText.textContent = "Geladen";
+        } else {
+          dot.style.background = "rgba(255,77,109,0.95)";
+          dot.style.boxShadow = "0 0 14px rgba(255,77,109,0.55)";
+          statusText.textContent = "Fehler beim Laden";
         }
       }
 
-      function onKey(e){
-        if (e.key==="Enter") onOk();
-        if (e.key==="Escape"){ hideModal(); cleanup(); resolve(false); }
+      const foldersSection = document.getElementById("foldersSection");
+      const foldersUl = document.getElementById("folders");
+      const appsUl = document.getElementById("apps");
+      const appsEmpty = document.getElementById("appsEmpty");
+      const appsHeading = document.getElementById("appsHeading");
+
+      function normHref(href){
+        href = String(href || "/");
+        if (href.startsWith("http://") || href.startsWith("https://")) return href;
+        if (href.startsWith("/")) return href;
+        return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
       }
-      function cleanup(){
-        mOk.removeEventListener("click", onOk);
-        mPin.removeEventListener("keydown", onKey);
-        mCancel.removeEventListener("click", onCancel);
-        modal.removeEventListener("click", onBg);
+
+      function appCard(appId){
+        const app = APP_REGISTRY[appId];
+        if (!app) return null;
+
+        const li = document.createElement("li");
+        li.className = "row click";
+        li.addEventListener("click", ()=> location.href = normHref(app.href));
+
+        const ic = document.createElement("div");
+        ic.className = "icon";
+        ic.textContent = app.icon || "🧩";
+
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = app.name || appId;
+
+        li.appendChild(ic);
+        li.appendChild(title);
+        return li;
       }
-      function onCancel(){ hideModal(); cleanup(); resolve(false); }
-      function onBg(e){ if (e.target===modal){ hideModal(); cleanup(); resolve(false); } }
 
-      mOk.addEventListener("click", onOk);
-      mPin.addEventListener("keydown", onKey);
-      mCancel.addEventListener("click", onCancel);
-      modal.addEventListener("click", onBg);
-    });
-  }
+      // --- Overlay (Folder view) ---
+      const overlay = document.createElement("div");
+      overlay.className = "overlayWrap";
+      overlay.innerHTML = `
+        <div class="overlayCard">
+          <div class="overlayTop">
+            <div class="overlayTitle">
+              <span id="ovIcon">📁</span>
+              <span id="ovName">Ordner</span>
+              <span id="ovLock" class="lockBadge" style="display:none;">🔒 gesperrt</span>
+            </div>
+            <button class="btn" id="ovBack">Zurück</button>
+          </div>
+          <div style="padding: 14px 14px;">
+            <div id="ovHint" class="muted" style="margin-bottom:10px;"></div>
+            <ul id="ovList" class="list"></ul>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      const ovIcon = overlay.querySelector("#ovIcon");
+      const ovName = overlay.querySelector("#ovName");
+      const ovLock = overlay.querySelector("#ovLock");
+      const ovBack = overlay.querySelector("#ovBack");
+      const ovHint = overlay.querySelector("#ovHint");
+      const ovList = overlay.querySelector("#ovList");
+      ovBack.addEventListener("click", ()=> closeFolder());
 
-  function renderApps(){
-    appsUl.innerHTML = "";
-    const visible = DEFAULT_UNASSIGNED.filter(id => APP_REGISTRY[id]);
-    if (!visible.length){
-      appsEmpty.style.display = "block";
-      return;
-    }
-    appsEmpty.style.display = "none";
-    for (const id of visible){
-      const el = appCard(id);
-      if (el) appsUl.appendChild(el);
-    }
-  }
+      // --- Modal (Unlock) ---
+      const modal = document.createElement("div");
+      modal.className = "modalWrap";
+      modal.innerHTML = `
+        <div class="modalCard">
+          <div class="modalHead">Ordner entsperren</div>
+          <div class="modalBody">
+            <div class="muted" id="mInfo">Bitte Code eingeben.</div>
+            <div style="height:10px"></div>
+            <div class="rowFlex" style="gap:10px; align-items:stretch;">
+              <input id="mPin" class="field" type="password" placeholder="Code" autocomplete="current-password" style="flex:1;" />
+              <button class="btn" id="mShow" type="button" title="PIN anzeigen">👁️</button>
+            </div>
+            <div class="rowFlex" style="margin-top:10px;">
+              <label class="chk"><input id="mRemember" type="checkbox" checked> <span class="muted">Merken (15 Min)</span></label>
+            </div>
+            <div class="errText" id="mErr"></div>
+          </div>
+          <div class="modalFoot">
+            <button class="btn" id="mCancel">Abbrechen</button>
+            <button class="btn" id="mOk">Entsperren</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      const mInfo = modal.querySelector("#mInfo");
+      const mPin = modal.querySelector("#mPin");
+      const mShow = modal.querySelector("#mShow");
+      const mRemember = modal.querySelector("#mRemember");
+      const mErr = modal.querySelector("#mErr");
+      const mCancel = modal.querySelector("#mCancel");
+      const mOk = modal.querySelector("#mOk");
 
-  function renderFolder(){
-    foldersSection.style.display = "block";
-    foldersUl.innerHTML = "";
+      function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 30); }
+      function hideModal(){
+        modal.style.display = "none";
+        mPin.value = "";
+        mPin.type = "password";
+        if (mShow) mShow.textContent = "👁️";
+        mErr.textContent = "";
+      }
+      mCancel.addEventListener("click", hideModal);
 
-    const li = document.createElement("li");
-    li.className = "row click";
+      // show/hide PIN
+      if (mShow){
+        mShow.addEventListener("click", ()=>{
+          const isHidden = (mPin.type === "password");
+          mPin.type = isHidden ? "text" : "password";
+          mShow.textContent = isHidden ? "🙈" : "👁️";
+          mPin.focus();
+        });
+      }
 
-    const ic = document.createElement("div");
-    ic.className = "icon";
-    ic.textContent = FOLDER.icon;
+      // --- Token storage (rememberable without storing the code) ---
+      function tokenKey(folderId){ return "home_unlock_token:" + String(folderId || ""); }
 
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = FOLDER.name + " 🔒";
+      function b64urlToUtf8(b64url){
+        b64url = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
+        const pad = b64url.length % 4 ? "=".repeat(4 - (b64url.length % 4)) : "";
+        const b64 = b64url + pad;
+        const bin = atob(b64);
+        // utf-8 decode
+        const bytes = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+      }
 
-    li.appendChild(ic);
-    li.appendChild(title);
+      function readTokenPayload(token){
+        try{
+          const p = String(token || "").split(".")[0] || "";
+          return JSON.parse(b64urlToUtf8(p));
+        }catch{ return null; }
+      }
 
-    li.addEventListener("click", async ()=>{
-      const ok = await askPinEveryTime(FOLDER);
-      if (!ok) return;
-      ovIcon.textContent = FOLDER.icon;
-      ovName.textContent = FOLDER.name;
-      overlay.style.display = "block"; // leer
-    });
+      function getStoredToken(folderId){
+        try{
+          const raw = localStorage.getItem(tokenKey(folderId));
+          if (!raw) return "";
+          const obj = JSON.parse(raw);
+          if (!obj?.token) return "";
+          const exp = Number(obj.exp || 0);
+          const now = Math.floor(Date.now()/1000);
+          if (exp && exp <= now + 5){ localStorage.removeItem(tokenKey(folderId)); return ""; }
+          return String(obj.token);
+        }catch{ return ""; }
+      }
 
-    foldersUl.appendChild(li);
-  }
+      function storeToken(folderId, token){
+        const payload = readTokenPayload(token);
+        const exp = Number(payload?.exp || 0);
+        localStorage.setItem(tokenKey(folderId), JSON.stringify({ token, exp }));
+      }
 
-  async function pingBackendWithTimeout(){
-    const ctrl = new AbortController();
-    const t = setTimeout(()=>ctrl.abort(), 6000);
-    try{
-      const r = await fetch("/api/home/layout", { credentials:"include", signal: ctrl.signal });
-      clearTimeout(t);
-      setStatus(r.ok ? "loaded" : "error");
-    }catch{
-      clearTimeout(t);
-      setStatus("error");
-    }
-  }
+      function clearToken(folderId){
+        localStorage.removeItem(tokenKey(folderId));
+      }
 
-  document.addEventListener("DOMContentLoaded", ()=>{
-    setStatus("loading");
-    renderApps();
-    renderFolder();
-    pingBackendWithTimeout(); // Status hängt nie fest
-  });
-})();
-</script>
+      // --- API ---
+      async function apiGetLayout(){
+        const r = await fetch("/api/home/layout", { credentials:"include" });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("layout_http_" + r.status));
+        return j;
+      }
+
+      async function apiUnlockFolder(folderId, pin){
+        const r = await fetch("/api/home/folder/unlock", {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type":"application/json" },
+          body: JSON.stringify({ folderId, pin })
+        });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("unlock_http_" + r.status));
+        return String(j.token || "");
+      }
+
+      async function apiGetFolderItems(folderId, token){
+        const u = new URL(location.origin + "/api/home/folder/items");
+        u.searchParams.set("folderId", folderId);
+        if (token) u.searchParams.set("token", token);
+        const r = await fetch(u.toString(), { credentials:"include" });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("items_http_" + r.status));
+        return Array.isArray(j.items) ? j.items : [];
+      }
+
+      function uniq(arr){
+        const out = [];
+        const seen = new Set();
+        for (const x of arr){
+          const k = String(x);
+          if (seen.has(k)) continue;
+          seen.add(k);
+          out.push(k);
+        }
+        return out;
+      }
+
+      function allKnownAppIds(){
+        const ids = Object.keys(APP_REGISTRY);
+        const rest = ids.filter(x=>!DEFAULT_UNASSIGNED.includes(x)).sort();
+        return uniq([...DEFAULT_UNASSIGNED, ...rest]);
+      }
+
+      // --- UI rendering ---
+      function folderCard(folder, count, isLocked){
+        const li = document.createElement("li");
+        li.className = "row click";
+
+        const ic = document.createElement("div");
+        ic.className = "icon";
+        ic.textContent = folder.icon || "📁";
+
+        const title = document.createElement("div");
+        title.className = "title";
+        const lockTxt = isLocked ? " 🔒" : "";
+        title.textContent = (folder.name || "Ordner") + " (" + String(count || 0) + ")" + lockTxt;
+
+        li.appendChild(ic);
+        li.appendChild(title);
+
+        li.addEventListener("click", ()=> openFolder(folder, isLocked));
+        return li;
+      }
+
+      function renderFromLayout(layout, locks, counts, folderItemsMap){
+        foldersUl.innerHTML = "";
+        const folders = Array.isArray(layout?.folders) ? layout.folders : [];
+        if (!folders.length){
+          foldersSection.style.display = "none";
+          appsHeading.style.marginTop = "0";
+        } else {
+          foldersSection.style.display = "block";
+          for (const f of folders){
+            const count = Number(counts?.[f.id] || 0);
+            const isLocked = !!locks?.[f.id];
+            foldersUl.appendChild(folderCard(f, count, isLocked));
+          }
+        }
+
+        appsUl.innerHTML = "";
+        const inFolders = new Set();
+        for (const fid in (folderItemsMap||{})){
+          for (const appId of (folderItemsMap[fid] || [])) inFolders.add(String(appId));
+        }
+
+        const unassigned = Array.isArray(layout?.unassigned) ? layout.unassigned.map(String) : [];
+        const baseOrder = allKnownAppIds();
+
+        const visible = [];
+        for (const id of unassigned){
+          if (!APP_REGISTRY[id]) continue;
+          if (inFolders.has(id)) continue;
+          visible.push(id);
+        }
+        for (const id of baseOrder){
+          if (!APP_REGISTRY[id]) continue;
+          if (inFolders.has(id)) continue;
+          if (visible.includes(id)) continue;
+          visible.push(id);
+        }
+
+        if (!visible.length){
+          appsEmpty.style.display = "block";
+        } else {
+          appsEmpty.style.display = "none";
+          for (const id of visible){
+            const el = appCard(id);
+            if (el) appsUl.appendChild(el);
+          }
+        }
+      }
+
+      // --- Folder open/close ---
+      let currentFolder = null;
+      let currentLayoutData = null;
+
+      function showFolderOverlay(){ overlay.style.display = "block"; }
+      function hideFolderOverlay(){ overlay.style.display = "none"; }
+
+      function closeFolder(){
+        currentFolder = null;
+        hideFolderOverlay();
+      }
+
+      async function openFolder(folder, isLocked){
+        currentFolder = folder;
+        ovIcon.textContent = folder.icon || "📁";
+        ovName.textContent = folder.name || "Ordner";
+        ovLock.style.display = isLocked ? "inline-flex" : "none";
+        ovHint.textContent = "";
+        ovList.innerHTML = "";
+        showFolderOverlay();
+
+        // Try to load items (requires token if locked)
+        await loadFolderItems(folder.id, isLocked);
+      }
+
+      async function loadFolderItems(folderId, isLocked){
+        const fallback = (currentLayoutData?.folderItems?.[folderId] || []).slice(0);
+
+        // Render something immediately (nice UX)
+        if (fallback.length){
+          ovHint.textContent = "Apps im Ordner:";
+          ovList.innerHTML = "";
+          for (const id of fallback){
+            const el = appCard(id);
+            if (el) ovList.appendChild(el);
+          }
+        } else {
+          ovHint.textContent = "Keine Apps im Ordner.";
+        }
+
+        if (!isLocked) return;
+
+        // locked: need token
+        let token = getStoredToken(folderId);
+
+        // If no token, ask for code
+        if (!token){
+          await unlockFlow(folderId);
+          token = getStoredToken(folderId);
+          if (!token) return; // aborted
+        }
+
+        // Verify token by calling API (this also ensures DB enforcement)
+        try{
+          const items = await apiGetFolderItems(folderId, token);
+          ovHint.textContent = "Apps im Ordner:";
+          ovList.innerHTML = "";
+          for (const id of items){
+            const el = appCard(id);
+            if (el) ovList.appendChild(el);
+          }
+        }catch(err){
+          // token invalid/expired -> clear and ask again
+          clearToken(folderId);
+          await unlockFlow(folderId, true);
+          token = getStoredToken(folderId);
+          if (!token) return;
+
+          try{
+            const items2 = await apiGetFolderItems(folderId, token);
+            ovHint.textContent = "Apps im Ordner:";
+            ovList.innerHTML = "";
+            for (const id of items2){
+              const el = appCard(id);
+              if (el) ovList.appendChild(el);
+            }
+          }catch(_){
+            ovHint.textContent = "Gesperrt.";
+          }
+        }
+      }
+
+      function unlockFlow(folderId, retry=false){
+        return new Promise((resolve)=>{
+          mInfo.textContent = retry ? "Code erneut eingeben (Token abgelaufen/ungültig)." : "Bitte Code eingeben.";
+          mErr.textContent = "";
+          mPin.value = "";
+          mRemember.checked = true;
+          showModal();
+
+          async function onOk(){
+            mErr.textContent = "";
+            const pin = String(mPin.value || "").trim();
+            if (!pin) { mErr.textContent = "Code fehlt."; return; }
+            try{
+              const token = await apiUnlockFolder(folderId, pin);
+              if (mRemember.checked) storeToken(folderId, token);
+              hideModal();
+              cleanup();
+              resolve();
+            }catch(e){
+              const msg = String(e && e.message ? e.message : e || "");
+              if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
+              else if (msg.includes("admin_code_not_set")) mErr.textContent = "Admin-Code ist im Worker nicht gesetzt.";
+              else mErr.textContent = "Falscher Code.";
+            }
+          }
+
+          function onKey(e){
+            if (e.key === "Enter") onOk();
+            if (e.key === "Escape") { hideModal(); cleanup(); resolve(); }
+          }
+
+          function cleanup(){
+            mOk.removeEventListener("click", onOk);
+            mPin.removeEventListener("keydown", onKey);
+            modal.removeEventListener("click", onBg);
+          }
+
+          function onBg(e){
+            if (e.target === modal){ hideModal(); cleanup(); resolve(); }
+          }
+
+          mOk.addEventListener("click", onOk);
+          mPin.addEventListener("keydown", onKey);
+          modal.addEventListener("click", onBg);
+        });
+      }
+
+      async function init(){
+        setStatus("loading");
+        try{
+          const data = await apiGetLayout();
+          currentLayoutData = data;
+          const layout = data.layout || { folders:[], unassigned:[...DEFAULT_UNASSIGNED] };
+          const locks = data.locks || {};
+          const counts = data.counts || {};
+          const folderItemsMap = data.folderItems || {}; // NEW (from worker)
+          renderFromLayout(layout, locks, counts, folderItemsMap);
+          setStatus("loaded");
+        }catch(err){
+          renderFromLayout({ folders:[], unassigned: allKnownAppIds() }, {}, {}, {});
+          setStatus("error");
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+    })();
+  </script>
 </body>
 </html>
