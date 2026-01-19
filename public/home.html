@@ -534,10 +534,6 @@
         }
 
         appsUl.innerHTML = "";
-        const inFolders = new Set();
-        for (const fid in (folderItemsMap||{})){
-          for (const appId of (folderItemsMap[fid] || [])) inFolders.add(String(appId));
-        }
 
         const unassigned = Array.isArray(layout?.unassigned) ? layout.unassigned.map(String) : [];
         const baseOrder = allKnownAppIds();
@@ -545,12 +541,10 @@
         const visible = [];
         for (const id of unassigned){
           if (!APP_REGISTRY[id]) continue;
-          if (inFolders.has(id)) continue;
           visible.push(id);
         }
         for (const id of baseOrder){
           if (!APP_REGISTRY[id]) continue;
-          if (inFolders.has(id)) continue;
           if (visible.includes(id)) continue;
           visible.push(id);
         }
