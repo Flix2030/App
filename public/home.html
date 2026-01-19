@@ -525,12 +525,10 @@
         const visible = [];
         for (const id of unassigned){
           if (!APP_REGISTRY[id]) continue;
-          if (inFolders.has(id)) continue;
           visible.push(id);
         }
         for (const id of baseOrder){
           if (!APP_REGISTRY[id]) continue;
-          if (inFolders.has(id)) continue;
           if (visible.includes(id)) continue;
           visible.push(id);
         }
