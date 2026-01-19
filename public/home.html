@@ -362,9 +362,6 @@
             <div class="muted" id="mInfo">Bitte Code eingeben.</div>
             <div style="height:10px"></div>
             <input id="mPin" class="field" type="password" placeholder="Code" autocomplete="current-password" />
-            <div class="rowFlex" style="margin-top:10px;">
-              <label class="chk"><input id="mRemember" type="checkbox" checked> <span class="muted">Merken (15 Min)</span></label>
-            </div>
             <div class="errText" id="mErr"></div>
           </div>
           <div class="modalFoot">
@@ -376,7 +373,6 @@
       document.body.appendChild(modal);
       const mInfo = modal.querySelector("#mInfo");
       const mPin = modal.querySelector("#mPin");
-      const mRemember = modal.querySelector("#mRemember");
       const mErr = modal.querySelector("#mErr");
       const mCancel = modal.querySelector("#mCancel");
       const mOk = modal.querySelector("#mOk");
@@ -384,50 +380,6 @@
       function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 30); }
       function hideModal(){ modal.style.display = "none"; mPin.value = ""; mErr.textContent = ""; }
       mCancel.addEventListener("click", hideModal);
-
-      // --- Token storage (rememberable without storing the code) ---
-      function tokenKey(folderId){ return "home_unlock_token:" + String(folderId || ""); }
-
-      function b64urlToUtf8(b64url){
-        b64url = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
-        const pad = b64url.length % 4 ? "=".repeat(4 - (b64url.length % 4)) : "";
-        const b64 = b64url + pad;
-        const bin = atob(b64);
-        // utf-8 decode
-        const bytes = new Uint8Array(bin.length);
-        for (let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-        return new TextDecoder().decode(bytes);
-      }
-
-      function readTokenPayload(token){
-        try{
-          const p = String(token || "").split(".")[0] || "";
-          return JSON.parse(b64urlToUtf8(p));
-        }catch{ return null; }
-      }
-
-      function getStoredToken(folderId){
-        try{
-          const raw = localStorage.getItem(tokenKey(folderId));
-          if (!raw) return "";
-          const obj = JSON.parse(raw);
-          if (!obj?.token) return "";
-          const exp = Number(obj.exp || 0);
-          const now = Math.floor(Date.now()/1000);
-          if (exp && exp <= now + 5){ localStorage.removeItem(tokenKey(folderId)); return ""; }
-          return String(obj.token);
-        }catch{ return ""; }
-      }
-
-      function storeToken(folderId, token){
-        const payload = readTokenPayload(token);
-        const exp = Number(payload?.exp || 0);
-        localStorage.setItem(tokenKey(folderId), JSON.stringify({ token, exp }));
-      }
-
-      function clearToken(folderId){
-        localStorage.removeItem(tokenKey(folderId));
-      }
 
       // --- API ---
       async function apiGetLayout(){
@@ -446,17 +398,7 @@
         });
         const j = await r.json().catch(()=>null);
         if (!r.ok || !j?.ok) throw new Error(j?.error || ("unlock_http_" + r.status));
-        return String(j.token || "");
-      }
-
-      async function apiGetFolderItems(folderId, token){
-        const u = new URL(location.origin + "/api/home/folder/items");
-        u.searchParams.set("folderId", folderId);
-        if (token) u.searchParams.set("token", token);
-        const r = await fetch(u.toString(), { credentials:"include" });
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j?.ok) throw new Error(j?.error || ("items_http_" + r.status));
-        return Array.isArray(j.items) ? j.items : [];
+        return true;
       }
 
       function uniq(arr){
@@ -489,7 +431,7 @@
         const title = document.createElement("div");
         title.className = "title";
         const lockTxt = isLocked ? " 🔒" : "";
-        title.textContent = (folder.name || "Ordner") + " (" + String(count || 0) + ")" + lockTxt;
+        title.textContent = (folder.name || "Ordner") + lockTxt;
 
         li.appendChild(ic);
         li.appendChild(title);
@@ -514,10 +456,6 @@
         }
 
         appsUl.innerHTML = "";
-        const inFolders = new Set();
-        for (const fid in (folderItemsMap||{})){
-          for (const appId of (folderItemsMap[fid] || [])) inFolders.add(String(appId));
-        }
 
         const unassigned = Array.isArray(layout?.unassigned) ? layout.unassigned.map(String) : [];
         const baseOrder = allKnownAppIds();
@@ -557,81 +495,24 @@
       }
 
       async function openFolder(folder, isLocked){
+        // Immer PIN abfragen, jedes Mal neu
+        const ok = await unlockFlow(folder.id);
+        if (!ok) return;
+
         currentFolder = folder;
         ovIcon.textContent = folder.icon || "📁";
         ovName.textContent = folder.name || "Ordner";
-        ovLock.style.display = isLocked ? "inline-flex" : "none";
-        ovHint.textContent = "";
+        ovLock.style.display = "none";
+        ovHint.textContent = "Ordner ist leer.";
         ovList.innerHTML = "";
         showFolderOverlay();
-
-        // Try to load items (requires token if locked)
-        await loadFolderItems(folder.id, isLocked);
-      }
-
-      async function loadFolderItems(folderId, isLocked){
-        const fallback = (currentLayoutData?.folderItems?.[folderId] || []).slice(0);
-
-        // Render something immediately (nice UX)
-        if (fallback.length){
-          ovHint.textContent = "Apps im Ordner:";
-          ovList.innerHTML = "";
-          for (const id of fallback){
-            const el = appCard(id);
-            if (el) ovList.appendChild(el);
-          }
-        } else {
-          ovHint.textContent = "Keine Apps im Ordner.";
-        }
-
-        if (!isLocked) return;
-
-        // locked: need token
-        let token = getStoredToken(folderId);
-
-        // If no token, ask for code
-        if (!token){
-          await unlockFlow(folderId);
-          token = getStoredToken(folderId);
-          if (!token) return; // aborted
-        }
-
-        // Verify token by calling API (this also ensures DB enforcement)
-        try{
-          const items = await apiGetFolderItems(folderId, token);
-          ovHint.textContent = "Apps im Ordner:";
-          ovList.innerHTML = "";
-          for (const id of items){
-            const el = appCard(id);
-            if (el) ovList.appendChild(el);
-          }
-        }catch(err){
-          // token invalid/expired -> clear and ask again
-          clearToken(folderId);
-          await unlockFlow(folderId, true);
-          token = getStoredToken(folderId);
-          if (!token) return;
-
-          try{
-            const items2 = await apiGetFolderItems(folderId, token);
-            ovHint.textContent = "Apps im Ordner:";
-            ovList.innerHTML = "";
-            for (const id of items2){
-              const el = appCard(id);
-              if (el) ovList.appendChild(el);
-            }
-          }catch(_){
-            ovHint.textContent = "Gesperrt.";
-          }
-        }
       }
 
       function unlockFlow(folderId, retry=false){
         return new Promise((resolve)=>{
-          mInfo.textContent = retry ? "Code erneut eingeben (Token abgelaufen/ungültig)." : "Bitte Code eingeben.";
+          mInfo.textContent = retry ? "Code erneut eingeben." : "Bitte Code eingeben.";
           mErr.textContent = "";
           mPin.value = "";
-          mRemember.checked = true;
           showModal();
 
           async function onOk(){
@@ -639,11 +520,10 @@
             const pin = String(mPin.value || "").trim();
             if (!pin) { mErr.textContent = "Code fehlt."; return; }
             try{
-              const token = await apiUnlockFolder(folderId, pin);
-              if (mRemember.checked) storeToken(folderId, token);
+              await apiUnlockFolder(folderId, pin);
               hideModal();
               cleanup();
-              resolve();
+              resolve(true);
             }catch(e){
               const msg = String(e && e.message ? e.message : e || "");
               if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
@@ -654,7 +534,7 @@
 
           function onKey(e){
             if (e.key === "Enter") onOk();
-            if (e.key === "Escape") { hideModal(); cleanup(); resolve(); }
+            if (e.key === "Escape") { hideModal(); cleanup(); resolve(false); }
           }
 
           function cleanup(){
@@ -664,7 +544,7 @@
           }
 
           function onBg(e){
-            if (e.target === modal){ hideModal(); cleanup(); resolve(); }
+            if (e.target === modal){ hideModal(); cleanup(); resolve(false); }
           }
 
           mOk.addEventListener("click", onOk);
