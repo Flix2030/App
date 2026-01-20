@@ -1367,41 +1367,19 @@ if (path === "/api/home/reset" && req.method === "POST") {
 
       return json({ error: "not_found", path }, 404);
     }
-
-
-    return json({ error: "not_found", path }, 404);
-
-  } catch (e) {
-    console.log("WORKER_CRASH", String(e?.message || e));
-    return json(
-      {
-        error: "worker_crash",
-        message: String(e?.message || e),
-        stack: String(e?.stack || ""),
-      },
-      500
-    );
-  }
-}
-
-
-    // ===== Lucky Cube API (D1) =====
-    if (path === "/api/luckycube/data") {
+    // ===== Lucky Cube API =====
+    if (path.startsWith("/api/luckycube/")) {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
       const uid = await readToken(env, req);
       if (!uid) return json({ error: "unauthorized" }, 401);
 
-      // Ensure table exists (safe to run)
-      try {
-        await env.DB.prepare(
-          "CREATE TABLE IF NOT EXISTS luckycube_data (user_id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)"
-        ).run();
-      } catch (e) {
-        console.log("luckycube table ensure failed", e);
-      }
+      // Ensure table exists (safe; optional)
+      await env.DB.prepare(
+        "CREATE TABLE IF NOT EXISTS luckycube_data (user_id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)"
+      ).run();
 
-      if (req.method === "GET") {
+      if (path === "/api/luckycube/data" && req.method === "GET") {
         const row = await env.DB.prepare(
           "SELECT json FROM luckycube_data WHERE user_id = ?"
         ).bind(uid).first();
@@ -1418,11 +1396,10 @@ if (path === "/api/home/reset" && req.method === "POST") {
         );
       }
 
-      if (req.method === "PUT") {
+      if (path === "/api/luckycube/data" && req.method === "PUT") {
         const body = await safeReadJson(req);
         if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
 
-        // Optional size guard (~250KB)
         const jsonStr = JSON.stringify(body);
         if (jsonStr.length > 250000) return json({ error: "too_large" }, 413);
 
@@ -1435,9 +1412,25 @@ if (path === "/api/home/reset" && req.method === "POST") {
         return json({ ok: true }, 200, { "Cache-Control": "no-store" });
       }
 
-      return json({ error: "method_not_allowed" }, 405);
+      return json({ error: "not_found", path }, 404);
     }
 
+
+
+    return json({ error: "not_found", path }, 404);
+
+  } catch (e) {
+    console.log("WORKER_CRASH", String(e?.message || e));
+    return json(
+      {
+        error: "worker_crash",
+        message: String(e?.message || e),
+        stack: String(e?.stack || ""),
+      },
+      500
+    );
+  }
+}
 
 const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
 
