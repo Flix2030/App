@@ -9,6 +9,7 @@
 
   <link rel="manifest" href="/manifest.webmanifest">
   <style>
+
     :root{
       --bg0:#05080f;
       --bg1:#070c16;
@@ -186,7 +187,32 @@
       .back-link,.iconbtn,.icon-btn{width:40px;height:40px;border-radius:12px}
       #app-section, .panel, .card, .settings-section, .stats-section, .event-section, .players-section{padding:14px}
     }
-  </style>
+  
+    /* LuckyCube legacy buttons (div.button) */
+    .button{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      font-weight:900;
+      cursor:pointer;
+      user-select:none;
+      background:linear-gradient(180deg, rgba(46,232,143,.95), rgba(46,232,143,.72));
+      color:#00150a;
+      border:1px solid rgba(46,232,143,.45);
+      box-shadow:0 14px 40px rgba(46,232,143,.20);
+      width:max-content;
+      min-width:140px;
+      margin:10px auto 0 auto;
+    }
+    .button:hover{filter:brightness(1.03)}
+    .button:active{transform:translateY(1px)}
+    
+    #app-section{max-width:1100px;margin:14px auto}
+
+</style>
 
 </head>
 <body>
@@ -200,10 +226,6 @@
       <a class="back-link" href="/home" aria-label="Home">🏠</a>
     </div>
   </div>
-    🎲 Lucky Cube 🎲
-    <div class="icon-btn" onclick="openSettings()">⚙️</div>
-  </h1>
-</div>
 
   <div id="app-section">
     <h2>Spieleranzahl wählen</h2>
