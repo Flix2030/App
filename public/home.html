@@ -324,130 +324,7 @@
         return li;
       }
 
-      // --- Overlay (Folder view) ---
-      const overlay = document.createElement("div");
-      overlay.className = "overlayWrap";
-      overlay.innerHTML = `
-        <div class="overlayCard">
-          <div class="overlayTop">
-            <div class="overlayTitle">
-              <span id="ovIcon">📁</span>
-              <span id="ovName">Ordner</span>
-              <span id="ovLock" class="lockBadge" style="display:none;">🔒 gesperrt</span>
-            </div>
-            <button class="btn" id="ovBack">Zurück</button>
-          </div>
-          <div style="padding: 14px 14px;">
-            <div id="ovHint" class="muted" style="margin-bottom:10px;"></div>
-            <ul id="ovList" class="list"></ul>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(overlay);
-      const ovIcon = overlay.querySelector("#ovIcon");
-      const ovName = overlay.querySelector("#ovName");
-      const ovLock = overlay.querySelector("#ovLock");
-      const ovBack = overlay.querySelector("#ovBack");
-      const ovHint = overlay.querySelector("#ovHint");
-      const ovList = overlay.querySelector("#ovList");
-      ovBack.addEventListener("click", ()=> closeFolder());
-
-      // --- Modal (Unlock) ---
-      const modal = document.createElement("div");
-      modal.className = "modalWrap";
-      modal.innerHTML = `
-        <div class="modalCard">
-          <div class="modalHead">Ordner entsperren</div>
-          <div class="modalBody">
-            <div class="muted" id="mInfo">Bitte Code eingeben.</div>
-            <div style="height:10px"></div>
-            <div class="rowFlex" style="gap:10px; align-items:stretch;">
-              <input id="mPin" class="field" type="password" placeholder="Code" autocomplete="current-password" style="flex:1;" />
-              <button class="btn" id="mShow" type="button" title="PIN anzeigen">👁️</button>
-            </div>
-            <div class="rowFlex" style="margin-top:10px;">
-              <label class="chk"><input id="mRemember" type="checkbox" checked> <span class="muted">Merken (15 Min)</span></label>
-            </div>
-            <div class="errText" id="mErr"></div>
-          </div>
-          <div class="modalFoot">
-            <button class="btn" id="mCancel">Abbrechen</button>
-            <button class="btn" id="mOk">Entsperren</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      const mInfo = modal.querySelector("#mInfo");
-      const mPin = modal.querySelector("#mPin");
-      const mShow = modal.querySelector("#mShow");
-      const mRemember = modal.querySelector("#mRemember");
-      const mErr = modal.querySelector("#mErr");
-      const mCancel = modal.querySelector("#mCancel");
-      const mOk = modal.querySelector("#mOk");
-
-      function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 30); }
-      function hideModal(){
-        modal.style.display = "none";
-        mPin.value = "";
-        mPin.type = "password";
-        if (mShow) mShow.textContent = "👁️";
-        mErr.textContent = "";
-      }
-      mCancel.addEventListener("click", hideModal);
-
-      // show/hide PIN
-      if (mShow){
-        mShow.addEventListener("click", ()=>{
-          const isHidden = (mPin.type === "password");
-          mPin.type = isHidden ? "text" : "password";
-          mShow.textContent = isHidden ? "🙈" : "👁️";
-          mPin.focus();
-        });
-      }
-
-      // --- Token storage (rememberable without storing the code) ---
-      function tokenKey(folderId){ return "home_unlock_token:" + String(folderId || ""); }
-
-      function b64urlToUtf8(b64url){
-        b64url = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
-        const pad = b64url.length % 4 ? "=".repeat(4 - (b64url.length % 4)) : "";
-        const b64 = b64url + pad;
-        const bin = atob(b64);
-        // utf-8 decode
-        const bytes = new Uint8Array(bin.length);
-        for (let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-        return new TextDecoder().decode(bytes);
-      }
-
-      function readTokenPayload(token){
-        try{
-          const p = String(token || "").split(".")[0] || "";
-          return JSON.parse(b64urlToUtf8(p));
-        }catch{ return null; }
-      }
-
-      function getStoredToken(folderId){
-        try{
-          const raw = localStorage.getItem(tokenKey(folderId));
-          if (!raw) return "";
-          const obj = JSON.parse(raw);
-          if (!obj?.token) return "";
-          const exp = Number(obj.exp || 0);
-          const now = Math.floor(Date.now()/1000);
-          if (exp && exp <= now + 5){ localStorage.removeItem(tokenKey(folderId)); return ""; }
-          return String(obj.token);
-        }catch{ return ""; }
-      }
-
-      function storeToken(folderId, token){
-        const payload = readTokenPayload(token);
-        const exp = Number(payload?.exp || 0);
-        localStorage.setItem(tokenKey(folderId), JSON.stringify({ token, exp }));
-      }
-
-      function clearToken(folderId){
-        localStorage.removeItem(tokenKey(folderId));
-      }
+      // Folder wird als eigene Seite geoeffnet (folder.html)
 
       // --- API ---
       async function apiGetLayout(){
@@ -514,8 +391,15 @@
         li.appendChild(ic);
         li.appendChild(title);
 
-        li.addEventListener("click", ()=> openFolder(folder, isLocked));
+        li.addEventListener("click", ()=> openFolderPage(folder));
         return li;
+      }
+
+      // Open folder as a separate page (like other apps)
+      function openFolderPage(folder){
+        const id = String(folder?.id || "");
+        if (!id) return;
+        location.href = "/folder.html?folderId=" + encodeURIComponent(id);
       }
 
       function renderFromLayout(layout, locks, counts, folderItemsMap){
@@ -534,7 +418,6 @@
         }
 
         appsUl.innerHTML = "";
-
         const unassigned = Array.isArray(layout?.unassigned) ? layout.unassigned.map(String) : [];
         const baseOrder = allKnownAppIds();
 

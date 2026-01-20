@@ -2,678 +2,399 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ordner</title>
-
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-  <meta name="theme-color" content="#000000">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="/app.css">
-
+  <meta name="theme-color" content="#070c16">
   <style>
     :root{
-      --bg0:#05080f; --bg1:#070c16;
-      --panel:rgba(17,24,39,.72);
-      --border:rgba(255,255,255,.10);
-      --text:rgba(255,255,255,.92);
-      --muted:rgba(255,255,255,.62);
-      --accent:#3ee38c; --accent2:#2fce7a;
-      --shadow:0 18px 60px rgba(0,0,0,.55);
-      --radius:18px;
+      --bg:#070c16;
+      --card: rgba(16,20,33,0.70);
+      --card2: rgba(16,20,33,0.85);
+      --border: rgba(255,255,255,0.10);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.68);
     }
-    *{box-sizing:border-box}
+    *{ box-sizing:border-box; }
     body{
       margin:0;
-      font-family:'Segoe UI', Tahoma, sans-serif;
-      color:var(--text);
-      background: radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,0.10), transparent 55%),
-                  radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,0.08), transparent 55%),
-                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(1200px 700px at 15% 20%, rgba(46,120,255,0.20), transparent 55%),
+        radial-gradient(900px 600px at 85% 25%, rgba(255,92,180,0.14), transparent 55%),
+        radial-gradient(900px 600px at 55% 85%, rgba(80,255,170,0.12), transparent 55%),
+        var(--bg);
+      color: var(--text);
       min-height:100vh;
-      display:flex;
-      align-items:flex-start;
-      justify-content:center;
-      padding:22px 14px 38px;
+      padding:24px;
     }
-    .wrap{width:min(980px, 100%);}
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+      overflow:hidden;
+    }
     .top{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
-      margin:8px 0 14px;
+      padding:18px 18px;
+      border-bottom:1px solid var(--border);
     }
-    h1{margin:0; font-size:2rem; letter-spacing:.2px; display:flex; align-items:center; gap:10px;}
-    .actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
-    .btn{
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:14px;
-      font-weight:800;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      user-select:none;
-      transition:transform .12s ease, filter .2s ease;
-    }
-    .btn:active{transform:translateY(1px)}
-    .btn.primary{
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color:#03130a;
-      box-shadow:0 10px 24px rgba(62,227,140,0.14);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .btn.danger{
-      background:rgba(255,77,109,.10);
-      border-color:rgba(255,77,109,.30);
-      color:#ffd6de;
-    }
-
-    .panel{
-      background:var(--panel);
-      border:1px solid var(--border);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:18px;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
-      gap:12px;
-    }
-    .tile{
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,0.06);
-      padding:14px 14px;
+    .title{
       display:flex;
       align-items:center;
       gap:12px;
-      min-height:62px;
-      cursor:pointer;
-      user-select:none;
-      transition:transform .12s ease, filter .2s ease, border-color .2s ease;
-    }
-    .tile:hover{border-color:rgba(255,255,255,.16); filter:brightness(1.02)}
-    .tile:active{transform:translateY(1px)}
-    .icon{
-      width:40px; height:40px;
-      border-radius:14px;
-      display:grid; place-items:center;
-      background:rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.10);
-      flex:0 0 auto;
-      font-size:18px;
-    }
-    .label{
       font-weight:900;
-      font-size:1.05rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-size: 22px;
     }
-    .muted{color:var(--muted)}
-    .lockCard{
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,0.06);
-      padding:16px;
-      margin-bottom:12px;
-    }
-    .inp{
-      width:100%;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:12px 12px;
-      font-weight:700;
-      outline:none;
-      margin-top:10px;
-    }
-    .row{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:10px;}
-    .err{color:#ffd6de; background:rgba(255,77,109,.10); border:1px solid rgba(255,77,109,.30); padding:10px 12px; border-radius:14px; margin-top:10px;}
-    .pill{
+    .badge{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
+      padding:6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .btn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.92);
+      padding: 10px 14px;
+      border-radius: 14px;
+      cursor:pointer;
       font-weight:800;
-      cursor:pointer;
-      user-select:none;
     }
+    .body{ padding: 18px; }
+    .muted{ color: var(--muted); }
+    .list{ list-style:none; padding:0; margin: 14px 0 0 0; display:flex; flex-direction:column; gap:12px; }
+    .row{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(11,16,28,0.55);
+    }
+    .row.click{ cursor:pointer; }
+    .row.click:hover{ border-color: rgba(255,255,255,0.18); background: rgba(11,16,28,0.65); }
+    .icon{
+      width: 46px;
+      height: 46px;
+      display:grid;
+      place-items:center;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      font-size: 22px;
+    }
+    .name{ font-size: 20px; font-weight: 900; }
+
     /* Modal */
-    .modalBack{
-      position:fixed; inset:0;
-      background:rgba(0,0,0,.55);
-      display:none;
-      align-items:flex-end;
-      justify-content:center;
-      padding:18px 12px;
-      z-index:9999;
+    .modalWrap{
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(0,0,0,0.60);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 18px;
+      z-index: 9999;
     }
-    .modalBack.show{display:flex;}
-    .modal{
-      width:min(640px, 100%);
-      background:rgba(10,14,22,.92);
-      border:1px solid rgba(255,255,255,.14);
-      border-radius:22px;
-      box-shadow:0 22px 70px rgba(0,0,0,.65);
-      padding:16px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      max-height:85vh;
-      overflow:auto;
+    .modalCard{
+      max-width: 520px;
+      margin: 12vh auto 0 auto;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+      overflow: hidden;
     }
-    .modalTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
-    .modalTop h3{margin:0; font-size:1.1rem}
-    .xbtn{
-      width:40px; height:40px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      display:grid; place-items:center;
+    .modalHead{ padding: 14px; border-bottom:1px solid var(--border); font-weight: 900; }
+    .modalBody{ padding: 14px; }
+    .modalFoot{ padding: 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+    .fieldRow{ display:flex; gap:10px; align-items:center; }
+    .field{
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.92);
+      padding: 11px 12px;
+      outline:none;
+      font-size: 15px;
+    }
+    .eye{
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.92);
       cursor:pointer;
+      font-size: 18px;
     }
+    .errText{ color: rgba(255,77,109,0.95); font-size: 13px; min-height: 18px; margin-top: 8px; }
   </style>
 </head>
-
 <body>
   <div class="wrap">
     <div class="top">
-      <h1><span id="folderIcon">📁</span> <span id="title">Ordner</span></h1>
-      <div class="actions">
-        <button class="btn" id="backBtn">⬅️ Home</button>
-        <button class="btn" id="editBtn">✏️ Bearbeiten: AUS</button>
-        <button class="btn" id="settingsBtn">⚙️</button>
+      <div class="title">
+        <span id="fIcon">📁</span>
+        <span id="fName">Ordner</span>
+        <span id="fBadge" class="badge">🔒 gesperrt</span>
       </div>
+      <button class="btn" id="backBtn">Zurück</button>
     </div>
+    <div class="body">
+      <div id="hint" class="muted">Laden…</div>
+      <ul id="list" class="list"></ul>
+    </div>
+  </div>
 
-    <div class="panel">
-      <div id="dropOut" class="lockCard" style="display:none; border-style:dashed;">
-        <div style="font-weight:900;">📤 Herausziehen</div>
-        <div class="muted">Zieh eine Kachel hierher, um sie zurück auf Home zu legen.</div>
-      </div>
-      <div id="lockedBox" class="lockCard" style="display:none;">
-        <div style="font-weight:900;">🔒 Dieser Ordner ist gesperrt</div>
-        <div class="muted">PIN eingeben</div>
-        <input class="inp" id="pinInput" inputmode="numeric" pattern="[0-9]*" placeholder="PIN" />
-        <div class="row">
-          <button class="btn primary" id="unlockBtn">Entsperren</button>
+  <div class="modalWrap" id="modal">
+    <div class="modalCard">
+      <div class="modalHead">Ordner entsperren</div>
+      <div class="modalBody">
+        <div class="muted" id="mInfo">Bitte PIN eingeben.</div>
+        <div style="height:10px"></div>
+        <div class="fieldRow">
+          <input id="mPin" class="field" type="password" placeholder="PIN" autocomplete="current-password" />
+          <button id="mEye" class="eye" title="PIN anzeigen">👁️</button>
         </div>
-        <div id="err" class="err" style="display:none;"></div>
+        <div class="errText" id="mErr"></div>
       </div>
-
-      <div class="grid" id="grid"></div>
-      <div id="empty" class="muted" style="display:none; margin-top:10px;">Leer.</div>
+      <div class="modalFoot">
+        <button class="btn" id="mCancel">Abbrechen</button>
+        <button class="btn" id="mOk">Entsperren</button>
+      </div>
     </div>
   </div>
 
-  <!-- Settings modal (rename, icon, pin remove/change when unlocked) -->
-  <div class="modalBack" id="settingsBack" aria-hidden="true">
-    <div class="modal">
-      <div class="modalTop">
-        <h3>Ordner-Einstellungen</h3>
-        <button class="xbtn" id="settingsClose">✕</button>
-      </div>
+  <script>
+    (async ()=>{
+      const APP_REGISTRY = {
+        settings:  { id:"settings",  name:"Einstellungen", icon:"⚙️", href:"/settings.html" },
+        vokabeln:  { id:"vokabeln",  name:"Vokabeln",      icon:"📚", href:"/vokabeln.html" },
+        lernen:    { id:"lernen",    name:"Lernen",        icon:"🧠", href:"/lernen" },
+        packliste: { id:"packliste", name:"Packliste",     icon:"🧳", href:"/packliste.html" },
+        einkauf:   { id:"einkauf",   name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste" },
+        todo:      { id:"todo",      name:"ToDo",          icon:"✅", href:"/todo.html" },
+        misterx:   { id:"misterx",   name:"MisterX",       icon:"❌", href:"/MisterX.html" },
+        webcam:    { id:"webcam",    name:"Webcam",        icon:"📷", href:"/webcam-live" }
+      };
 
-      <div class="muted" style="margin-bottom:8px;">Name</div>
-      <input class="inp" id="renameInput" maxlength="40" />
+      const qs = new URLSearchParams(location.search);
+      const folderId = String(qs.get("folderId") || "");
 
-      <div class="muted" style="margin:12px 0 8px;">Icon</div>
-      <div class="row" style="justify-content:flex-start;">
-        <span class="pill" data-icon="📁">📁</span>
-        <span class="pill" data-icon="🏫">🏫</span>
-        <span class="pill" data-icon="🎓">🎓</span>
-        <span class="pill" data-icon="📚">📚</span>
-        <span class="pill" data-icon="🧠">🧠</span>
-        <span class="pill" data-icon="🗂️">🗂️</span>
-        <span class="pill" data-icon="✏️">✏️</span>
-      </div>
-      <div class="muted" style="margin:12px 0 8px;">oder eigenes Emoji</div>
-      <input class="inp" id="iconInput" maxlength="8" placeholder="z.B. 🏫" />
+      const fIcon = document.getElementById("fIcon");
+      const fName = document.getElementById("fName");
+      const fBadge = document.getElementById("fBadge");
+      const hint = document.getElementById("hint");
+      const list = document.getElementById("list");
+      const backBtn = document.getElementById("backBtn");
 
-      <div class="row" style="justify-content:space-between;">
-        <div class="muted" id="pinState">PIN: …</div>
-      </div>
+      const modal = document.getElementById("modal");
+      const mInfo = document.getElementById("mInfo");
+      const mPin = document.getElementById("mPin");
+      const mEye = document.getElementById("mEye");
+      const mErr = document.getElementById("mErr");
+      const mCancel = document.getElementById("mCancel");
+      const mOk = document.getElementById("mOk");
 
-      <div style="height:1px; background:rgba(255,255,255,.10); margin:12px 0;"></div>
+      function normHref(href){
+        href = String(href || "/");
+        if (href.startsWith("http://") || href.startsWith("https://")) return href;
+        if (href.startsWith("/")) return href;
+        return "/" + href.replace(/^\.\//, "").replace(/^\/+
+        /, "");
+      }
 
-      <div style="font-weight:900;">PIN verwalten</div>
-      <div class="muted">Du musst entsperrt sein, um PIN zu ändern/entfernen.</div>
-
-      <div class="muted" style="margin-top:10px;">Neue PIN setzen</div>
-      <input class="inp" id="newPinInput" inputmode="numeric" pattern="[0-9]*" placeholder="z.B. 1234" />
-      <div class="row">
-        <button class="btn primary" id="setPinBtn">PIN setzen</button>
-        <button class="btn danger" id="removePinBtn">PIN entfernen</button>
-      </div>
-      <div class="muted" id="msg" style="margin-top:8px;"></div>
-
-      <div class="row">
-        <button class="btn primary" id="saveBtn">Speichern</button>
-      </div>
-
-    </div>
-  </div>
-
-<script>
-const APP_REGISTRY = {
-  settings:   { id:"settings",   name:"Einstellungen", icon:"⚙️", href:"settings.html"  },
-  vokabeln:   { id:"vokabeln",   name:"Vokabeln",      icon:"🗂️", href:"vokabeln.html"  },
-  lernen:     { id:"lernen",     name:"Lernen",        icon:"📚", href:"/lernen"        },
-  packliste:  { id:"packliste",  name:"Packliste",     icon:"🎒", href:"packliste.html" },
-  einkauf:    { id:"einkauf",    name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste" },
-  todo:       { id:"todo",       name:"ToDo",          icon:"🧾", href:"todo.html"      },
-  misterx:    { id:"misterx",    name:"MisterX",       icon:"❌", href:"MisterX.html"  },
-  webcam:     { id:"webcam",     name:"Webcam",        icon:"📷", href:"/webcam-live"  }
-};
-
-const titleEl = document.getElementById("title");
-const iconEl = document.getElementById("folderIcon");
-const backBtn = document.getElementById("backBtn");
-const grid = document.getElementById("grid");
-const empty = document.getElementById("empty");
-const lockedBox = document.getElementById("lockedBox");
-const pinInput = document.getElementById("pinInput");
-const unlockBtn = document.getElementById("unlockBtn");
-const errBox = document.getElementById("err");
-
-const editBtn = document.getElementById("editBtn");
-const dropOut = document.getElementById("dropOut");
-const settingsBtn = document.getElementById("settingsBtn");
-const settingsBack = document.getElementById("settingsBack");
-const settingsClose = document.getElementById("settingsClose");
-const renameInput = document.getElementById("renameInput");
-const iconInput = document.getElementById("iconInput");
-const pinState = document.getElementById("pinState");
-const newPinInput = document.getElementById("newPinInput");
-const setPinBtn = document.getElementById("setPinBtn");
-const removePinBtn = document.getElementById("removePinBtn");
-const saveBtn = document.getElementById("saveBtn");
-const msg = document.getElementById("msg");
-
-backBtn.addEventListener("click", ()=> location.href="/home.html");
-
-const params = new URLSearchParams(location.search);
-const folderId = params.get("folderId");
-let unlockToken = null;
-let layout = null;
-let locks = {};
-let pickedIcon = "📁";
-let editMode = false;
-let currentItems = [];
-
-
-settingsBack.querySelectorAll("[data-icon]").forEach(p=>{
-  p.addEventListener("click", ()=>{ pickedIcon = p.getAttribute("data-icon") || "📁"; });
-});
-
-function openSettings(){
-  if (!layout) return;
-  const f = (layout.folders || []).find(x => x.id === folderId);
-  renameInput.value = f?.name || "Ordner";
-  iconInput.value = f?.icon || "";
-  pickedIcon = f?.icon || "📁";
-  pinState.textContent = "PIN: " + (locks[folderId] ? "aktiv" : "aus");
-  msg.textContent = "";
-  newPinInput.value = "";
-  settingsBack.classList.add("show");
-  settingsBack.setAttribute("aria-hidden","false");
-}
-function closeSettings(){
-  settingsBack.classList.remove("show");
-  settingsBack.setAttribute("aria-hidden","true");
-function setEditMode(on){
-  editMode = !!on;
-  editBtn.textContent = editMode ? "✏️ Bearbeiten: AN" : "✏️ Bearbeiten: AUS";
-  dropOut.style.display = editMode ? "block" : "none";
-  // when locked, keep dropOut hidden
-  if (locks[folderId]) dropOut.style.display = "none";
-  render(currentItems);
-}
-editBtn.addEventListener("click", ()=> setEditMode(!editMode));
-
-// Drop zone to move item back to Home
-dropOut.addEventListener("dragover", (e)=>{ if(editMode){ e.preventDefault(); dropOut.classList.add("dropHover"); }});
-dropOut.addEventListener("dragleave", ()=> dropOut.classList.remove("dropHover"));
-dropOut.addEventListener("drop", async (e)=>{
-  if (!editMode) return;
-  e.preventDefault();
-  dropOut.classList.remove("dropHover");
-  let data=null;
-  try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
-  if (data?.type !== "app") return;
-  const appId = data.appId;
-
-  // remove from folder
-  currentItems = currentItems.filter(x => x !== appId);
-  try{
-    await apiPutFolderItems(folderId, currentItems, unlockToken);
-  }catch(err){ console.log(err); return; }
-
-  // add back to home unassigned (end)
-  try{
-    const dataL = await apiGetLayout();
-    const lay = dataL.layout || { folders: [], unassigned: [] };
-    if (!Array.isArray(lay.unassigned)) lay.unassigned = [];
-    if (!lay.unassigned.includes(appId)) lay.unassigned.push(appId);
-    await apiPutLayout({ folders: lay.folders, unassigned: lay.unassigned });
-  }catch(err){ console.log(err); }
-
-  render(currentItems);
-});
-}
-
-settingsBtn.addEventListener("click", openSettings);
-settingsClose.addEventListener("click", closeSettings);
-settingsBack.addEventListener("click", (e)=>{ if(e.target===settingsBack) closeSettings(); });
-
-async function apiGetLayout(){
-  const r = await fetch("/api/home/layout", { credentials:"include" });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_load_failed");
-  return j;
-}
-async function apiPutLayout(layoutObj){
-  const r = await fetch("/api/home/layout", {
-    method:"PUT",
-    credentials:"include",
-    headers:{ "content-type":"application/json" },
-    body: JSON.stringify(layoutObj)
-  });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "layout_save_failed");
-}
-async function apiGetFolderItems(token=null){
-  const u = new URL(location.origin + "/api/home/folder/items");
-  u.searchParams.set("folderId", folderId);
-  if (token) u.searchParams.set("token", token);
-  const r = await fetch(u.toString(), { credentials:"include" });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_load_failed");
-  return j.items || [];
-}
-async function apiPutFolderItems(folderId, items, token=null){
-  const r = await fetch("/api/home/folder/items", {
-    method:"PUT",
-    credentials:"include",
-    headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ folderId, items, token })
-  });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "folder_items_save_failed");
-}
-async function apiUnlock(pin){
-  const r = await fetch("/api/home/folder/unlock", {
-    method:"POST",
-    credentials:"include",
-    headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ folderId, pin })
-  });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok){
-    const err = new Error(j?.error || "unlock_failed");
-    err.code = j?.error || "unlock_failed";
-    err.lockedUntil = j?.lockedUntil || null;
-    throw err;
-  }
-  return j.token;
-}
-async function apiSetPin(pin){
-  const r = await fetch("/api/home/folder/setPin", {
-    method:"POST",
-    credentials:"include",
-    headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ folderId, pin, token: unlockToken })
-  });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "set_pin_failed");
-}
-async function apiRemovePin(){
-  const r = await fetch("/api/home/folder/removePin", {
-    method:"POST",
-    credentials:"include",
-    headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ folderId, token: unlockToken })
-  });
-  const j = await r.json().catch(()=>null);
-  if (!r.ok || !j?.ok) throw new Error(j?.error || "remove_pin_failed");
-}
-
-function render(items){
-  grid.innerHTML = "";
-  empty.style.display = items.length ? "none" : "block";
-
-  for (const appId of items){
-    const app = APP_REGISTRY[appId];
-    if (!app) continue;
-
-    const el = document.createElement("div");
-    el.className = "tile";
-    el.tabIndex = 0;
-
-    const ic = document.createElement("div");
-    ic.className = "icon";
-    ic.textContent = app.icon || "⬛";
-
-    const lb = document.createElement("div");
-    lb.className = "label";
-    lb.textContent = app.name;
-
-    const handle = document.createElement("div");
-    handle.className = "pill";
-    handle.textContent = "⠿";
-    handle.title = "Ziehen";
-    handle.style.marginLeft = "auto";
-    handle.style.display = editMode ? "inline-flex" : "none";
-
-    el.appendChild(ic);
-    el.appendChild(lb);
-    el.appendChild(handle);
-
-    if (!editMode){
-      el.addEventListener("click", ()=> location.href = app.href);
-      el.addEventListener("keydown", (e)=>{ if(e.key==="Enter") location.href=app.href; });
-    }
-
-    if (editMode){
-      el.draggable = true;
-      el.addEventListener("dragstart", (e)=>{
-        e.dataTransfer.setData("text/plain", JSON.stringify({ type:"app", appId }));
-        e.dataTransfer.effectAllowed = "move";
+      backBtn.addEventListener("click", ()=>{
+        if (history.length > 1) history.back();
+        else location.href = "/";
       });
 
-      // reorder drop target
-      el.addEventListener("dragover", (e)=>{ e.preventDefault(); el.classList.add("dropHover"); });
-      el.addEventListener("dragleave", ()=> el.classList.remove("dropHover"));
-      el.addEventListener("drop", async (e)=>{
+      function appRow(appId){
+        const app = APP_REGISTRY[appId];
+        if (!app) return null;
+        const li = document.createElement("li");
+        li.className = "row click";
+        li.addEventListener("click", ()=> location.href = normHref(app.href));
+        const ic = document.createElement("div");
+        ic.className = "icon";
+        ic.textContent = app.icon || "🧩";
+        const nm = document.createElement("div");
+        nm.className = "name";
+        nm.textContent = app.name || appId;
+        li.appendChild(ic);
+        li.appendChild(nm);
+        return li;
+      }
+
+      function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 30); }
+      function hideModal(){ modal.style.display = "none"; mPin.value = ""; mErr.textContent = ""; }
+
+      // Eye toggle
+      let pinShown = false;
+      mEye.addEventListener("click", (e)=>{
         e.preventDefault();
-        el.classList.remove("dropHover");
-        let data=null;
-        try{ data = JSON.parse(e.dataTransfer.getData("text/plain")); }catch{}
-        if (data?.type !== "app") return;
-        const fromIdx = currentItems.indexOf(data.appId);
-        const toIdx = currentItems.indexOf(appId);
-        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
-        const [moved] = currentItems.splice(fromIdx, 1);
-        currentItems.splice(toIdx, 0, moved);
-        try{
-          await apiPutFolderItems(folderId, currentItems, unlockToken);
-          render(currentItems);
-        }catch(err){ console.log(err); }
+        pinShown = !pinShown;
+        mPin.type = pinShown ? "text" : "password";
+        mEye.textContent = pinShown ? "🙈" : "👁️";
       });
-    }
 
-    grid.appendChild(el);
-  }
-}
+      mCancel.addEventListener("click", ()=>{
+        hideModal();
+      });
 
-async function init(){
-  // auth check
-  try {
-    const r = await fetch("/api/me", { credentials: "include" });
-    if (r.status === 401) location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-  } catch (_) {
-    location.href = "/login?returnTo=" + encodeURIComponent(location.pathname + location.search);
-  }
+      async function apiGetLayout(){
+        const r = await fetch("/api/home/layout", { credentials:"include" });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("layout_http_"+r.status));
+        return j;
+      }
 
-  if (!folderId){ titleEl.textContent = "Ordner"; lockedBox.style.display="none"; return; }
+      async function apiUnlock(pin){
+        const r = await fetch("/api/home/folder/unlock", {
+          method:"POST",
+          credentials:"include",
+          headers:{ "content-type":"application/json" },
+          body: JSON.stringify({ folderId, pin })
+        });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("unlock_http_"+r.status));
+        return String(j.token || "");
+      }
 
-  try{
-    const data = await apiGetLayout();
-    layout = data.layout || { folders: [], unassigned: [] };
-    locks = data.locks || {};
-    const f = (layout.folders || []).find(x => x.id === folderId);
-    titleEl.textContent = f?.name || "Ordner";
-    iconEl.textContent = (f?.icon || "📁");
-    pickedIcon = (f?.icon || "📁");
+      async function apiGetItems(token){
+        const u = new URL(location.origin + "/api/home/folder/items");
+        u.searchParams.set("folderId", folderId);
+        if (token) u.searchParams.set("token", token);
+        const r = await fetch(u.toString(), { credentials:"include" });
+        const j = await r.json().catch(()=>null);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || ("items_http_"+r.status));
+        return Array.isArray(j.items) ? j.items : [];
+      }
 
-    const isLocked = !!locks[folderId];
+      async function unlockFlow(){
+        return new Promise((resolve)=>{
+          mInfo.textContent = "Bitte PIN eingeben.";
+          mErr.textContent = "";
+          mPin.value = "";
+          pinShown = false; mPin.type = "password"; mEye.textContent = "👁️";
+          showModal();
 
-    if (isLocked){
-      lockedBox.style.display = "block";
-      grid.style.display = "none";
-      empty.style.display = "none";
-      dropOut.style.display = "none";
-      editBtn.style.display = "none";
-      pinInput.focus();
-      return;
-    }
+          async function onOk(){
+            mErr.textContent = "";
+            const pin = String(mPin.value || "").trim();
+            if (!pin){ mErr.textContent = "PIN fehlt."; return; }
+            try{
+              const token = await apiUnlock(pin);
+              hideModal();
+              cleanup();
+              resolve(token);
+            }catch(e){
+              const msg = String(e?.message || e || "");
+              if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
+              else mErr.textContent = "Falscher Code.";
+            }
+          }
 
-    currentItems = await apiGetFolderItems(null);
-    render(currentItems);
-    setEditMode(false);
-  }catch(err){
-    console.log(err);
-  }
-}
+          function onKey(e){
+            if (e.key === "Enter") onOk();
+            if (e.key === "Escape"){ hideModal(); cleanup(); resolve(""); }
+          }
 
-unlockBtn.addEventListener("click", async ()=>{
-  errBox.style.display = "none";
-  const pin = String(pinInput.value || "").trim();
-  if (!pin) return;
+          function onBg(e){
+            if (e.target === modal){ hideModal(); cleanup(); resolve(""); }
+          }
 
-  unlockBtn.disabled = true;
-  unlockBtn.textContent = "…";
+          function cleanup(){
+            mOk.removeEventListener("click", onOk);
+            mPin.removeEventListener("keydown", onKey);
+            modal.removeEventListener("click", onBg);
+          }
 
-  let inCooldown = false;
+          mOk.addEventListener("click", onOk);
+          mPin.addEventListener("keydown", onKey);
+          modal.addEventListener("click", onBg);
+        });
+      }
 
-  try{
-    unlockToken = await apiUnlock(pin);
-    lockedBox.style.display = "none";
-    grid.style.display = "grid";
-    editBtn.style.display = "inline-flex";
+      if (!folderId){
+        hint.textContent = "Fehler: folderId fehlt.";
+        fBadge.textContent = "⚠️";
+        return;
+      }
 
-    currentItems = await apiGetFolderItems(unlockToken);
-    render(currentItems);
-    setEditMode(false);
+      try{
+        const data = await apiGetLayout();
+        const layout = data.layout || {};
+        const locks = data.locks || {};
+        const folderItemsFallback = data.folderItems || {};
 
-    const data = await apiGetLayout();
-    locks = data.locks || locks;
-  }catch(err){
-    console.log(err);
-
-    if (err.code === "too_many_attempts" && err.lockedUntil){
-      const now = Math.floor(Date.now()/1000);
-      let left = Math.max(1, Number(err.lockedUntil) - now);
-      inCooldown = true;
-
-      errBox.style.display = "block";
-      errBox.textContent = "Zu viele Versuche. Warte " + left + "s.";
-      unlockBtn.disabled = true;
-      unlockBtn.textContent = "Warte…";
-
-      const t = setInterval(()=>{
-        left -= 1;
-        if (left <= 0){
-          clearInterval(t);
-          errBox.style.display = "none";
-          unlockBtn.disabled = false;
-          unlockBtn.textContent = "Entsperren";
-          pinInput.focus();
-          pinInput.select();
-        } else {
-          errBox.textContent = "Zu viele Versuche. Warte " + left + "s.";
+        const folderMeta = (Array.isArray(layout.folders) ? layout.folders : []).find(f=>String(f.id)===folderId);
+        if (folderMeta){
+          fIcon.textContent = folderMeta.icon || "📁";
+          fName.textContent = folderMeta.name || "Ordner";
         }
-      }, 1000);
-      return;
-    }
 
-    errBox.textContent = "Falsche PIN.";
-    errBox.style.display = "block";
-  }finally{
-    if (!inCooldown){
-      unlockBtn.disabled = false;
-      unlockBtn.textContent = "Entsperren";
-    }
-    pinInput.focus();
-    pinInput.select();
-  }
-});
-setPinBtn.addEventListener("click", async ()=>{
-  msg.textContent = "";
-  const pin = String(newPinInput.value || "").trim();
-  if (!pin || pin.length < 4) { msg.textContent = "PIN min. 4 Ziffern."; return; }
-  try{
-    await apiSetPin(pin);
-    locks[folderId] = true;
-    pinState.textContent = "PIN: aktiv";
-    msg.textContent = "PIN gesetzt.";
-    newPinInput.value = "";
-  }catch(e){
-    console.log(e);
-    msg.textContent = "Du musst entsperrt sein (Token). Erst PIN eingeben und entsperren.";
-  }
-});
+        const isLocked = !!locks[folderId];
+        fBadge.textContent = isLocked ? "🔒 gesperrt" : "✅ entsperrt";
 
-removePinBtn.addEventListener("click", async ()=>{
-  msg.textContent = "";
-  try{
-    await apiRemovePin();
-    locks[folderId] = false;
-    pinState.textContent = "PIN: aus";
-    msg.textContent = "PIN entfernt.";
-  }catch(e){
-    console.log(e);
-    msg.textContent = "Du musst entsperrt sein. Erst PIN eingeben und entsperren.";
-  }
-});
+        // Show fallback items immediately
+        const fallback = Array.isArray(folderItemsFallback[folderId]) ? folderItemsFallback[folderId] : [];
+        if (fallback.length){
+          hint.textContent = "Apps im Ordner:";
+          list.innerHTML = "";
+          for (const id of fallback){
+            const el = appRow(id);
+            if (el) list.appendChild(el);
+          }
+        } else {
+          hint.textContent = "Keine Apps im Ordner.";
+        }
 
-saveBtn.addEventListener("click", async ()=>{
-  if (!layout) return;
-  const f = (layout.folders || []).find(x => x.id === folderId);
-  if (!f) return;
+        let token = "";
+        if (isLocked){
+          token = await unlockFlow();
+          if (!token){
+            // user cancelled
+            hint.textContent = "Gesperrt.";
+            list.innerHTML = "";
+            return;
+          }
+          fBadge.textContent = "✅ entsperrt";
+        }
 
-  const name = (renameInput.value || "").trim().slice(0,40) || "Ordner";
-  const icon = (iconInput.value || "").trim().slice(0,8) || pickedIcon || "📁";
-  f.name = name;
-  f.icon = icon;
-
-  try{
-    await apiPutLayout({ folders: layout.folders, unassigned: layout.unassigned });
-    titleEl.textContent = name;
-    iconEl.textContent = icon;
-    closeSettings();
-  }catch(e){
-    console.log(e);
-    msg.textContent = "Fehler beim Speichern.";
-  }
-});
-
-init();
-</script>
+        // Load real items from API
+        const items = await apiGetItems(token);
+        if (!items.length){
+          hint.textContent = "Keine Apps im Ordner.";
+          list.innerHTML = "";
+        } else {
+          hint.textContent = "Apps im Ordner:";
+          list.innerHTML = "";
+          for (const id of items){
+            const el = appRow(id);
+            if (el) list.appendChild(el);
+          }
+        }
+      }catch(e){
+        hint.textContent = "Fehler beim Laden.";
+        list.innerHTML = "";
+      }
+    })();
+  </script>
 </body>
 </html>
