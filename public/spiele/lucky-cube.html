@@ -9,8 +9,7 @@
 
   <link rel="manifest" href="/manifest.webmanifest">
   <style>
-
-    :root{
+:root{
       --bg0:#05080f;
       --bg1:#070c16;
       --panel:rgba(17,24,39,.72);
@@ -211,7 +210,61 @@
     .button:active{transform:translateY(1px)}
     
     #app-section{max-width:1100px;margin:14px auto}
-
+    /* Settings layout */
+    .auction-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .auction-title{font-size:20px;font-weight:900;color:var(--text)}
+    .settings-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:10px 0;
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .settings-row:last-child{border-bottom:none}
+    .settings-row label{color:var(--mut);font-weight:800}
+    .switch{
+      position:relative;
+      display:inline-block;
+      width:54px;
+      height:30px;
+      flex:0 0 auto;
+    }
+    .switch input{opacity:0;width:0;height:0}
+    .slider{
+      position:absolute;
+      cursor:pointer;
+      top:0;left:0;right:0;bottom:0;
+      background:rgba(255,255,255,.10);
+      border:1px solid var(--border);
+      transition:.2s;
+      border-radius:999px;
+    }
+    .slider:before{
+      position:absolute;
+      content:"";
+      height:24px;width:24px;
+      left:3px;top:2px;
+      background:rgba(255,255,255,.85);
+      transition:.2s;
+      border-radius:999px;
+      box-shadow:0 10px 25px rgba(0,0,0,.45);
+    }
+    .switch input:checked + .slider{
+      background:rgba(46,232,143,.25);
+      border-color:rgba(46,232,143,.55);
+    }
+    .switch input:checked + .slider:before{
+      transform:translateX(24px);
+      background:rgba(46,232,143,.95);
+    }
+    
 </style>
 
 </head>
@@ -336,7 +389,28 @@ function saveSettings() {
   localStorage.setItem("settings", JSON.stringify(settings));
 }
 
-let currentContext = "home";
+let currentContext = "setup";
+
+const _START_SETUP_HTML = (document.getElementById('app-section')?.innerHTML || '');
+let _navStack = [];
+let _lastHelpContext = 'home';
+
+function _inferContext(){
+  // Wenn Hilfe-Overlay offen ist
+  if (document.querySelector('.help-overlay')) return 'help';
+  // Setup: Spieleranzahl-Select
+  if (document.getElementById('playerCount')) return 'setup';
+  // Spielernamen-Setup
+  if (document.getElementById('nameList')) return 'players';
+  return (typeof currentContext === 'string' && currentContext) ? currentContext : 'home';
+}
+
+function showSetup(){
+  currentContext = 'setup';
+  if (typeof _killOverlays === 'function') _killOverlays();
+  const el = document.getElementById('app-section');
+  if (el) el.innerHTML = _START_SETUP_HTML;
+}
 
 let _settingsPrevContext = null;
 let _settingsPrevHTML = "";
@@ -931,8 +1005,15 @@ function toggleExternalRoll(checked) {
 window._settingsPrevContext = window._settingsPrevContext || "home";
 
 function openSettings() {
-  // Herkunft merken
-  const ctx = (typeof currentContext === "string" && currentContext) ? currentContext : "home";
+  // Herkunft merken (auch Setup/Hilfe sauber erkennen)
+  const ctx = _inferContext();
+  if (ctx === 'help') {
+    // merken, wofuer Hilfe offen war
+    if (typeof _lastHelpContext === 'string' && _lastHelpContext) {
+      // ok
+    }
+  }
+  _navStack.push(ctx);
   window._settingsPrevContext = ctx;
 
   /* 🃏 Poker – Snapshot */
@@ -999,8 +1080,8 @@ function openSettings() {
 
 /** ===== Einstellungen schließen – exakt zum gemerkten Screen zurück ===== */
 function closeSettings() {
-  const prev = window._settingsPrevContext || "home";
-  window._settingsPrevContext = null;   // Reset für den nächsten Durchlauf
+  const prev = (_navStack.length ? _navStack.pop() : (window._settingsPrevContext || 'home'));
+  window._settingsPrevContext = null;
   currentContext = prev;
 
   /* 🃏 Poker: nie neu starten – Snapshot rendern */
@@ -1121,6 +1202,9 @@ if (prev === "artefaktum") {
     case "inventory": showInventory();  break;
     case "eventlog":  showEventLog();   break;
     case "stats":     showStatistics(); break;
+    case "players":   showNameInputs(); break;
+    case "setup":     showSetup();      break;
+    case "help":      showHelp(_lastHelpContext || "home"); break;
     case "home":      showHome();       break;
     default:          showHome();
   }
@@ -1265,6 +1349,9 @@ function colorfulRouletteWord() {
 }
 
 function showHelp(context) {
+  // merken, wofuer die Hilfe ist
+  _lastHelpContext = context || _lastHelpContext || 'home';
+  currentContext = 'help';
   let text = "";
   switch (context) {
 	case "lotto":
@@ -1437,7 +1524,10 @@ case "artefaktum":
 }
 
 function closeHelp(el) {
-  document.body.removeChild(el.closest(".help-overlay"));
+  const ov = el.closest('.help-overlay');
+  if (ov) document.body.removeChild(ov);
+  // nach dem Schliessen: Kontext neu bestimmen (z.B. Setup/Spiel/menue)
+  currentContext = _inferContext();
 }
 
 function enablePlayerDragDrop() {
