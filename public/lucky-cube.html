@@ -880,29 +880,6 @@ select, input {
   word-break:break-word;
 }
 
-// bei Ereigniskarten
-eventLog.unshift({
-  player: player,
-  text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
-  kind: "card",
-  time: now.toLocaleTimeString()
-});
-
-// bei Trophäen
-eventLog.unshift({
-  player: player,
-  text: `🏆 ${amount} Trophäe${amount>1?"n":""} erhalten`,
-  kind: "trophy",
-  time: now.toLocaleTimeString()
-});
-
-// bei Artefaktum-Käufen
-eventLog.unshift({
-  player: player,
-  text: `🛒 ${itemName} gekauft`,
-  kind: "shop",
-  time: now.toLocaleTimeString()
-});
 
 /* ===== Panel (gemeinsamer weißer Kasten) ===== */
 .panel{
