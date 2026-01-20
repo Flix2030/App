@@ -973,7 +973,7 @@ hr{border-color:rgba(255,255,255,.10)}
   word-break:break-word;
 }
 
-// bei Ereigniskarten
+/* bei Ereigniskarten
 eventLog.unshift({
   player: player,
   text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
@@ -1005,10 +1005,6 @@ eventLog.unshift({
   box-shadow:0 4px 15px rgba(0,0,0,0.1);
   max-width:400px;         /* gleiche Breite wie .settings-section */
   margin:0 auto;           /* zentriert */
-}
-
-/* Statistik nutzt den gleichen Kasten wie die Settings */
-.stats-section{ /* nur Alias – falls du später abweichende Abstände brauchst */
 }
 
 /* Tabelle kompakt und zentriert im Panel */
@@ -4177,7 +4173,7 @@ async function doBattleAnimated() {
   }
 }
 
-<!-- ===== 50-50 ===== -->
+//<!-- ===== 50-50 ===== -->
 let allnothingStats = { win: 0, lose: 0 };
 let allnothingState = { playerIdx: null, trophyLine: "" };
 
