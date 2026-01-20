@@ -3,12 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Lucky Cube</title>
-  
-  <meta name="theme-color" content="#05080f">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   
 
 
@@ -242,7 +237,7 @@
       flex:0 0 auto;
     }
     .switch input{opacity:0;width:0;height:0}
-    .switch .slider{
+    .slider{
       position:absolute;
       cursor:pointer;
       top:0;left:0;right:0;bottom:0;
@@ -251,7 +246,7 @@
       transition:.2s;
       border-radius:999px;
     }
-    .switch .slider:before{
+    .slider:before{
       position:absolute;
       content:"";
       height:24px;width:24px;
@@ -269,19 +264,22 @@
       transform:translateX(24px);
       background:rgba(46,232,143,.95);
     }
-    /* Mobile iOS fixes */
-    html{background:linear-gradient(180deg,var(--bg1),var(--bg0))}
-    body{min-height:100vh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);}
-    .container{padding-top: calc(18px + env(safe-area-inset-top));}
-
-    /* iOS zoom prevention (inputs need >=16px) */
-    input, select, textarea, button{font-size:16px;}
+    /* Switch (uses <span class="track">) */
+    .switch{position:relative;display:inline-block;width:54px;height:30px;flex:0 0 auto;}
+    .switch input{opacity:0;width:0;height:0}
+    .switch .track{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid var(--border);transition:.2s;}
+    .switch .track::before{content:"";position:absolute;width:24px;height:24px;left:3px;top:2px;border-radius:999px;background:rgba(255,255,255,.85);transition:.2s;box-shadow:0 10px 25px rgba(0,0,0,.45);}
+    .switch input:checked + .track{background:rgba(46,232,143,.25);border-color:rgba(46,232,143,.55);}
+    .switch input:checked + .track::before{transform:translateX(24px);background:rgba(46,232,143,.95);}
     
-    /* Range sliders (z.B. hoch/runter) */
-    input[type=range]{
-      width:100%;
-      accent-color: var(--acc);
-    }
+    /* Help / Info overlay */
+    .help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999;}
+    .help-box{width:min(820px,100%);max-height:85vh;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:16px;}
+    .help-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+    .help-header h2{margin:0;font-size:20px}
+    .help-close{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:rgba(0,0,0,.12);cursor:pointer;user-select:none;}
+    .help-close:hover{filter:brightness(1.10)}
+    .help-close:active{transform:translateY(1px)}
     
 </style>
 
@@ -294,7 +292,7 @@
     <div class="top-actions">
       <button class="iconbtn" onclick="showHelp(currentContext)" aria-label="Hilfe">❓</button>
       <button class="iconbtn" onclick="openSettings()" aria-label="Einstellungen">⚙️</button>
-      <a class="back-link" href="/home" aria-label="Home">🏠</a>
+      <button class="iconbtn" onclick="goHomeSafe()" aria-label="Home">🏠</button>
     </div>
   </div>
 
@@ -413,6 +411,239 @@ const _START_SETUP_HTML = (document.getElementById('app-section')?.innerHTML || 
 let _navStack = [];
 let _lastHelpContext = 'home';
 
+// ===== LuckyCube Cloud Save + Mehrere Spiele =====
+// Erwarteter Worker-Endpoint (wie bei ToDo):
+//   GET/PUT /api/luckycube/data   (auth via cookies; {ok:true,data:{...}})
+
+const USE_LOCAL_FALLBACK = true; // <- auf false stellen, sobald dein Worker /api/luckycube/data liefert
+const LS_FALLBACK_KEY = "luckycubeData_fallback_v1";
+
+let cloudData = { currentId: null, games: {}, order: [] };
+
+function makeId(prefix){
+  return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+}
+
+function redirectToLogin(){ location.href = "/login.html"; }
+
+async function apiGet(){
+  if (USE_LOCAL_FALLBACK){
+    try{
+      const raw = localStorage.getItem(LS_FALLBACK_KEY);
+      return raw ? JSON.parse(raw) : { currentId:null, games:{}, order:[] };
+    }catch(e){
+      return { currentId:null, games:{}, order:[] };
+    }
+  }
+  const r = await fetch("/api/luckycube/data", { credentials:"include" });
+  if (r.status === 401) redirectToLogin();
+  const j = await r.json().catch(()=>null);
+  if (!j || j.ok !== true) throw new Error(j?.error || "load_failed");
+  return j.data || { currentId:null, games:{}, order:[] };
+}
+
+let _saving = false;
+let _saveQueued = false;
+
+async function apiPut(obj){
+  if (USE_LOCAL_FALLBACK){
+    localStorage.setItem(LS_FALLBACK_KEY, JSON.stringify(obj));
+    return;
+  }
+  const r = await fetch("/api/luckycube/data", {
+    method:"PUT",
+    headers:{ "Content-Type":"application/json" },
+    credentials:"include",
+    body: JSON.stringify(obj)
+  });
+  if (r.status === 401) redirectToLogin();
+  const j = await r.json().catch(()=>null);
+  if (!j || j.ok !== true) throw new Error(j?.error || "save_failed");
+}
+
+function scheduleCloudSave(){
+  if (_saving){ _saveQueued = true; return; }
+  _saving = true;
+  setTimeout(async ()=>{
+    try{ await apiPut(cloudData); }
+    catch(e){ console.error("cloud save failed", e); }
+    finally{
+      _saving = false;
+      if (_saveQueued){ _saveQueued = false; scheduleCloudSave(); }
+    }
+  }, 250);
+}
+
+function ensureGameObject(id){
+  if (!cloudData.games[id]){
+    cloudData.games[id] = {
+      id,
+      name:"Spiel",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      players: [],
+      totalPlayers: 0,
+      settings: null,
+      stats: null,
+      trophyStats: null,
+      eventLog: null
+    };
+  }
+  return cloudData.games[id];
+}
+
+function getActiveGame(){
+  const id = cloudData.currentId;
+  if (!id) return null;
+  return cloudData.games[id] || null;
+}
+
+function setActiveGame(id){
+  cloudData.currentId = id;
+  ensureGameObject(id);
+  if (!cloudData.order.includes(id)) cloudData.order.unshift(id);
+  scheduleCloudSave();
+}
+
+function loadGameIntoRuntime(g){
+  try{ settings = g.settings || settings; }catch(e){}
+  try{ stats = g.stats || stats; }catch(e){}
+  try{ trophyStats = g.trophyStats || trophyStats; }catch(e){}
+  try{ eventLog = Array.isArray(g.eventLog) ? g.eventLog : eventLog; }catch(e){}
+  totalPlayers = g.totalPlayers || totalPlayers || 0;
+  playerNames = Array.isArray(g.players) ? g.players.slice() : (playerNames||[]);
+}
+
+function saveRuntimeIntoGame(){
+  const g = getActiveGame();
+  if (!g) return;
+  g.updatedAt = Date.now();
+  g.totalPlayers = totalPlayers || g.totalPlayers || 0;
+  g.players = Array.isArray(playerNames) ? playerNames.slice() : (g.players||[]);
+  try{ g.settings = settings; }catch(e){}
+  try{ g.stats = stats; }catch(e){}
+  try{ g.trophyStats = trophyStats; }catch(e){}
+  try{ g.eventLog = Array.isArray(eventLog) ? eventLog.slice(0,300) : []; }catch(e){}
+  scheduleCloudSave();
+}
+
+function formatDate(ts){
+  try{
+    const d = new Date(ts);
+    return d.toLocaleString("de-DE", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" });
+  }catch(e){ return ""; }
+}
+
+function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderSetupScreen(){
+  currentContext = "setup";
+  const el = document.getElementById("app-section");
+  if (!el) return;
+
+  const rows = cloudData.order.filter(id => cloudData.games[id]).map(id => cloudData.games[id]);
+
+  let listHtml = "";
+  if (!rows.length){
+    listHtml = `<div class="mut">Keine gespeicherten Spiele.</div>`;
+  }else{
+    listHtml = rows.map(g=>{
+      const p = (g.players||[]).filter(Boolean);
+      const pText = p.length ? p.join(", ") : "—";
+      return `
+        <div class="row" style="align-items:center;">
+          <div class="icon">🎲</div>
+          <div class="title" style="display:flex;flex-direction:column;gap:2px;">
+            <div style="font-weight:900;">${escapeHtml(g.name||"Spiel")}</div>
+            <div style="color:var(--mut);font-size:13px;">${escapeHtml(pText)} • ${formatDate(g.updatedAt||g.createdAt)}</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn-primary" style="padding:10px 12px;border-radius:12px;" onclick="loadGame('${g.id}')">Öffnen</button>
+            <button class="btn" style="padding:10px 12px;border-radius:12px;" onclick="deleteGame('${g.id}')">Löschen</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  el.innerHTML = `
+    <h2>Spiel starten</h2>
+
+    <div class="panel">
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="flex:1 1 260px;">
+          <label for="gameName">Spielname</label>
+          <input id="gameName" type="text" placeholder="z.B. Freitagabend" maxlength="30">
+        </div>
+        <div style="flex:1 1 240px;">
+          <label for="playerCount">Spieleranzahl wählen</label>
+          <select id="playerCount">
+            <option value="">Bitte wählen</option>
+            <option value="2">2 Spieler</option>
+            <option value="3">3 Spieler</option>
+            <option value="4">4 Spieler</option>
+          </select>
+        </div>
+        <button class="btn-primary" style="height:46px;" onclick="createNewGame()">Neues Spiel</button>
+      </div>
+    </div>
+
+    <h3>Aktuelle Spiele</h3>
+    <div class="panel">
+      <div style="display:flex;flex-direction:column;gap:10px;">${listHtml}</div>
+    </div>
+  `;
+}
+
+function createNewGame(){
+  const name = (document.getElementById("gameName")?.value || "").trim() || "Spiel";
+  const pc = document.getElementById("playerCount")?.value;
+  if (!pc){ alert("Bitte zuerst die Spieleranzahl wählen."); return; }
+
+  const id = makeId("game");
+  setActiveGame(id);
+  const g = ensureGameObject(id);
+  g.name = name;
+  g.players = [];
+  g.totalPlayers = parseInt(pc,10);
+  g.eventLog = [];
+  g.settings = settings;
+  scheduleCloudSave();
+
+  totalPlayers = g.totalPlayers;
+  playerNames = [];
+  eventLog = [];
+  showNameInputs();
+}
+
+function loadGame(id){
+  try{ saveRuntimeIntoGame(); }catch(e){}
+  setActiveGame(id);
+  const g = ensureGameObject(id);
+  loadGameIntoRuntime(g);
+
+  if (!playerNames || !playerNames.length) showNameInputs();
+  else showHome();
+}
+
+function deleteGame(id){
+  if (!confirm("Spiel wirklich löschen?")) return;
+  delete cloudData.games[id];
+  cloudData.order = cloudData.order.filter(x=>x!==id);
+  if (cloudData.currentId === id) cloudData.currentId = cloudData.order[0] || null;
+  scheduleCloudSave();
+  renderSetupScreen();
+}
+
+async function goHomeSafe(){
+  try{ saveRuntimeIntoGame(); }catch(e){}
+  location.href = "/home";
+}
+
+window.addEventListener("beforeunload", ()=>{ try{ saveRuntimeIntoGame(); }catch(e){} });
+
 function _inferContext(){
   // Wenn Hilfe-Overlay offen ist
   if (document.querySelector('.help-overlay')) return 'help';
@@ -424,10 +655,8 @@ function _inferContext(){
 }
 
 function showSetup(){
-  currentContext = 'setup';
   if (typeof _killOverlays === 'function') _killOverlays();
-  const el = document.getElementById('app-section');
-  if (el) el.innerHTML = _START_SETUP_HTML;
+  renderSetupScreen();
 }
 
 let _settingsPrevContext = null;
