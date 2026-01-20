@@ -237,7 +237,12 @@
         if (!app) return null;
         const li = document.createElement("li");
         li.className = "row click";
-        li.addEventListener("click", ()=> location.href = normHref(app.href));
+        li.addEventListener("click", ()=>{
+          // When we open an app from inside a folder and the user later presses "Home",
+          // Home should jump back into this folder once.
+          try{ sessionStorage.setItem("home_return_folder_once", folderId); }catch(_){ }
+          location.href = normHref(app.href);
+        });
         const ic = document.createElement("div");
         ic.className = "icon";
         ic.textContent = app.icon || "🧩";

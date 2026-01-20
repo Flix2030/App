@@ -490,10 +490,7 @@
         li.addEventListener("click", async ()=>{
           const id = String(folder?.id || "");
           if (!id) return;
-          if (!isLocked){
-            location.href = "/folder?folderId=" + encodeURIComponent(id);
-            return;
-          }
+          // Always ask for PIN before opening the folder page.
           const token = await askPinAndUnlock(id);
           if (!token) return;
           openFolderAfterUnlock(id, token);
@@ -674,6 +671,17 @@
       }
 
       async function init(){
+        // If the user opened an app from inside a folder and then pressed "Home",
+        // redirect once back into that folder.
+        try{
+          const backFolderId = sessionStorage.getItem("home_return_folder_once") || "";
+          if (backFolderId){
+            sessionStorage.removeItem("home_return_folder_once");
+            location.href = "/folder?folderId=" + encodeURIComponent(backFolderId);
+            return;
+          }
+        }catch(_){ }
+
         setStatus("loading");
         try{
           const data = await apiGetLayout();
