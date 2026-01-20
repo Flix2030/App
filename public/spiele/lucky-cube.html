@@ -41,6 +41,99 @@ select, input {
 
 #app-section { margin-top: 20px; }
 
+/* ===== Lucky Cube Dark Mode (Override) ===== */
+:root{
+  --bg0:#05080f;
+  --bg1:#0a1020;
+  --panel:rgba(18,28,55,.72);
+  --panel2:rgba(10,18,38,.78);
+  --border:rgba(255,255,255,.10);
+  --text:rgba(255,255,255,.94);
+  --mut:rgba(255,255,255,.66);
+  --acc:#2ee88f;
+  --shadow:0 22px 70px rgba(0,0,0,.55);
+}
+
+/* Grund */
+html,body{height:100%}
+body{
+  margin:0;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 15% 0%, rgba(46,232,143,.18), transparent 60%),
+    radial-gradient(1200px 700px at 85% 10%, rgba(90,120,255,.12), transparent 60%),
+    linear-gradient(180deg,var(--bg1),var(--bg0));
+}
+
+/* Typo */
+h1,h2,h3{color:var(--text)}
+small,.muted,.sub,.hint{color:var(--mut)}
+
+/* Karten/Boxen (greift auf viele Layouts ohne was kaputt zu machen) */
+.container,.wrap,.content,.box,.card,.panel,.section,.settings-section,.mode-box,.game-box{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+}
+.panel,.section,.settings-section,.mode-box,.game-box{padding:16px}
+
+/* Inputs / Selects (PC hellgrau fix) */
+input,select,textarea{
+  background:rgba(0,0,0,.22) !important;
+  color:var(--text) !important;
+  border:1px solid var(--border) !important;
+  border-radius:14px !important;
+  padding:12px 12px !important;
+  outline:none !important;
+}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,.45)}
+input:focus,select:focus,textarea:focus{
+  border-color:rgba(46,232,143,.55) !important;
+  box-shadow:0 0 0 4px rgba(46,232,143,.14) !important;
+}
+/* Dropdown-Liste */
+select option{
+  background:#0b1326 !important;
+  color:var(--text) !important;
+}
+
+/* Buttons (auch für <div class="button">) */
+button,.btn,.btn-primary,.button,[role="button"]{
+  border-radius:14px !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
+  color:var(--text);
+}
+button:hover,.btn:hover,.button:hover{filter:brightness(1.08)}
+button:active,.btn:active,.button:active{transform:translateY(1px)}
+
+/* “Grün”-Buttons */
+.btn-primary,.primary,.ok,.confirm,.green{
+  background:linear-gradient(180deg, rgba(46,232,143,.95), rgba(46,232,143,.70)) !important;
+  color:#00150a !important;
+  border-color:rgba(46,232,143,.45) !important;
+  box-shadow:0 14px 40px rgba(46,232,143,.18) !important;
+}
+
+/* Modals/Overlays (damit Popups dark sind) */
+.modal,.dialog,.popup,.overlay-box,.help-box,.info-box{
+  background:var(--panel2) !important;
+  border:1px solid var(--border) !important;
+  border-radius:18px !important;
+  color:var(--text) !important;
+  box-shadow:var(--shadow) !important;
+}
+.overlay,.backdrop,.modal-overlay,.help-overlay{
+  background:rgba(0,0,0,.55) !important;
+}
+
+/* Tabellen/Text-Blöcke */
+table,th,td{color:var(--text)}
+hr{border-color:rgba(255,255,255,.10)}
+
 /* ===== Shared layout ===== */
 .section {
   background: none;
