@@ -1412,6 +1412,7 @@ if (
 let assetPath = path;
 
       if (path === "/home") assetPath = "/home.html";
+      if (path === "/folder" || path === "/folder/") assetPath = "/folder.html";
       if (path === "/packliste") assetPath = "/packliste.html";
       if (path === "/vokabeln") assetPath = "/vokabeln.html";
       if (path === "/settings") assetPath = "/settings.html";
@@ -1490,4 +1491,4 @@ const uid = await readToken(env, req);
     }
   },
 }
-;
+; 

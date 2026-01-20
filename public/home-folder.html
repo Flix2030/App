@@ -215,14 +215,22 @@
         href = String(href || "/");
         if (href.startsWith("http://") || href.startsWith("https://")) return href;
         if (href.startsWith("/")) return href;
-        return "/" + href.replace(/^\.\//, "").replace(/^\/+
-        /, "");
+        return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
       }
 
       backBtn.addEventListener("click", ()=>{
         if (history.length > 1) history.back();
-        else location.href = "/";
+        else location.href = "/home";
       });
+
+      function takeHandoffToken(){
+        try{
+          const k = "home_unlock_token:" + folderId;
+          const t = sessionStorage.getItem(k) || "";
+          if (t) sessionStorage.removeItem(k); // one-time
+          return String(t || "");
+        }catch(_){ return ""; }
+      }
 
       function appRow(appId){
         const app = APP_REGISTRY[appId];
@@ -367,9 +375,13 @@
 
         let token = "";
         if (isLocked){
-          token = await unlockFlow();
+          // If we came from Home, we should already have a one-time token.
+          token = takeHandoffToken();
           if (!token){
-            // user cancelled
+            // fallback: ask PIN here
+            token = await unlockFlow();
+          }
+          if (!token){
             hint.textContent = "Gesperrt.";
             list.innerHTML = "";
             return;

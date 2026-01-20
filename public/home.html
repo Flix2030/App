@@ -272,6 +272,102 @@
       `;
       document.head.appendChild(style);
 
+      // --- PIN Modal (used before opening folder page) ---
+      const modal = document.createElement("div");
+      modal.className = "modalWrap";
+      modal.innerHTML = `
+        <div class="modalCard">
+          <div class="modalHead">Ordner entsperren</div>
+          <div class="modalBody">
+            <div class="muted" id="mInfo">Bitte Code eingeben.</div>
+            <div style="height:10px"></div>
+            <div class="rowFlex" style="gap:10px; align-items:center;">
+              <input id="mPin" class="field" type="password" placeholder="PIN" autocomplete="current-password" />
+              <button id="mEye" class="btn" style="min-width:46px;">👁️</button>
+            </div>
+            <div class="errText" id="mErr"></div>
+          </div>
+          <div class="modalFoot">
+            <button class="btn" id="mCancel">Abbrechen</button>
+            <button class="btn" id="mOk">Entsperren</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const mInfo = modal.querySelector("#mInfo");
+      const mPin = modal.querySelector("#mPin");
+      const mEye = modal.querySelector("#mEye");
+      const mErr = modal.querySelector("#mErr");
+      const mCancel = modal.querySelector("#mCancel");
+      const mOk = modal.querySelector("#mOk");
+
+      let pinShown = false;
+      mEye.addEventListener("click", (e)=>{
+        e.preventDefault();
+        pinShown = !pinShown;
+        mPin.type = pinShown ? "text" : "password";
+        mEye.textContent = pinShown ? "🙈" : "👁️";
+      });
+
+      function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 20); }
+      function hideModal(){ modal.style.display = "none"; mPin.value = ""; mErr.textContent = ""; }
+
+      async function askPinAndUnlock(folderId){
+        return new Promise((resolve)=>{
+          mInfo.textContent = "Bitte Code eingeben.";
+          mErr.textContent = "";
+          mPin.value = "";
+          pinShown = false; mPin.type = "password"; mEye.textContent = "👁️";
+          showModal();
+
+          async function onOk(){
+            mErr.textContent = "";
+            const pin = String(mPin.value || "").trim();
+            if (!pin){ mErr.textContent = "Code fehlt."; return; }
+            try{
+              const token = await apiUnlockFolder(folderId, pin);
+              hideModal();
+              cleanup();
+              resolve(token);
+            }catch(e){
+              const msg = String(e?.message || e || "");
+              if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
+              else mErr.textContent = "Falscher Code.";
+            }
+          }
+
+          function onKey(e){
+            if (e.key === "Enter") onOk();
+            if (e.key === "Escape"){ hideModal(); cleanup(); resolve(""); }
+          }
+
+          function onBg(e){
+            if (e.target === modal){ hideModal(); cleanup(); resolve(""); }
+          }
+
+          function cleanup(){
+            mOk.removeEventListener("click", onOk);
+            mCancel.removeEventListener("click", onCancel);
+            mPin.removeEventListener("keydown", onKey);
+            modal.removeEventListener("click", onBg);
+          }
+
+          function onCancel(){ hideModal(); cleanup(); resolve(""); }
+
+          mOk.addEventListener("click", onOk);
+          mCancel.addEventListener("click", onCancel);
+          mPin.addEventListener("keydown", onKey);
+          modal.addEventListener("click", onBg);
+        });
+      }
+
+      function openFolderAfterUnlock(folderId, token){
+        // token only for the next page load (no "merken")
+        try{ sessionStorage.setItem("home_unlock_token:" + folderId, token); }catch(_){ }
+        location.href = "/folder?folderId=" + encodeURIComponent(folderId);
+      }
+
       const dot = document.getElementById("dot");
       const statusText = document.getElementById("statusText");
       function setStatus(mode){
@@ -391,16 +487,21 @@
         li.appendChild(ic);
         li.appendChild(title);
 
-        li.addEventListener("click", ()=> openFolderPage(folder));
+        li.addEventListener("click", async ()=>{
+          const id = String(folder?.id || "");
+          if (!id) return;
+          if (!isLocked){
+            location.href = "/folder?folderId=" + encodeURIComponent(id);
+            return;
+          }
+          const token = await askPinAndUnlock(id);
+          if (!token) return;
+          openFolderAfterUnlock(id, token);
+        });
         return li;
       }
 
-      // Open folder as a separate page (like other apps)
-      function openFolderPage(folder){
-        const id = String(folder?.id || "");
-        if (!id) return;
-        location.href = "/folder.html?folderId=" + encodeURIComponent(id);
-      }
+      // Folder is opened as a separate page (/folder) after PIN unlock.
 
       function renderFromLayout(layout, locks, counts, folderItemsMap){
         foldersUl.innerHTML = "";
