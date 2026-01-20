@@ -1,417 +1,280 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
   <title>Ordner</title>
-  <meta name="theme-color" content="#070c16">
   <style>
-    :root{
-      --bg:#070c16;
-      --card: rgba(16,20,33,0.70);
-      --card2: rgba(16,20,33,0.85);
-      --border: rgba(255,255,255,0.10);
-      --text: rgba(255,255,255,0.92);
-      --muted: rgba(255,255,255,0.68);
-    }
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background:
-        radial-gradient(1200px 700px at 15% 20%, rgba(46,120,255,0.20), transparent 55%),
-        radial-gradient(900px 600px at 85% 25%, rgba(255,92,180,0.14), transparent 55%),
-        radial-gradient(900px 600px at 55% 85%, rgba(80,255,170,0.12), transparent 55%),
-        var(--bg);
-      color: var(--text);
-      min-height:100vh;
-      padding:24px;
-    }
-    .wrap{
-      max-width: 980px;
-      margin: 0 auto;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.55);
-      overflow:hidden;
-    }
-    .top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:18px 18px;
-      border-bottom:1px solid var(--border);
-    }
-    .title{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      font-weight:900;
-      font-size: 22px;
-    }
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.85);
-      font-size: 13px;
-      font-weight: 800;
-    }
-    .btn{
-      appearance:none;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.92);
-      padding: 10px 14px;
-      border-radius: 14px;
-      cursor:pointer;
-      font-weight:800;
-    }
-    .body{ padding: 18px; }
-    .muted{ color: var(--muted); }
-    .list{ list-style:none; padding:0; margin: 14px 0 0 0; display:flex; flex-direction:column; gap:12px; }
-    .row{
-      display:flex;
-      align-items:center;
-      gap:14px;
-      padding: 16px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(11,16,28,0.55);
-    }
-    .row.click{ cursor:pointer; }
-    .row.click:hover{ border-color: rgba(255,255,255,0.18); background: rgba(11,16,28,0.65); }
-    .icon{
-      width: 46px;
-      height: 46px;
-      display:grid;
-      place-items:center;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.04);
-      font-size: 22px;
-    }
-    .name{ font-size: 20px; font-weight: 900; }
+    :root{--bg0:#05080f;--bg1:#070c16;--panel:rgba(17,24,39,.72);--panel2:rgba(20,28,46,.78);--border:rgba(255,255,255,.10);--txt:rgba(255,255,255,.92);--mut:rgba(255,255,255,.62);--shadow:0 18px 60px rgba(0,0,0,.55);--r:18px}
+    html,body{min-height:100vh;color-scheme:dark}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:radial-gradient(1200px 700px at 20% 10%, rgba(62,227,140,.10), transparent 55%),radial-gradient(900px 600px at 85% 20%, rgba(79,140,255,.08), transparent 55%),linear-gradient(180deg,var(--bg0),var(--bg1));color:var(--txt);display:flex;justify-content:center;align-items:flex-start;padding:22px 16px}
+    .wrap{width:min(1100px,100%)}
+    .bar{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:14px}
+    .barLeft{display:flex;align-items:center;gap:12px}
+    .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);padding:7px 10px;border-radius:999px;font-weight:800}
+    .btn{appearance:none;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:var(--txt);padding:9px 12px;border-radius:12px;cursor:pointer;font-weight:800}
+    h2{margin:0 0 10px 2px;font-size:22px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+    .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+    .row{display:flex;align-items:center;gap:14px;background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;user-select:none}
+    .row:hover{filter:brightness(1.08)}
+    .icon{width:44px;height:44px;border-radius:14px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18);font-size:22px}
+    .title{font-size:22px;font-weight:800}
+    .mut{color:var(--mut);font-size:13px}
 
-    /* Modal */
-    .modalWrap{
-      position: fixed;
-      inset: 0;
-      display: none;
-      background: rgba(0,0,0,0.60);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      padding: 18px;
-      z-index: 9999;
-    }
-    .modalCard{
-      max-width: 520px;
-      margin: 12vh auto 0 auto;
-      background: var(--card2);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
-      overflow: hidden;
-    }
-    .modalHead{ padding: 14px; border-bottom:1px solid var(--border); font-weight: 900; }
-    .modalBody{ padding: 14px; }
-    .modalFoot{ padding: 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
-    .fieldRow{ display:flex; gap:10px; align-items:center; }
-    .field{
-      width: 100%;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.92);
-      padding: 11px 12px;
-      outline:none;
-      font-size: 15px;
-    }
-    .eye{
-      width: 46px;
-      height: 46px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.92);
-      cursor:pointer;
-      font-size: 18px;
-    }
-    .errText{ color: rgba(255,77,109,0.95); font-size: 13px; min-height: 18px; margin-top: 8px; }
+    .modalWrap{position:fixed;inset:0;display:none;background:rgba(0,0,0,.60);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:9999;padding:18px}
+    .modal{max-width:560px;margin:12vh auto 0;background:rgba(22,24,30,.94);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+    .mHead{padding:14px;border-bottom:1px solid var(--border);font-weight:900;font-size:20px}
+    .mBody{padding:14px}
+    .mFoot{padding:14px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+    .fieldRow{display:flex;gap:10px;align-items:center}
+    .field{flex:1;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--txt);padding:10px 12px;outline:none;font-size:15px}
+    .err{color:rgba(255,77,109,.95);font-size:13px;min-height:18px;margin-top:8px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="top">
-      <div class="title">
-        <span id="fIcon">📁</span>
-        <span id="fName">Ordner</span>
-        <span id="fBadge" class="badge">🔒 gesperrt</span>
+    <div class="bar">
+      <div class="barLeft">
+        <div class="badge"><span>📁</span><span id="folderName">Felix</span></div>
+        <div id="lockBadge" class="badge">🔒 gesperrt</div>
       </div>
-      <button class="btn" id="backBtn">Zurück</button>
+      <button id="backBtn" class="btn">Zurück</button>
     </div>
-    <div class="body">
-      <div id="hint" class="muted">Laden…</div>
-      <ul id="list" class="list"></ul>
+
+    <h2>Apps im Ordner:</h2>
+    <div class="card">
+      <ul id="items" class="list"></ul>
+      <div id="empty" class="mut" style="display:none;padding:10px 2px;">Ordner ist leer.</div>
     </div>
   </div>
 
-  <div class="modalWrap" id="modal">
-    <div class="modalCard">
-      <div class="modalHead">Ordner entsperren</div>
-      <div class="modalBody">
-        <div class="muted" id="mInfo">Bitte PIN eingeben.</div>
+  <div id="pinModal" class="modalWrap">
+    <div class="modal">
+      <div class="mHead">Ordner entsperren</div>
+      <div class="mBody">
+        <div class="mut">Bitte Code eingeben.</div>
         <div style="height:10px"></div>
         <div class="fieldRow">
-          <input id="mPin" class="field" type="password" placeholder="PIN" autocomplete="current-password" />
-          <button id="mEye" class="eye" title="PIN anzeigen">👁️</button>
+          <input id="pinInput" class="field" type="password" placeholder="PIN" autocomplete="current-password" />
+          <button id="togglePin" class="btn" title="Anzeigen">👁️</button>
         </div>
-        <div class="errText" id="mErr"></div>
+        <div class="err" id="pinErr"></div>
       </div>
-      <div class="modalFoot">
-        <button class="btn" id="mCancel">Abbrechen</button>
-        <button class="btn" id="mOk">Entsperren</button>
+      <div class="mFoot">
+        <button id="pinCancel" class="btn">Abbrechen</button>
+        <button id="pinOk" class="btn">Entsperren</button>
       </div>
     </div>
   </div>
 
-  <script>
-    (async ()=>{
-      const APP_REGISTRY = {
-        settings:  { id:"settings",  name:"Einstellungen", icon:"⚙️", href:"/settings.html" },
-        vokabeln:  { id:"vokabeln",  name:"Vokabeln",      icon:"📚", href:"/vokabeln.html" },
-        lernen:    { id:"lernen",    name:"Lernen",        icon:"🧠", href:"/lernen" },
-        packliste: { id:"packliste", name:"Packliste",     icon:"🧳", href:"/packliste.html" },
-        einkauf:   { id:"einkauf",   name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste" },
-        todo:      { id:"todo",      name:"ToDo",          icon:"✅", href:"/todo.html" },
-        misterx:   { id:"misterx",   name:"MisterX",       icon:"❌", href:"/MisterX.html" },
-        webcam:    { id:"webcam",    name:"Webcam",        icon:"📷", href:"/webcam-live" }
+<script>
+(() => {
+  const APP_REGISTRY = {
+    misterx:   { id:"misterx",   name:"MisterX", icon:"❌", href:"/MisterX.html" },
+    webcam:    { id:"webcam",    name:"Webcam",  icon:"📷", href:"/webcam-live" },
+    // falls du spaeter mehr reinlegst:
+    settings:  { id:"settings",  name:"Einstellungen", icon:"⚙️", href:"/settings.html" },
+    vokabeln:  { id:"vokabeln",  name:"Vokabeln",      icon:"🗂️", href:"/vokabeln.html" },
+    lernen:    { id:"lernen",    name:"Lernen",        icon:"🧠", href:"/lernen" },
+    packliste: { id:"packliste", name:"Packliste",     icon:"🧳", href:"/packliste.html" },
+    einkauf:   { id:"einkauf",   name:"Einkaufsliste", icon:"🛒", href:"/einkaufsliste" },
+    todo:      { id:"todo",      name:"ToDo",          icon:"✅", href:"/todo.html" }
+  };
+
+  const els = {
+    name: document.getElementById('folderName'),
+    lockBadge: document.getElementById('lockBadge'),
+    backBtn: document.getElementById('backBtn'),
+    items: document.getElementById('items'),
+    empty: document.getElementById('empty'),
+    modal: document.getElementById('pinModal'),
+    pinInput: document.getElementById('pinInput'),
+    pinErr: document.getElementById('pinErr'),
+    pinOk: document.getElementById('pinOk'),
+    pinCancel: document.getElementById('pinCancel'),
+    togglePin: document.getElementById('togglePin')
+  };
+
+  const params = new URLSearchParams(location.search);
+  const folderId = params.get('folderId') || '';
+
+  function tokenKey(){ return 'home_unlock_token:' + folderId; }
+  function unlockedKey(){ return 'folder_unlocked:' + folderId; }
+  function returnKey(){ return 'return_to_folder_once'; }
+
+  function normHref(href){
+    href = String(href || '/');
+    if (href.startsWith('http://') || href.startsWith('https://')) return href;
+    if (href.startsWith('/')) return href;
+    return '/' + href.replace(/^\.\//,'').replace(/^\/+/, '');
+  }
+
+  function showPinModal(){
+    els.modal.style.display='block';
+    els.pinErr.textContent='';
+    els.pinInput.value='';
+    els.pinInput.type='password';
+    els.togglePin.textContent='👁️';
+    setTimeout(()=>els.pinInput.focus(), 30);
+  }
+  function hidePinModal(){ els.modal.style.display='none'; }
+
+  async function apiLayout(){
+    const r = await fetch('/api/home/layout', { credentials:'include' });
+    const j = await r.json();
+    if (!r.ok || !j?.ok) throw new Error(j?.error || 'layout_failed');
+    return j;
+  }
+
+  async function apiUnlock(pin){
+    const r = await fetch('/api/home/folder/unlock', {
+      method:'POST',
+      credentials:'include',
+      headers:{ 'content-type':'application/json' },
+      body: JSON.stringify({ folderId, pin })
+    });
+    const j = await r.json().catch(()=>null);
+    if (!r.ok || !j?.ok) throw new Error(j?.error || ('unlock_http_' + r.status));
+    return j.token;
+  }
+
+  async function apiFolderItems(token){
+    const url = `/api/home/folder/items?folderId=${encodeURIComponent(folderId)}&token=${encodeURIComponent(token||'')}`;
+    const r = await fetch(url, { credentials:'include' });
+    const j = await r.json().catch(()=>null);
+    if (!r.ok || !j?.ok) throw new Error(j?.error || ('items_http_' + r.status));
+    return j.items || [];
+  }
+
+  function askPin(){
+    return new Promise((resolve)=>{
+      showPinModal();
+
+      const onToggle = ()=>{
+        const isPw = els.pinInput.type === 'password';
+        els.pinInput.type = isPw ? 'text' : 'password';
+        els.togglePin.textContent = isPw ? '🙈' : '👁️';
+        els.pinInput.focus();
       };
 
-      const qs = new URLSearchParams(location.search);
-      const folderId = String(qs.get("folderId") || "");
+      const cleanup = ()=>{
+        els.pinOk.removeEventListener('click', onOk);
+        els.pinCancel.removeEventListener('click', onCancel);
+        els.togglePin.removeEventListener('click', onToggle);
+        els.pinInput.removeEventListener('keydown', onKey);
+        els.modal.removeEventListener('click', onBg);
+      };
 
-      const fIcon = document.getElementById("fIcon");
-      const fName = document.getElementById("fName");
-      const fBadge = document.getElementById("fBadge");
-      const hint = document.getElementById("hint");
-      const list = document.getElementById("list");
-      const backBtn = document.getElementById("backBtn");
+      const onCancel = ()=>{
+        hidePinModal(); cleanup();
+        // Cancel soll sinnvoll sein: raus nach Home
+        location.replace('/home');
+      };
 
-      const modal = document.getElementById("modal");
-      const mInfo = document.getElementById("mInfo");
-      const mPin = document.getElementById("mPin");
-      const mEye = document.getElementById("mEye");
-      const mErr = document.getElementById("mErr");
-      const mCancel = document.getElementById("mCancel");
-      const mOk = document.getElementById("mOk");
+      const onBg = (e)=>{ if (e.target === els.modal) onCancel(); };
 
-      function normHref(href){
-        href = String(href || "/");
-        if (href.startsWith("http://") || href.startsWith("https://")) return href;
-        if (href.startsWith("/")) return href;
-        return "/" + href.replace(/^\.\//, "").replace(/^\/+/, "");
-      }
+      const onKey = (e)=>{
+        if (e.key === 'Enter') onOk();
+        if (e.key === 'Escape') onCancel();
+      };
 
-      backBtn.addEventListener("click", ()=>{
-        if (history.length > 1) history.back();
-        else location.href = "/home";
-      });
-
-      function takeHandoffToken(){
+      const onOk = async ()=>{
+        const pin = String(els.pinInput.value||'').trim();
+        if (!pin){ els.pinErr.textContent='PIN fehlt.'; return; }
         try{
-          const k = "home_unlock_token:" + folderId;
-          const t = sessionStorage.getItem(k) || "";
-          if (t) sessionStorage.removeItem(k); // one-time
-          return String(t || "");
-        }catch(_){ return ""; }
-      }
+          const token = await apiUnlock(pin);
+          hidePinModal(); cleanup();
+          resolve(token);
+        }catch(err){
+          const msg = String(err?.message || err || '');
+          if (msg === 'too_many_attempts') els.pinErr.textContent='Zu viele Versuche. Warte kurz.';
+          else els.pinErr.textContent='Falscher Code.';
+        }
+      };
 
-      function appRow(appId){
-        const app = APP_REGISTRY[appId];
-        if (!app) return null;
-        const li = document.createElement("li");
-        li.className = "row click";
-        li.addEventListener("click", ()=>{
-          // When we open an app from inside a folder and the user later presses "Home",
-          // Home should jump back into this folder once.
-          try{ sessionStorage.setItem("home_return_folder_once", folderId); }catch(_){ }
-          location.href = normHref(app.href);
-        });
-        const ic = document.createElement("div");
-        ic.className = "icon";
-        ic.textContent = app.icon || "🧩";
-        const nm = document.createElement("div");
-        nm.className = "name";
-        nm.textContent = app.name || appId;
-        li.appendChild(ic);
-        li.appendChild(nm);
-        return li;
-      }
+      els.pinOk.addEventListener('click', onOk);
+      els.pinCancel.addEventListener('click', onCancel);
+      els.togglePin.addEventListener('click', onToggle);
+      els.pinInput.addEventListener('keydown', onKey);
+      els.modal.addEventListener('click', onBg);
+    });
+  }
 
-      function showModal(){ modal.style.display = "block"; setTimeout(()=>mPin.focus(), 30); }
-      function hideModal(){ modal.style.display = "none"; mPin.value = ""; mErr.textContent = ""; }
-
-      // Eye toggle
-      let pinShown = false;
-      mEye.addEventListener("click", (e)=>{
-        e.preventDefault();
-        pinShown = !pinShown;
-        mPin.type = pinShown ? "text" : "password";
-        mEye.textContent = pinShown ? "🙈" : "👁️";
+  function renderItems(ids){
+    els.items.innerHTML='';
+    if (!ids.length){ els.empty.style.display='block'; return; }
+    els.empty.style.display='none';
+    for (const id of ids){
+      const app = APP_REGISTRY[id] || { id, name:id, icon:'🧩', href:'/' };
+      const li = document.createElement('li');
+      li.className='row';
+      li.innerHTML = `<div class="icon">${app.icon||'🧩'}</div><div class="title">${app.name||id}</div>`;
+      li.addEventListener('click', ()=>{
+        // merken: wenn Home gedrueckt wird, soll es wieder in den Ordner gehen (ohne neue PIN)
+        sessionStorage.setItem(returnKey(), folderId);
+        location.href = normHref(app.href);
       });
+      els.items.appendChild(li);
+    }
+  }
 
-      mCancel.addEventListener("click", ()=>{
-        hideModal();
-      });
+  function setUnlockedUI(isUnlocked){
+    els.lockBadge.textContent = isUnlocked ? '✅ entsperrt' : '🔒 gesperrt';
+  }
 
-      async function apiGetLayout(){
-        const r = await fetch("/api/home/layout", { credentials:"include" });
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j?.ok) throw new Error(j?.error || ("layout_http_"+r.status));
-        return j;
-      }
+  async function loadAndShow(){
+    if (!folderId){ location.replace('/home'); return; }
 
-      async function apiUnlock(pin){
-        const r = await fetch("/api/home/folder/unlock", {
-          method:"POST",
-          credentials:"include",
-          headers:{ "content-type":"application/json" },
-          body: JSON.stringify({ folderId, pin })
-        });
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j?.ok) throw new Error(j?.error || ("unlock_http_"+r.status));
-        return String(j.token || "");
-      }
+    // Name aus Layout ziehen
+    try{
+      const data = await apiLayout();
+      const f = (data.layout?.folders || []).find(x => String(x.id) === String(folderId));
+      els.name.textContent = f?.name || 'Felix';
+    }catch{ els.name.textContent = 'Felix'; }
 
-      async function apiGetItems(token){
-        const u = new URL(location.origin + "/api/home/folder/items");
-        u.searchParams.set("folderId", folderId);
-        if (token) u.searchParams.set("token", token);
-        const r = await fetch(u.toString(), { credentials:"include" });
-        const j = await r.json().catch(()=>null);
-        if (!r.ok || !j?.ok) throw new Error(j?.error || ("items_http_"+r.status));
-        return Array.isArray(j.items) ? j.items : [];
-      }
+    // Back button: IMMER nach Home (nicht history.back)
+    els.backBtn.addEventListener('click', ()=>{
+      // Token absichtlich loeschen, damit naechster Einstieg wieder PIN verlangt
+      sessionStorage.removeItem(tokenKey());
+      sessionStorage.removeItem(unlockedKey());
+      sessionStorage.removeItem(returnKey());
+      location.href = '/home';
+    });
 
-      async function unlockFlow(){
-        return new Promise((resolve)=>{
-          mInfo.textContent = "Bitte PIN eingeben.";
-          mErr.textContent = "";
-          mPin.value = "";
-          pinShown = false; mPin.type = "password"; mEye.textContent = "👁️";
-          showModal();
+    // Erst versuchen: Token aus sessionStorage
+    let token = sessionStorage.getItem(tokenKey());
 
-          async function onOk(){
-            mErr.textContent = "";
-            const pin = String(mPin.value || "").trim();
-            if (!pin){ mErr.textContent = "PIN fehlt."; return; }
-            try{
-              const token = await apiUnlock(pin);
-              hideModal();
-              cleanup();
-              resolve(token);
-            }catch(e){
-              const msg = String(e?.message || e || "");
-              if (msg.includes("too_many_attempts")) mErr.textContent = "Zu viele Versuche. Warte kurz.";
-              else mErr.textContent = "Falscher Code.";
-            }
-          }
-
-          function onKey(e){
-            if (e.key === "Enter") onOk();
-            if (e.key === "Escape"){ hideModal(); cleanup(); resolve(""); }
-          }
-
-          function onBg(e){
-            if (e.target === modal){ hideModal(); cleanup(); resolve(""); }
-          }
-
-          function cleanup(){
-            mOk.removeEventListener("click", onOk);
-            mPin.removeEventListener("keydown", onKey);
-            modal.removeEventListener("click", onBg);
-          }
-
-          mOk.addEventListener("click", onOk);
-          mPin.addEventListener("keydown", onKey);
-          modal.addEventListener("click", onBg);
-        });
-      }
-
-      if (!folderId){
-        hint.textContent = "Fehler: folderId fehlt.";
-        fBadge.textContent = "⚠️";
-        return;
-      }
-
+    if (token){
       try{
-        const data = await apiGetLayout();
-        const layout = data.layout || {};
-        const locks = data.locks || {};
-        const folderItemsFallback = data.folderItems || {};
-
-        const folderMeta = (Array.isArray(layout.folders) ? layout.folders : []).find(f=>String(f.id)===folderId);
-        if (folderMeta){
-          fIcon.textContent = folderMeta.icon || "📁";
-          fName.textContent = folderMeta.name || "Ordner";
-        }
-
-        const isLocked = !!locks[folderId];
-        fBadge.textContent = isLocked ? "🔒 gesperrt" : "✅ entsperrt";
-
-        // Show fallback items immediately
-        const fallback = Array.isArray(folderItemsFallback[folderId]) ? folderItemsFallback[folderId] : [];
-        if (fallback.length){
-          hint.textContent = "Apps im Ordner:";
-          list.innerHTML = "";
-          for (const id of fallback){
-            const el = appRow(id);
-            if (el) list.appendChild(el);
-          }
-        } else {
-          hint.textContent = "Keine Apps im Ordner.";
-        }
-
-        let token = "";
-        if (isLocked){
-          // If we came from Home, we should already have a one-time token.
-          token = takeHandoffToken();
-          if (!token){
-            // fallback: ask PIN here
-            token = await unlockFlow();
-          }
-          if (!token){
-            hint.textContent = "Gesperrt.";
-            list.innerHTML = "";
-            return;
-          }
-          fBadge.textContent = "✅ entsperrt";
-        }
-
-        // Load real items from API
-        const items = await apiGetItems(token);
-        if (!items.length){
-          hint.textContent = "Keine Apps im Ordner.";
-          list.innerHTML = "";
-        } else {
-          hint.textContent = "Apps im Ordner:";
-          list.innerHTML = "";
-          for (const id of items){
-            const el = appRow(id);
-            if (el) list.appendChild(el);
-          }
-        }
-      }catch(e){
-        hint.textContent = "Fehler beim Laden.";
-        list.innerHTML = "";
+        const items = await apiFolderItems(token);
+        setUnlockedUI(true);
+        renderItems(items);
+        return;
+      }catch{
+        // token ungueltig -> neu PIN
+        token = null;
+        sessionStorage.removeItem(tokenKey());
+        sessionStorage.removeItem(unlockedKey());
       }
-    })();
-  </script>
+    }
+
+    // Kein Token -> PIN fragen
+    setUnlockedUI(false);
+    const newToken = await askPin();
+    if (!newToken) return;
+
+    sessionStorage.setItem(tokenKey(), newToken);
+    sessionStorage.setItem(unlockedKey(), String(Date.now()));
+
+    const items = await apiFolderItems(newToken);
+    setUnlockedUI(true);
+    renderItems(items);
+  }
+
+  document.addEventListener('DOMContentLoaded', loadAndShow);
+})();
+</script>
 </body>
 </html>
