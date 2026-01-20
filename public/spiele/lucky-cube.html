@@ -4,297 +4,999 @@
   <meta charset="UTF-8" />
   <title>Lucky Cube</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  
-
-
-  <link rel="manifest" href="/manifest.webmanifest">
   <style>
-:root{
-      --bg0:#05080f;
-      --bg1:#070c16;
-      --panel:rgba(17,24,39,.72);
-      --panel2:rgba(17,24,39,.48);
-      --border:rgba(255,255,255,.12);
-      --text:rgba(255,255,255,.92);
-      --mut:rgba(255,255,255,.62);
-      --shadow:0 18px 60px rgba(0,0,0,.55);
-      --r:18px;
-      --acc:#2ee88f;          /* gruen */
-      --acc2:rgba(46,232,143,.18);
-      --danger:#ff5c5c;
-      --warn:#ffcc66;
-    }
+/* ===== Base ===== */
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f8ff;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+}
+h1 {
+  color: #006080;
+  font-size: 2.2em;
+  margin-top: 20px;
+}
+.button {
+  display:inline-block;
+  background:#00cc44;
+  color:#fff;
+  padding:12px 18px;
+  margin:8px;
+  border-radius:8px;
+  cursor:pointer;
+  user-select:none;
+  font-size:1.05em;
+  width:200px;
+}
+.button:hover { background:#00e65c; }
+select, input {
+  padding:10px;
+  border-radius:5px;
+  border:1px solid #ccc;
+  font-size:1em;
+  margin:5px;
+}
 
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(900px 600px at 15% 0%, rgba(46,232,143,.18), transparent 60%),
-        radial-gradient(900px 600px at 90% 20%, rgba(120,180,255,.12), transparent 65%),
-        linear-gradient(180deg,var(--bg1),var(--bg0));
-    }
+#app-section { margin-top: 20px; }
 
-    .container{max-width:1100px;margin:0 auto;padding:18px 14px 40px}
-    .topbar{
-      display:flex;align-items:center;justify-content:space-between;
-      gap:12px;margin:4px 0 18px 0;
-    }
-    h1{
-      margin:0;
-      font-size:44px;
-      letter-spacing:-.02em;
-    }
-    .top-actions{display:flex;align-items:center;gap:10px}
+/* ===== Shared layout ===== */
+.section {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 14px;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+.row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:8px 0;
+  flex-wrap:wrap;
+}
+.small { font-size:.9em; color:#555; }
+.error { color:#c30000; margin-top:6px; font-size:.9em; }
 
-    .back-link, .iconbtn, .icon-btn{
-      width:44px;height:44px;border-radius:14px;
-      display:flex;align-items:center;justify-content:center;
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.12);
-      color:var(--text);
-      text-decoration:none;
-      cursor:pointer;
-      user-select:none;
-      box-shadow:0 10px 35px rgba(0,0,0,.35);
-    }
-    .back-link:hover, .iconbtn:hover, .icon-btn:hover{filter:brightness(1.10)}
-    .back-link:active, .iconbtn:active, .icon-btn:active{transform:translateY(1px)}
+/* ===== Auction ===== */
+.auction-wrap { max-width:640px; margin:0 auto; text-align:left; }
+.input-eur {
+  display:flex;
+  align-items:center;
+  border:1px solid #ccc;
+  border-radius:6px;
+  padding:0 10px;
+}
+.input-eur input {
+  border:none;
+  outline:none;
+  padding:10px 6px;
+  width:120px;
+  background:transparent;
+}
+.input-eur span { margin-left:6px; }
+.bid-list { margin-top:10px; }
+.bid-item {
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:6px;
+  padding:8px 10px;
+  margin:6px 0;
+}
 
-    h2{margin:18px 0 10px 0;font-size:28px;color:var(--text)}
-    h3{margin:14px 0 8px 0;font-size:20px;color:var(--text)}
-    p, label, small{color:var(--mut)}
+/* ===== Battle ===== */
+.battle-wrap { max-width:640px; margin:0 auto; text-align:left; }
+.mode-btn {
+  display:inline-block;
+  padding:8px 12px;
+  border:1px solid #006080;
+  border-radius:8px;
+  cursor:pointer;
+}
+.mode-btn.active { background:#006080; color:#fff; }
 
-    /* Panels / cards */
-    #app-section, .panel, .card, .settings-section, .stats-section, .event-section, .players-section{
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:var(--r);
-      box-shadow:var(--shadow);
-      padding:16px;
-      margin:14px 0;
-    }
+/* ===== Name setup & manager ===== */
+.player-row {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin:6px auto;
+  width:100%;
+  max-width:400px;
+}
+.drag-handle {
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border-radius:6px;
+  background:#eee;
+  cursor:grab;
+  user-select:none;
+  font-size:1.1em;
+  flex-shrink:0;
+}
+.drag-handle:active { background:#ddd; cursor:grabbing; }
+.player-row input {
+  flex:1;
+  min-width:0;
+  padding:8px;
+  border:1px solid #ccc;
+  border-radius:6px;
+  font-size:1em;
+}
+.name-counter {
+  font-size:.9em;
+  color:#555;
+  white-space:nowrap;
+  flex-shrink:0;
+}
 
-    /* Inputs */
-    input, select, textarea{
-      width:100%;
-      background:rgba(0,0,0,.18);
-      color:var(--text);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:12px 12px;
-      outline:none;
-    }
-    input::placeholder, textarea::placeholder{color:rgba(255,255,255,.42)}
-    input:focus, select:focus, textarea:focus{
-      border-color:rgba(46,232,143,.55);
-      box-shadow:0 0 0 4px var(--acc2);
-    }
+/* ===== Lotto Bereich ===== */
+.lotto-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(560px, 92vw);
+  margin: 0 auto;
+}
 
-    /* Euro input wrapper (falls vorhanden) */
-    .input-eur{
-      display:flex;align-items:center;gap:10px;
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.18);
-      border-radius:14px;
-      padding:6px 10px;
-      width:max-content;
-      margin:0 auto;
-    }
-    .input-eur input{
-      width:140px;
-      border:none;
-      background:transparent;
-      padding:10px 6px;
-    }
-    .input-eur span{color:var(--mut);font-weight:800}
+/* EINMAL definiert, Grid bleibt bestehen */
+.lotto-header {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;  /* links | mitte | rechts */
+  align-items: center;
+  width: 50%;
+  gap: 12px;
+  margin-bottom: 20px;
+}
 
-    /* Buttons */
-    button, .btn, .action-btn, .primary-btn, .secondary-btn{
-      border:none;
-      border-radius:14px;
-      padding:12px 14px;
-      font-weight:900;
-      cursor:pointer;
-    }
-    .btn, button, .action-btn{
-      background:rgba(255,255,255,.08);
-      color:var(--text);
-      border:1px solid var(--border);
-    }
-    .btn:hover, button:hover, .action-btn:hover{filter:brightness(1.08)}
-    .btn:active, button:active, .action-btn:active{transform:translateY(1px)}
+.lotto-header .icon-btn:first-child { justify-self: start; }
+.lotto-header .icon-btn:last-child  { justify-self: end; }
 
-    .btn-primary, .primary-btn{
-      background:linear-gradient(180deg, rgba(46,232,143,.95), rgba(46,232,143,.72));
-      color:#00150a;
-      border:1px solid rgba(46,232,143,.45);
-      box-shadow:0 14px 40px rgba(46,232,143,.20);
-    }
-    .btn-primary:hover, .primary-btn:hover{filter:brightness(1.03)}
+.lotto-btn-left, .lotto-btn-right {
+  position: absolute;
+  top: -50px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #00cc44;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.lotto-btn-left { left: 0; }
+.lotto-btn-right { right: 0; }
+.lotto-btn-left:hover,
+.lotto-btn-right:hover { background:#00e65c; }
+.lotto-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.lotto-title {
+  justify-self: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.4rem;   /* größer als Standard */
+}
 
-    .btn-danger{
-      background:linear-gradient(180deg, rgba(255,92,92,.92), rgba(255,92,92,.70));
-      color:#1a0000;
-      border:1px solid rgba(255,92,92,.45);
-    }
+.lotto-player {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.6rem;   /* jetzt deutlich sichtbar */
+  margin: 6px 0 0 0;
+}
+.lotto-grid { margin-top: 8px; }
 
-    /* Lists / log */
-    .event-log, #eventLog, .log{
-      text-align:left;
-      padding:0;
-      list-style:none;
-      margin:10px 0 0 0;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .event-item, .log-item, .row{
-      display:flex;
-      align-items:flex-start;
-      gap:12px;
-      background:var(--panel2);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:14px;
-    }
-    .event-time{color:rgba(255,255,255,.45);font-size:12px;margin-left:auto;white-space:nowrap}
-    .event-kind{font-weight:900}
-    .event-text{color:var(--text);word-break:break-word}
+.lotto-area p {
+  margin: 12px 0;              /* konsistente Abstände */
+  text-align: center;
+}
+.lotto-grid {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+.lotto-num {
+  width: 90px;
+  height: 90px;
+  border-radius: 12px;
+  border: 2px solid #cfe2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  user-select: none;
+}
+.lotto-num.open   { color:#b00020; border-color:#ffb3b3; background:#ffe6e6; }
+.lotto-num.active { color:#0057d9; border-color:#a7c4ff; background:#eaf1ff; cursor:pointer; }
+.lotto-num.done   { color:#0b7a28; border-color:#a5d6a7; background:#e8f5e9; cursor:pointer; }
 
-    /* Tables */
-    table{width:100%;border-collapse:separate;border-spacing:0 10px}
-    th{color:rgba(255,255,255,.70);text-align:left;font-weight:900}
-    td{
-      background:var(--panel2);
-      border:1px solid var(--border);
-      padding:12px 12px;
-      border-radius:14px;
-      color:var(--text);
-    }
+/* ===== Icon Button (❓ / ⚙️ / ✖) ===== */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #00cc44;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+.icon-btn span { font-size: 1.4em; line-height: 1; display: block; }
+.icon-btn:hover { background: #00e65c; }
 
-    /* Small helpers (override old light styles) */
-    .main-header{display:none !important;}
-    .icon-btn{ /* old header icons, keep style */
-      font-size:18px;
-    }
+.lotto-num.clickable { cursor: pointer; }
 
-    @media (max-width:700px){
-      h1{font-size:34px}
-      .back-link,.iconbtn,.icon-btn{width:40px;height:40px;border-radius:12px}
-      #app-section, .panel, .card, .settings-section, .stats-section, .event-section, .players-section{padding:14px}
+/* ===== Hauptbuttons konsistent grün ===== */
+#app-section .button {
+  display: block;
+  margin: 10px auto;
+  width: 240px;
+}
+
+/* ===== Header (auch für Settings/Jackpot/Streak) ===== */
+.auction-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.auction-title {
+  font-size: 2em;
+  font-weight: 700;
+}
+.main-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  margin-bottom: 20px;
+}
+.main-header h1 {
+  font-size: 2.2em;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* Lotterie/Lucky-Streak Header wirklich zentriert */
+.lotto-header{
+  display: grid !important;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;              /* nicht 50% */
+  max-width: 300px;         /* optional, passend zu .lotto-area */
+  margin: 0 auto 20px;      /* zentriert den Block */
+}
+
+.lotto-header .icon-btn:first-child { justify-self: start; }
+.lotto-header .icon-btn:last-child  { justify-self: end;  }
+
+.lotto-title{
+  justify-self: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+
+
+/* ===== Popup Overlay ===== */
+.help-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.help-box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  position: relative;
+}
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.help-header h2 { margin: 0; font-size: 1.4em; color: #006080; }
+.help-close { font-size: 1.4em; font-weight: bold; cursor: pointer; color: #333; }
+.help-close:hover { color: #c30000; }
+
+/* ===== Settings Box ===== */
+.settings-section {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  max-width: 400px;
+  margin: 0 auto;
+}
+.settings-title {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #006080;
+}
+
+/* Settings Zeilen + Responsive */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 0;
+  font-size: 1.05em;
+}
+.settings-row label:first-child {
+  min-width: 260px;   /* genug Platz, damit alles einzeilig bleibt */
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+@media (max-width: 480px) {
+  .settings-row { align-items: flex-start; }
+  .settings-row label:first-child { min-width: 0; }
+}
+
+/* ===== EINDEUTIGER Toggle: an links / aus rechts ===== */
+.switch {
+  position: relative;           /* wichtig: Referenz für .track */
+  display: inline-block;
+  width: 88px;                  /* Breite des Schalters */
+  height: 36px;                 /* Höhe des Schalters */
+}
+.switch input {
+  position: absolute;
+  opacity: 0;                   /* unsichtbar, aber fokussierbar */
+  width: 0;
+  height: 0;
+}
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: #cfd8dc;
+  border-radius: 999px;
+  transition: background .2s ease;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+}
+.switch .track::after {         /* Knopf */
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  left: 4px;
+  top: 4px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  transition: transform .2s ease;
+}
+/* Basis: AUS -> Text rechts */
+.switch .track::before {
+  content: attr(data-off);
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 700;
+  font-size: .85rem;
+  color: #455a64;
+  transition: all .2s ease;
+}
+/* AN: grün, Knopf rechts, Text links */
+.switch input:checked + .track { background: #00cc44; }
+.switch input:checked + .track::after { transform: translateX(52px); } /* 88 - 36 = 52 */
+.switch input:checked + .track::before {
+  content: attr(data-on);
+  left: 14px;
+  right: auto;
+  color: #fff;
+}
+/* deaktiviert (optional) */
+.switch input:disabled + .track { background: #e0e0e0; }
+.switch input:disabled + .track::after { box-shadow: none; }
+
+/* ===== Dice Animation ===== */
+.dice-el {
+  position: fixed;
+  top: 0; left: 0;
+  width: 80px; height: 80px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+  display: grid;
+  place-items: center;
+  font-size: 48px;
+  user-select: none;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+/* ===== Poker UI (aufgeräumt) ===== */
+.poker-area{
+  width:min(680px,95vw);
+  margin:0 auto;
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:12px;
+  padding:10px 12px;
+}
+.poker-row{
+  display:grid;
+  grid-template-columns:1fr 100px 200px;
+  align-items:center;
+  gap:12px;
+  padding:8px 0;
+  border-bottom:1px solid #eee;
+}
+.poker-row:last-child{border-bottom:none}
+.poker-name{
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  text-align:left;
+}
+.poker-payout{
+  text-align:right;
+  padding-right:6px;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.poker-boxes{
+  display:grid;
+  grid-template-columns:repeat(5,32px);
+  gap:8px;
+  justify-content:start;
+}
+.poker-check{
+  width:32px;height:32px;
+  display:grid;place-items:center;
+  border:1px solid #ccc;border-radius:6px;
+  cursor:pointer;user-select:none;
+  font-size:1.05rem;background:#fff;
+}
+.poker-check.active{background:#e8f5e9;border-color:#a5d6a7}
+
+@media (max-width:520px){
+  .poker-row{
+    grid-template-columns:1fr 90px;
+    grid-template-areas:
+      "name payout"
+      "boxes boxes";
+  }
+  .poker-name{grid-area:name}
+  .poker-payout{grid-area:payout}
+  .poker-boxes{grid-area:boxes}
+}
+
+/* ===== Modal-Ausrichtung: „Wer spielt diese Runde?“ mittig ===== */
+.modal .field{margin:12px 0;text-align:center}
+.modal .field label{display:block;font-weight:600;margin-bottom:6px;text-align:center}
+
+
+/* ===== 50-50 ===== */
+    .auction-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
     }
-  
-    /* LuckyCube legacy buttons (div.button) */
-    .button{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      padding:12px 14px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      user-select:none;
-      background:linear-gradient(180deg, rgba(46,232,143,.95), rgba(46,232,143,.72));
-      color:#00150a;
-      border:1px solid rgba(46,232,143,.45);
-      box-shadow:0 14px 40px rgba(46,232,143,.20);
-      width:max-content;
-      min-width:140px;
-      margin:10px auto 0 auto;
+    .auction-title {
+      font-size: 2em;
+      font-weight: 700;
     }
-    .button:hover{filter:brightness(1.03)}
-    .button:active{transform:translateY(1px)}
-    
-    #app-section{max-width:1100px;margin:14px auto}
-    /* Settings layout */
-    .auction-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:12px;
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: #00cc44;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
     }
-    .auction-title{font-size:20px;font-weight:900;color:var(--text)}
-    .settings-row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:14px;
-      padding:10px 0;
-      border-bottom:1px solid rgba(255,255,255,.06);
+    .icon-btn span { font-size: 1.4em; }
+    .icon-btn:hover { background:#00e65c; }
+
+    .allnothing-wrap {
+      max-width: 400px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
-    .settings-row:last-child{border-bottom:none}
-    .settings-row label{color:var(--mut);font-weight:800}
-    .switch{
-      position:relative;
+    .button {
       display:inline-block;
-      width:54px;
-      height:30px;
-      flex:0 0 auto;
-    }
-    .switch input{opacity:0;width:0;height:0}
-    .slider{
-      position:absolute;
+      background:#00cc44;
+      color:#fff;
+      padding:14px 20px;
+      margin:12px;
+      border-radius:10px;
       cursor:pointer;
-      top:0;left:0;right:0;bottom:0;
-      background:rgba(255,255,255,.10);
-      border:1px solid var(--border);
-      transition:.2s;
-      border-radius:999px;
+      user-select:none;
+      font-size:1.2em;
+      width:200px;
     }
-    .slider:before{
-      position:absolute;
-      content:"";
-      height:24px;width:24px;
-      left:3px;top:2px;
-      background:rgba(255,255,255,.85);
-      transition:.2s;
-      border-radius:999px;
-      box-shadow:0 10px 25px rgba(0,0,0,.45);
-    }
-    .switch input:checked + .slider{
-      background:rgba(46,232,143,.25);
-      border-color:rgba(46,232,143,.55);
-    }
-    .switch input:checked + .slider:before{
-      transform:translateX(24px);
-      background:rgba(46,232,143,.95);
-    }
-    /* Switch (uses <span class="track">) */
-    .switch{position:relative;display:inline-block;width:54px;height:30px;flex:0 0 auto;}
-    .switch input{opacity:0;width:0;height:0}
-    .switch .track{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid var(--border);transition:.2s;}
-    .switch .track::before{content:"";position:absolute;width:24px;height:24px;left:3px;top:2px;border-radius:999px;background:rgba(255,255,255,.85);transition:.2s;box-shadow:0 10px 25px rgba(0,0,0,.45);}
-    .switch input:checked + .track{background:rgba(46,232,143,.25);border-color:rgba(46,232,143,.55);}
-    .switch input:checked + .track::before{transform:translateX(24px);background:rgba(46,232,143,.95);}
-    
-    /* Help / Info overlay */
-    .help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999;}
-    .help-box{width:min(820px,100%);max-height:85vh;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:16px;}
-    .help-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
-    .help-header h2{margin:0;font-size:20px}
-    .help-close{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:rgba(0,0,0,.12);cursor:pointer;user-select:none;}
-    .help-close:hover{filter:brightness(1.10)}
-    .help-close:active{transform:translateY(1px)}
-    
-</style>
+    .button:hover { background:#00e65c; }
 
+    .result {
+      font-size: 1.4em;
+      margin-top: 18px;
+      font-weight: 700;
+    }
+    .lose { color:#d32f2f; }
+    .win { color:#2e7d32; }
+	
+/* ===== Roulette (sauber) ===== */
+.roulette-wrap{
+  position:relative;
+  width:320px;
+  aspect-ratio:1/1;
+  margin:0 auto 20px;
+}
+.roulette-wheel{
+  width:100%; height:100%;
+  border-radius:50%;
+  border:6px solid #222;
+  transform: rotate(0deg);
+  transition: transform 3s cubic-bezier(.1,.7,.3,1);
+  box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 0 0 6px #222;
+  position:relative;
+  overflow:hidden;
+}
+.roulette-numlabel{
+  position:absolute;
+  left:50%; top:50%;
+  font-weight:700;
+  font-size:1rem;
+  color:#fff;
+  text-shadow:0 0 2px #000, 0 0 4px #000;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.roulette-ball-container{
+  position:absolute;
+  inset:0;
+  transform: rotate(-90deg);   /* 12-Uhr-Start */
+  transition: transform 3s cubic-bezier(.1,.7,.3,1);
+  pointer-events:none;
+}
+.roulette-ball{
+  position:absolute;
+  width:8%; height:8%;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+
+.roulette-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  max-width:340px; margin:10px auto;
+}
+.roulette-btn{
+  padding:12px; border-radius:10px; cursor:pointer;
+  background:#00cc44; color:#fff; text-align:center; font-size:1.05em; user-select:none;
+  border:3px solid transparent;
+}
+.roulette-btn:hover{ background:#00e65c; }
+.roulette-btn.active{ border-color:#000; }
+
+.roulette-input{
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  background:#fff; border:1px solid #ccc; border-radius:10px; padding:6px 10px;
+}
+.roulette-input input{ width:70px; border:none; outline:none; font-size:1rem; text-align:center; }
+
+.roulette-small{ font-size:.9em; color:#555; margin-top:6px; text-align:center; }
+
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  max-width: 340px;
+  margin: 12px auto 6px;
+}
+
+#playBtn,
+#stakeBtn {
+  flex: 1;              /* beide gleich groß */
+  max-width: 160px;     /* ca. halbes Roulette */
+  text-align: center;
+}
+
+.disabled{ filter:grayscale(.4); opacity:.7; cursor:not-allowed; }
+
+#warnMsg{ color:#c62828; margin-top:6px; min-height:1.2em; }
+
+.roulette-number-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  grid-column: span 2; /* nimmt volle Breite in Grid */
+}
+
+.roulette-number-row input {
+  width: 60px;          /* viel kleiner */
+  height: 28px;         /* halb so hoch wie Standard */
+  padding: 4px;
+  text-align: center;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.roulette-number-green-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  grid-column: span 2;
+  margin-top: 6px;
+}
+
+.roulette-number-green-row input {
+  width: 60px;
+  height: 28px;
+  padding: 4px;
+  text-align: center;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* grüner Button breiter machen */
+.roulette-btn.wide {
+  flex: 1;           /* nimmt mehr Platz */
+  min-width: 120px;  /* ungefähr wie Gerade/Ungerade */
+  text-align: center;
+}
+
+/* ===== Modal Styles ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  background: rgba(0,0,0,0.6);
+  display: none;       /* Standard: unsichtbar */
+  align-items: center; /* zentriert vertikal */
+  justify-content: center; /* zentriert horizontal */
+  z-index: 2000;
+}
+
+.modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.modal h2 {
+  margin-top: 0;
+  color: #006080;
+}
+
+.modal .hint {
+  font-size: .9em;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.modal .field {
+  margin: 12px 0;
+}
+
+.modal .field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.modal .field input {
+  width: 120px;         /* statt 100% */
+  padding: 6px 8px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;   /* Zahl mittig */
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.modal .btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.modal .btn.primary {
+  background: #00cc44;
+  color: #fff;
+}
+
+.modal .btn.primary:hover {
+  background: #00e65c;
+}
+
+.inventory {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px auto;
+  max-width: 500px;
+  text-align: left;
+}
+
+.inv-cards {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inv-card {
+  background: #f0f8ff;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 0.95em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.inv-card button {
+  background: #00cc44;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.inv-card button:hover {
+  background: #00e65c;
+}
+
+/* Einheitliche Button-Reihe in Modals */
+.modal-actions.centered {
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Gleich breite Modal-Buttons */
+.modal .btn.equal {
+  flex: 1;
+  max-width: 140px;
+}
+
+/* ===== Event Log (Layout wie Skizze) ===== */
+.event-log{
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* Karten zentrieren */
+  gap: 14px;
+}
+
+.event-card{
+  background:#fff;
+  border:1px solid #ccc;
+  border-radius:12px;
+  padding:14px 18px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+
+  max-width: 650px;   /* ungefähr wie oben zwischen ? und ⚙️ */
+  width: 100%;
+
+  display:grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px 20px;
+}
+
+/* Linke Spalte: Spieler + Zeit mittig */
+.event-left{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+.event-player{
+  font-weight:700;
+  color:#006080;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.event-time{
+  color:#555;
+  font-size:0.9em;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+/* Rechte Spalte neu strukturieren */
+.event-right{
+  display:flex;
+  flex-direction:column;
+  align-items:center;   /* zentriert statt rechts */
+  text-align:center;
+}
+
+.event-kind{
+  margin-bottom:6px;
+  padding:4px 10px;
+  border-radius:10px;
+  background:#f6fbff;
+  border:1px solid #cfe2ff;
+  font-weight:700;
+}
+
+.event-text{
+  color:#333;
+  word-break:break-word;
+}
+
+// bei Ereigniskarten
+eventLog.unshift({
+  player: player,
+  text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
+  kind: "card",
+  time: now.toLocaleTimeString()
+});
+
+// bei Trophäen
+eventLog.unshift({
+  player: player,
+  text: `🏆 ${amount} Trophäe${amount>1?"n":""} erhalten`,
+  kind: "trophy",
+  time: now.toLocaleTimeString()
+});
+
+// bei Artefaktum-Käufen
+eventLog.unshift({
+  player: player,
+  text: `🛒 ${itemName} gekauft`,
+  kind: "shop",
+  time: now.toLocaleTimeString()
+});
+
+/* ===== Panel (gemeinsamer weißer Kasten) ===== */
+.panel{
+  background:#ffffff;
+  border-radius:14px;
+  padding:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.1);
+  max-width:400px;         /* gleiche Breite wie .settings-section */
+  margin:0 auto;           /* zentriert */
+}
+
+/* Statistik nutzt den gleichen Kasten wie die Settings */
+.stats-section{ /* nur Alias – falls du später abweichende Abstände brauchst */
+}
+
+/* Tabelle kompakt und zentriert im Panel */
+.stats-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:12px 10px;    /* etwas Luft zwischen Spalten/Zeilen */
+  font-size:1.05em;
+}
+.stats-table th{
+  text-align:left;
+  font-weight:700;
+  padding-bottom:6px;
+}
+.stats-table td{
+  text-align:left;
+  white-space:nowrap;
+}
+
+/* ===== Statistik ===== */
+.panel.stats-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  max-width: 600px;
+  margin: 20px auto;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.stats-table th {
+  font-weight: 600;
+  color: #333;
+}
+
+.stats-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==== Artefaktum (3 Karten untereinander) ==== */
+.arte-wrap{max-width:520px;margin:0 auto}
+.arte-col{display:flex;flex-direction:column;gap:16px}
+.arte-card{
+  background:#fff;border:1px solid #ddd;border-radius:14px;
+  padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center
+}
+.arte-emoji{font-size:2.2rem;line-height:1}
+.arte-name{margin-top:6px;font-size:1.05rem}
+.arte-price{margin-top:8px;font-size:2rem;font-weight:800}
+.arte-buy{margin-top:10px;width:200px}
+.arte-foot{margin-top:8px;font-size:.9rem;color:#555;text-align:center}
+.button.disabled {
+  background:#cdeac7;   /* hellgrün-weiß */
+  color:#666;
+  cursor:default;
+  pointer-events:none;
+}
+
+  </style>
 </head>
 <body>
 
-<div class="container">
-  <div class="topbar">
-    <h1>🎲 Lucky Cube</h1>
-    <div class="top-actions">
-      <button class="iconbtn" onclick="showHelp(currentContext)" aria-label="Hilfe">❓</button>
-      <button class="iconbtn" onclick="openSettings()" aria-label="Einstellungen">⚙️</button>
-      <button class="iconbtn" onclick="goHomeSafe()" aria-label="Home">🏠</button>
-    </div>
-  </div>
+<div class="main-header">
+  <h1>
+    <div class="icon-btn" onclick="showHelp(currentContext)">❓</div>
+    🎲 Lucky Cube 🎲
+    <div class="icon-btn" onclick="openSettings()">⚙️</div>
+  </h1>
+</div>
 
   <div id="app-section">
     <h2>Spieleranzahl wählen</h2>
@@ -311,8 +1013,9 @@
     <br><br>
     <div class="button" onclick="confirmPlayerCount()">Weiter</div>
   </div>
-</div>
 
+ 
+  
   <script>
 /* ===== Global ===== */
 let totalPlayers = 0;
@@ -321,10 +1024,9 @@ let eventLog = [];  // [{player:"Alice", text:"Goldregen", time:"12:34:56"}]
 // === Snapshot für Ereigniskarten (UI-Zustand merken) ===
 window._eventcardSnapshot = null;
 
-// --- EventLog NICHT automatisch loeschen (bleibt fuer Verlauf erhalten) ---
-// (Wenn du es doch loeschen willst: mach das nur beim Reset-Button)
-try { const saved = JSON.parse(localStorage.getItem("eventLog")||"[]"); if (Array.isArray(saved)) eventLog = saved; } catch(e) {}
-
+// --- EventLog beim (Neu-)Start immer leeren ---
+try { localStorage.removeItem("eventLog"); } catch(e) {}
+eventLog = [];
 
 /* === Event-Log persistent speichern === */
 function saveEventLog() {
@@ -405,259 +1107,7 @@ function saveSettings() {
   localStorage.setItem("settings", JSON.stringify(settings));
 }
 
-let currentContext = "setup";
-
-const _START_SETUP_HTML = (document.getElementById('app-section')?.innerHTML || '');
-let _navStack = [];
-let _lastHelpContext = 'home';
-
-// ===== LuckyCube Cloud Save + Mehrere Spiele =====
-// Erwarteter Worker-Endpoint (wie bei ToDo):
-//   GET/PUT /api/luckycube/data   (auth via cookies; {ok:true,data:{...}})
-
-const USE_LOCAL_FALLBACK = true; // <- auf false stellen, sobald dein Worker /api/luckycube/data liefert
-const LS_FALLBACK_KEY = "luckycubeData_fallback_v1";
-
-let cloudData = { currentId: null, games: {}, order: [] };
-
-function makeId(prefix){
-  return (prefix||"id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
-}
-
-function redirectToLogin(){ location.href = "/login.html"; }
-
-async function apiGet(){
-  if (USE_LOCAL_FALLBACK){
-    try{
-      const raw = localStorage.getItem(LS_FALLBACK_KEY);
-      return raw ? JSON.parse(raw) : { currentId:null, games:{}, order:[] };
-    }catch(e){
-      return { currentId:null, games:{}, order:[] };
-    }
-  }
-  const r = await fetch("/api/luckycube/data", { credentials:"include" });
-  if (r.status === 401) redirectToLogin();
-  const j = await r.json().catch(()=>null);
-  if (!j || j.ok !== true) throw new Error(j?.error || "load_failed");
-  return j.data || { currentId:null, games:{}, order:[] };
-}
-
-let _saving = false;
-let _saveQueued = false;
-
-async function apiPut(obj){
-  if (USE_LOCAL_FALLBACK){
-    localStorage.setItem(LS_FALLBACK_KEY, JSON.stringify(obj));
-    return;
-  }
-  const r = await fetch("/api/luckycube/data", {
-    method:"PUT",
-    headers:{ "Content-Type":"application/json" },
-    credentials:"include",
-    body: JSON.stringify(obj)
-  });
-  if (r.status === 401) redirectToLogin();
-  const j = await r.json().catch(()=>null);
-  if (!j || j.ok !== true) throw new Error(j?.error || "save_failed");
-}
-
-function scheduleCloudSave(){
-  if (_saving){ _saveQueued = true; return; }
-  _saving = true;
-  setTimeout(async ()=>{
-    try{ await apiPut(cloudData); }
-    catch(e){ console.error("cloud save failed", e); }
-    finally{
-      _saving = false;
-      if (_saveQueued){ _saveQueued = false; scheduleCloudSave(); }
-    }
-  }, 250);
-}
-
-function ensureGameObject(id){
-  if (!cloudData.games[id]){
-    cloudData.games[id] = {
-      id,
-      name:"Spiel",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      players: [],
-      totalPlayers: 0,
-      settings: null,
-      stats: null,
-      trophyStats: null,
-      eventLog: null
-    };
-  }
-  return cloudData.games[id];
-}
-
-function getActiveGame(){
-  const id = cloudData.currentId;
-  if (!id) return null;
-  return cloudData.games[id] || null;
-}
-
-function setActiveGame(id){
-  cloudData.currentId = id;
-  ensureGameObject(id);
-  if (!cloudData.order.includes(id)) cloudData.order.unshift(id);
-  scheduleCloudSave();
-}
-
-function loadGameIntoRuntime(g){
-  try{ settings = g.settings || settings; }catch(e){}
-  try{ stats = g.stats || stats; }catch(e){}
-  try{ trophyStats = g.trophyStats || trophyStats; }catch(e){}
-  try{ eventLog = Array.isArray(g.eventLog) ? g.eventLog : eventLog; }catch(e){}
-  totalPlayers = g.totalPlayers || totalPlayers || 0;
-  playerNames = Array.isArray(g.players) ? g.players.slice() : (playerNames||[]);
-}
-
-function saveRuntimeIntoGame(){
-  const g = getActiveGame();
-  if (!g) return;
-  g.updatedAt = Date.now();
-  g.totalPlayers = totalPlayers || g.totalPlayers || 0;
-  g.players = Array.isArray(playerNames) ? playerNames.slice() : (g.players||[]);
-  try{ g.settings = settings; }catch(e){}
-  try{ g.stats = stats; }catch(e){}
-  try{ g.trophyStats = trophyStats; }catch(e){}
-  try{ g.eventLog = Array.isArray(eventLog) ? eventLog.slice(0,300) : []; }catch(e){}
-  scheduleCloudSave();
-}
-
-function formatDate(ts){
-  try{
-    const d = new Date(ts);
-    return d.toLocaleString("de-DE", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" });
-  }catch(e){ return ""; }
-}
-
-function escapeHtml(s){
-  return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function renderSetupScreen(){
-  currentContext = "setup";
-  const el = document.getElementById("app-section");
-  if (!el) return;
-
-  const rows = cloudData.order.filter(id => cloudData.games[id]).map(id => cloudData.games[id]);
-
-  let listHtml = "";
-  if (!rows.length){
-    listHtml = `<div class="mut">Keine gespeicherten Spiele.</div>`;
-  }else{
-    listHtml = rows.map(g=>{
-      const p = (g.players||[]).filter(Boolean);
-      const pText = p.length ? p.join(", ") : "—";
-      return `
-        <div class="row" style="align-items:center;">
-          <div class="icon">🎲</div>
-          <div class="title" style="display:flex;flex-direction:column;gap:2px;">
-            <div style="font-weight:900;">${escapeHtml(g.name||"Spiel")}</div>
-            <div style="color:var(--mut);font-size:13px;">${escapeHtml(pText)} • ${formatDate(g.updatedAt||g.createdAt)}</div>
-          </div>
-          <div style="margin-left:auto;display:flex;gap:8px;">
-            <button class="btn-primary" style="padding:10px 12px;border-radius:12px;" onclick="loadGame('${g.id}')">Öffnen</button>
-            <button class="btn" style="padding:10px 12px;border-radius:12px;" onclick="deleteGame('${g.id}')">Löschen</button>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  el.innerHTML = `
-    <h2>Spiel starten</h2>
-
-    <div class="panel">
-      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-        <div style="flex:1 1 260px;">
-          <label for="gameName">Spielname</label>
-          <input id="gameName" type="text" placeholder="z.B. Freitagabend" maxlength="30">
-        </div>
-        <div style="flex:1 1 240px;">
-          <label for="playerCount">Spieleranzahl wählen</label>
-          <select id="playerCount">
-            <option value="">Bitte wählen</option>
-            <option value="2">2 Spieler</option>
-            <option value="3">3 Spieler</option>
-            <option value="4">4 Spieler</option>
-          </select>
-        </div>
-        <button class="btn-primary" style="height:46px;" onclick="createNewGame()">Neues Spiel</button>
-      </div>
-    </div>
-
-    <h3>Aktuelle Spiele</h3>
-    <div class="panel">
-      <div style="display:flex;flex-direction:column;gap:10px;">${listHtml}</div>
-    </div>
-  `;
-}
-
-function createNewGame(){
-  const name = (document.getElementById("gameName")?.value || "").trim() || "Spiel";
-  const pc = document.getElementById("playerCount")?.value;
-  if (!pc){ alert("Bitte zuerst die Spieleranzahl wählen."); return; }
-
-  const id = makeId("game");
-  setActiveGame(id);
-  const g = ensureGameObject(id);
-  g.name = name;
-  g.players = [];
-  g.totalPlayers = parseInt(pc,10);
-  g.eventLog = [];
-  g.settings = settings;
-  scheduleCloudSave();
-
-  totalPlayers = g.totalPlayers;
-  playerNames = [];
-  eventLog = [];
-  showNameInputs();
-}
-
-function loadGame(id){
-  try{ saveRuntimeIntoGame(); }catch(e){}
-  setActiveGame(id);
-  const g = ensureGameObject(id);
-  loadGameIntoRuntime(g);
-
-  if (!playerNames || !playerNames.length) showNameInputs();
-  else showHome();
-}
-
-function deleteGame(id){
-  if (!confirm("Spiel wirklich löschen?")) return;
-  delete cloudData.games[id];
-  cloudData.order = cloudData.order.filter(x=>x!==id);
-  if (cloudData.currentId === id) cloudData.currentId = cloudData.order[0] || null;
-  scheduleCloudSave();
-  renderSetupScreen();
-}
-
-async function goHomeSafe(){
-  try{ saveRuntimeIntoGame(); }catch(e){}
-  location.href = "/home";
-}
-
-window.addEventListener("beforeunload", ()=>{ try{ saveRuntimeIntoGame(); }catch(e){} });
-
-function _inferContext(){
-  // Wenn Hilfe-Overlay offen ist
-  if (document.querySelector('.help-overlay')) return 'help';
-  // Setup: Spieleranzahl-Select
-  if (document.getElementById('playerCount')) return 'setup';
-  // Spielernamen-Setup
-  if (document.getElementById('nameList')) return 'players';
-  return (typeof currentContext === 'string' && currentContext) ? currentContext : 'home';
-}
-
-function showSetup(){
-  if (typeof _killOverlays === 'function') _killOverlays();
-  renderSetupScreen();
-}
+let currentContext = "home";
 
 let _settingsPrevContext = null;
 let _settingsPrevHTML = "";
@@ -1252,15 +1702,8 @@ function toggleExternalRoll(checked) {
 window._settingsPrevContext = window._settingsPrevContext || "home";
 
 function openSettings() {
-  // Herkunft merken (auch Setup/Hilfe sauber erkennen)
-  const ctx = _inferContext();
-  if (ctx === 'help') {
-    // merken, wofuer Hilfe offen war
-    if (typeof _lastHelpContext === 'string' && _lastHelpContext) {
-      // ok
-    }
-  }
-  _navStack.push(ctx);
+  // Herkunft merken
+  const ctx = (typeof currentContext === "string" && currentContext) ? currentContext : "home";
   window._settingsPrevContext = ctx;
 
   /* 🃏 Poker – Snapshot */
@@ -1327,8 +1770,8 @@ function openSettings() {
 
 /** ===== Einstellungen schließen – exakt zum gemerkten Screen zurück ===== */
 function closeSettings() {
-  const prev = (_navStack.length ? _navStack.pop() : (window._settingsPrevContext || 'home'));
-  window._settingsPrevContext = null;
+  const prev = window._settingsPrevContext || "home";
+  window._settingsPrevContext = null;   // Reset für den nächsten Durchlauf
   currentContext = prev;
 
   /* 🃏 Poker: nie neu starten – Snapshot rendern */
@@ -1449,9 +1892,6 @@ if (prev === "artefaktum") {
     case "inventory": showInventory();  break;
     case "eventlog":  showEventLog();   break;
     case "stats":     showStatistics(); break;
-    case "players":   showNameInputs(); break;
-    case "setup":     showSetup();      break;
-    case "help":      showHelp(_lastHelpContext || "home"); break;
     case "home":      showHome();       break;
     default:          showHome();
   }
@@ -1596,9 +2036,6 @@ function colorfulRouletteWord() {
 }
 
 function showHelp(context) {
-  // merken, wofuer die Hilfe ist
-  _lastHelpContext = context || _lastHelpContext || 'home';
-  currentContext = 'help';
   let text = "";
   switch (context) {
 	case "lotto":
@@ -1771,10 +2208,7 @@ case "artefaktum":
 }
 
 function closeHelp(el) {
-  const ov = el.closest('.help-overlay');
-  if (ov) document.body.removeChild(ov);
-  // nach dem Schliessen: Kontext neu bestimmen (z.B. Setup/Spiel/menue)
-  currentContext = _inferContext();
+  document.body.removeChild(el.closest(".help-overlay"));
 }
 
 function enablePlayerDragDrop() {
@@ -3650,7 +4084,7 @@ async function doBattleAnimated() {
   }
 }
 
-//<!-- ===== 50-50 ===== -->
+<!-- ===== 50-50 ===== -->
 let allnothingStats = { win: 0, lose: 0 };
 let allnothingState = { playerIdx: null, trophyLine: "" };
 
