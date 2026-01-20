@@ -41,99 +41,6 @@ select, input {
 
 #app-section { margin-top: 20px; }
 
-/* ===== Lucky Cube Dark Mode (Override) ===== */
-:root{
-  --bg0:#05080f;
-  --bg1:#0a1020;
-  --panel:rgba(18,28,55,.72);
-  --panel2:rgba(10,18,38,.78);
-  --border:rgba(255,255,255,.10);
-  --text:rgba(255,255,255,.94);
-  --mut:rgba(255,255,255,.66);
-  --acc:#2ee88f;
-  --shadow:0 22px 70px rgba(0,0,0,.55);
-}
-
-/* Grund */
-html,body{height:100%}
-body{
-  margin:0;
-  color:var(--text);
-  background:
-    radial-gradient(1200px 600px at 15% 0%, rgba(46,232,143,.18), transparent 60%),
-    radial-gradient(1200px 700px at 85% 10%, rgba(90,120,255,.12), transparent 60%),
-    linear-gradient(180deg,var(--bg1),var(--bg0));
-}
-
-/* Typo */
-h1,h2,h3{color:var(--text)}
-small,.muted,.sub,.hint{color:var(--mut)}
-
-/* Karten/Boxen (greift auf viele Layouts ohne was kaputt zu machen) */
-.container,.wrap,.content,.box,.card,.panel,.section,.settings-section,.mode-box,.game-box{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:18px;
-  box-shadow:var(--shadow);
-}
-.panel,.section,.settings-section,.mode-box,.game-box{padding:16px}
-
-/* Inputs / Selects (PC hellgrau fix) */
-input,select,textarea{
-  background:rgba(0,0,0,.22) !important;
-  color:var(--text) !important;
-  border:1px solid var(--border) !important;
-  border-radius:14px !important;
-  padding:12px 12px !important;
-  outline:none !important;
-}
-input::placeholder,textarea::placeholder{color:rgba(255,255,255,.45)}
-input:focus,select:focus,textarea:focus{
-  border-color:rgba(46,232,143,.55) !important;
-  box-shadow:0 0 0 4px rgba(46,232,143,.14) !important;
-}
-/* Dropdown-Liste */
-select option{
-  background:#0b1326 !important;
-  color:var(--text) !important;
-}
-
-/* Buttons (auch für <div class="button">) */
-button,.btn,.btn-primary,.button,[role="button"]{
-  border-radius:14px !important;
-  font-weight:900 !important;
-  cursor:pointer;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(255,255,255,.08);
-  color:var(--text);
-}
-button:hover,.btn:hover,.button:hover{filter:brightness(1.08)}
-button:active,.btn:active,.button:active{transform:translateY(1px)}
-
-/* “Grün”-Buttons */
-.btn-primary,.primary,.ok,.confirm,.green{
-  background:linear-gradient(180deg, rgba(46,232,143,.95), rgba(46,232,143,.70)) !important;
-  color:#00150a !important;
-  border-color:rgba(46,232,143,.45) !important;
-  box-shadow:0 14px 40px rgba(46,232,143,.18) !important;
-}
-
-/* Modals/Overlays (damit Popups dark sind) */
-.modal,.dialog,.popup,.overlay-box,.help-box,.info-box{
-  background:var(--panel2) !important;
-  border:1px solid var(--border) !important;
-  border-radius:18px !important;
-  color:var(--text) !important;
-  box-shadow:var(--shadow) !important;
-}
-.overlay,.backdrop,.modal-overlay,.help-overlay{
-  background:rgba(0,0,0,.55) !important;
-}
-
-/* Tabellen/Text-Blöcke */
-table,th,td{color:var(--text)}
-hr{border-color:rgba(255,255,255,.10)}
-
 /* ===== Shared layout ===== */
 .section {
   background: none;
@@ -973,7 +880,7 @@ hr{border-color:rgba(255,255,255,.10)}
   word-break:break-word;
 }
 
-/* bei Ereigniskarten
+// bei Ereigniskarten
 eventLog.unshift({
   player: player,
   text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
@@ -1005,6 +912,10 @@ eventLog.unshift({
   box-shadow:0 4px 15px rgba(0,0,0,0.1);
   max-width:400px;         /* gleiche Breite wie .settings-section */
   margin:0 auto;           /* zentriert */
+}
+
+/* Statistik nutzt den gleichen Kasten wie die Settings */
+.stats-section{ /* nur Alias – falls du später abweichende Abstände brauchst */
 }
 
 /* Tabelle kompakt und zentriert im Panel */
@@ -1113,14 +1024,13 @@ let eventLog = [];  // [{player:"Alice", text:"Goldregen", time:"12:34:56"}]
 // === Snapshot für Ereigniskarten (UI-Zustand merken) ===
 window._eventcardSnapshot = null;
 
-// --- EventLog beim (Neu-)Start immer leeren ---
-try { localStorage.removeItem("eventLog"); } catch(e) {}
-eventLog = [];
+// --- EventLog NICHT mehr beim Start leeren (wird gespeichert) ---
 
 /* === Event-Log persistent speichern === */
 function saveEventLog() {
   try {
     localStorage.setItem("eventLog", JSON.stringify(eventLog.slice(0, 300))); // capped
+    if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
   } catch(e) { console.warn("saveEventLog failed:", e); }
 }
 function loadEventLog() {
@@ -1194,7 +1104,115 @@ if (saved) {
 
 function saveSettings() {
   localStorage.setItem("settings", JSON.stringify(settings));
+  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
+
+
+// ===== D1 Cloud Sync (Cloudflare Worker) =====
+const LUCKYCUBE_API = "/api/luckycube/data";
+let _cloudLoaded = false;
+let _cloudDirty = false;
+let _cloudSaveTimer = null;
+let _cloudSaving = false;
+
+function _loginRedirect() {
+  const rt = location.pathname + location.search;
+  location.href = "/login?returnTo=" + encodeURIComponent(rt);
+}
+
+function _collectCloudPayload(){
+  const payload = { v: 1, settings: null, stats: null, trophyStats: null, eventLog: null };
+  try { const s = localStorage.getItem("settings"); if (s) payload.settings = JSON.parse(s); } catch {}
+  try { const s = localStorage.getItem("stats"); if (s) payload.stats = JSON.parse(s); } catch {}
+  try { const s = localStorage.getItem("trophyStats"); if (s) payload.trophyStats = JSON.parse(s); } catch {}
+  try { const s = localStorage.getItem("eventLog"); if (s) payload.eventLog = JSON.parse(s); } catch {}
+  return payload;
+}
+
+function _applyCloudPayload(data){
+  if (!data || typeof data !== "object") return;
+  if (data.settings)   { try { localStorage.setItem("settings", JSON.stringify(data.settings)); } catch {} }
+  if (data.stats)      { try { localStorage.setItem("stats", JSON.stringify(data.stats)); } catch {} }
+  if (data.trophyStats){ try { localStorage.setItem("trophyStats", JSON.stringify(data.trophyStats)); } catch {} }
+  if (data.eventLog)   { try { localStorage.setItem("eventLog", JSON.stringify(data.eventLog)); } catch {} }
+}
+
+function reloadSettingsFromLocalStorage(){
+  const saved = localStorage.getItem("settings");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      settings = parsed;
+      settings.externalRoll = (settings.externalRoll === true || settings.externalRoll === "yes");
+      settings.devMode      = (settings.devMode === true || settings.devMode === "yes");
+      settings.directHome   = (settings.directHome === true || settings.directHome === "yes");
+    } catch (e) {}
+  }
+}
+
+async function cloudLoad(){
+  try {
+    const r = await fetch(LUCKYCUBE_API, {
+      method: "GET",
+      credentials: "include",
+      headers: { "Accept": "application/json" }
+    });
+    if (r.status === 401) { _loginRedirect(); return; }
+    if (!r.ok) { console.warn("LuckyCube cloudLoad failed", r.status); return; }
+
+    const j = await r.json();
+    if (j && j.ok) {
+      if (j.data) _applyCloudPayload(j.data);
+      _cloudLoaded = true;
+
+      // Nach Cloud-Load alles aus localStorage neu einlesen
+      reloadSettingsFromLocalStorage();
+      try { loadEventLog(); } catch {}
+      try { loadStats(); } catch {}
+      try { loadTrophies(); } catch {}
+    }
+  } catch(e) {
+    console.warn("LuckyCube cloudLoad error", e);
+  }
+}
+
+function scheduleCloudSave(){
+  _cloudDirty = true;
+  if (!_cloudLoaded) return; // verhindert, dass local direkt das Cloud-Default überschreibt
+  if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
+  _cloudSaveTimer = setTimeout(cloudSave, 600);
+}
+
+async function cloudSave(){
+  if (!_cloudLoaded || !_cloudDirty || _cloudSaving) return;
+  _cloudSaving = true;
+  _cloudDirty = false;
+  try {
+    const payload = _collectCloudPayload();
+    const raw = JSON.stringify(payload);
+    const r = await fetch(LUCKYCUBE_API, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: raw
+    });
+    if (r.status === 401) { _loginRedirect(); return; }
+    if (!r.ok) {
+      console.warn("LuckyCube cloudSave failed", r.status);
+      _cloudDirty = true;
+    }
+  } catch(e) {
+    console.warn("LuckyCube cloudSave error", e);
+    _cloudDirty = true;
+  } finally {
+    _cloudSaving = false;
+  }
+}
+
+// Start: Cloud laden (ohne UI zu blockieren)
+setTimeout(cloudLoad, 0);
+window.addEventListener("beforeunload", () => { try { cloudSave(); } catch {} });
+
 
 let currentContext = "home";
 
@@ -4173,7 +4191,7 @@ async function doBattleAnimated() {
   }
 }
 
-//<!-- ===== 50-50 ===== -->
+<!-- ===== 50-50 ===== -->
 let allnothingStats = { win: 0, lose: 0 };
 let allnothingState = { playerIdx: null, trophyLine: "" };
 
@@ -4276,6 +4294,7 @@ function saveStats() {
     totalOnly[key] = { total: stats[key].total };  // Session wird NICHT gespeichert
   }
   localStorage.setItem("stats", JSON.stringify(totalOnly));
+  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
 
 function loadStats() {
@@ -4303,6 +4322,7 @@ let trophyStats = { total: 0, session: 0 };
 
 function saveTrophies() {
   localStorage.setItem("trophyStats", JSON.stringify({ total: trophyStats.total }));
+  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
 function loadTrophies() {
   const t = localStorage.getItem("trophyStats");
