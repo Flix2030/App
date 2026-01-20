@@ -1157,6 +1157,118 @@ body.light input, body.light select, body.light textarea{
 }
 body.light select option{ background:#ffffff !important; color:#000 !important; }
 
+
+
+/* ===== UI FIX: OPAQUE DARK POPUPS + DARK INPUTS (2026-01-20) ===== */
+:root{
+  --panelSolid:#0c1426;
+  --panelSolid2:#0a1020;
+  --fieldBg:#070c16;
+  --fieldBorder:rgba(255,255,255,.14);
+}
+body.light{
+  --panelSolid:#ffffff;
+  --panelSolid2:#ffffff;
+  --fieldBg:#ffffff;
+  --fieldBorder:rgba(0,0,0,.16);
+}
+
+/* make ALL overlays cover the full screen */
+.modal-backdrop, .help-overlay{ position:fixed !important; inset:0 !important; }
+
+/* OPAQUE modal/content (no glass) */
+.modal .modal-content, .help-box, .result, .modal{
+  background: var(--panelSolid) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+body.light .modal .modal-content,
+body.light .help-box,
+body.light .result,
+body.light .modal{
+  background: #fff !important;
+  color: #0b1220 !important;
+  border-color: rgba(0,0,0,.12) !important;
+}
+
+/* Fix white panels inside modes */
+.inventory-slot,
+.inventory-card,
+.poker-area,
+.event-card,
+.panel,
+.panel.stats-section,
+.bid-item{
+  background: var(--panelSolid) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+body.light .inventory-slot,
+body.light .inventory-card,
+body.light .poker-area,
+body.light .event-card,
+body.light .panel,
+body.light .panel.stats-section,
+body.light .bid-item{
+  background:#fff !important;
+  color:#0b1220 !important;
+  border-color: rgba(0,0,0,.12) !important;
+}
+
+/* Form controls */
+select, input, textarea{
+  background: var(--fieldBg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--fieldBorder) !important;
+}
+body.light select, body.light input, body.light textarea{
+  background:#fff !important;
+  color:#0b1220 !important;
+  border-color: rgba(0,0,0,.16) !important;
+}
+select option{
+  background: var(--panelSolid2);
+  color: var(--text);
+}
+body.light select option{
+  background:#fff;
+  color:#0b1220;
+}
+
+/* Roulette: selected bet + stake indicator */
+.roulette-btn.active{
+  outline: 2px solid #fff !important;
+  outline-offset: 2px;
+}
+#stakeBtn.active{
+  outline: 2px solid #fff !important;
+  outline-offset: 2px;
+}
+
+/* Auction list items */
+.bid-item{
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+.bid-item strong{ color: var(--text) !important; }
+
+/* Ensure the page background never "shrinks" with content */
+html, body{ min-height:100%; }
+body{
+  margin:0 !important;
+  padding:0 !important;
+  background: radial-gradient(1200px 700px at 20% -10%, rgba(46,232,143,.18), transparent 55%),
+              radial-gradient(1200px 700px at 80% 0%, rgba(46,232,143,.10), transparent 60%),
+              linear-gradient(180deg, var(--bg0), var(--bg1)) !important;
+  background-attachment: fixed !important;
+}
 </style>
 
 </head>
@@ -3182,7 +3294,7 @@ function startRoulette(){
     <!-- Ergebnis-Modal -->
     <div id="resultModal" class="modal-backdrop" style="display:none;">
       <div class="modal">
-        <h2>Runden-Ergebnis</h2>
+        <h2 id="resultTitle">Runden-Ergebnis</h2>
         <div id="resultSummary" class="hint" style="margin-top:6px;"></div>
         <div class="modal-actions" style="margin-top:12px;">
           <button class="btn primary" onclick="closeResultModal()">OK</button>
@@ -3297,6 +3409,9 @@ function enablePlayIfReady(){
 
   play.classList.toggle('disabled', !ready);
   warn.textContent = ready ? '' : 'Du musst zuerst eine Wette, den Einsatz und den Spieler festlegen.';
+
+  const stakeBtn = document.getElementById("stakeBtn");
+  if (stakeBtn) stakeBtn.classList.toggle("active", !!rouletteState.stakeSet);
 }
 
 function rouletteSetNumber(v){
@@ -3348,7 +3463,7 @@ function openStakeModal(){
   if (input) { input.focus(); input.select(); }
 }
 function closeStakeModal(){ const m = document.getElementById('stakeModal'); if(m) m.style.display='none'; }
-function openResultModal(html){
+function openResultModal(html, title = "Runden-Ergebnis") {
   const m = document.getElementById('resultModal');
   const t = document.getElementById('resultSummary');
   if(!m || !t) return;
@@ -3629,7 +3744,10 @@ function endAuction() {
 
   if (!winner) {
     resultEl.innerHTML = `<div class="error">Es gibt kein gültiges Gebot. Die Auktion endet ohne Gewinner.</div>`;
-    return;
+    
+    openResultModal(resultEl.innerHTML, "Auktion");
+    resultEl.innerHTML = "";
+return;
   }
 
   const profit = prize - bid; 
@@ -4156,7 +4274,9 @@ function endStreak() {
     out.innerHTML =
       `Auszahlung: <b>${streakState.win} €</b><br>` +
       `${trophyMsg}<br>`;
-  }
+  openResultModal(resHtml, "Lucky Streak");
+  out.innerHTML = "";
+}
   const nextEl = document.getElementById("streakNext");
   if (nextEl) nextEl.remove();
   setStreakButtonsDisabled(true);
@@ -4267,7 +4387,10 @@ function evaluateJackpot() {
     case 6:
       if (outEl) {
         outEl.innerHTML = `Du hast eine <b>6</b> eingetragen. 🎲 Bitte <b>nochmal würfeln</b> und die neue Zahl eintragen.`;
-      }
+      
+  openResultModal(outEl.innerHTML, "Jackpot");
+  outEl.innerHTML = "";
+}
       return;
   }
 
