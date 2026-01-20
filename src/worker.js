@@ -271,22 +271,6 @@ async function ensureHomeTables(env){
   ).run();
 }
 
-// --------------------
-// LUCKY CUBE — D1
-// Table: luckycube_data(user_id PRIMARY KEY, json, updated_at)
-// Stores the Lucky Cube state blob for the logged-in user.
-// --------------------
-async function ensureLuckyCubeTables(env){
-  if (!env.DB) throw new Error("DB not bound");
-  await env.DB.prepare(
-    "CREATE TABLE IF NOT EXISTS luckycube_data (" +
-      "user_id TEXT PRIMARY KEY, " +
-      "json TEXT NOT NULL, " +
-      "updated_at TEXT NOT NULL" +
-    ")"
-  ).run();
-}
-
 function defaultHomeLayout(){
   return {
     folders: [],
@@ -1344,53 +1328,7 @@ if (path === "/api/home/reset" && req.method === "POST") {
 
       return json({ error: "not_found", path }, 404);
     }
-        // ===== Lucky Cube API =====
-    if (path.startsWith("/api/luckycube/")) {
-      if (!env.DB) return json({ error: "DB not bound" }, 500);
-
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauthorized" }, 401);
-
-      await ensureLuckyCubeTables(env);
-
-      if (path === "/api/luckycube/data" && req.method === "GET") {
-        const row = await env.DB.prepare(
-          "SELECT json FROM luckycube_data WHERE user_id = ?"
-        ).bind(uid).first();
-
-        let parsed = null;
-        if (row && row.json) {
-          try { parsed = JSON.parse(row.json); } catch {}
-        }
-
-        return json(
-          { ok: true, data: parsed || { v: 1 } },
-          200,
-          { "Cache-Control": "no-store" }
-        );
-      }
-
-      if (path === "/api/luckycube/data" && req.method === "PUT") {
-        const body = await safeReadJson(req);
-        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
-
-        // Basic size guard (avoid huge payloads)
-        const raw = JSON.stringify(body);
-        if (raw.length > 200000) return json({ error: "too_large" }, 413);
-
-        const now = new Date().toISOString();
-        await env.DB.prepare(
-          "INSERT INTO luckycube_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at"
-        ).bind(uid, raw, now).run();
-
-        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
-      }
-
-      return json({ error: "not_found", path }, 404);
-    }
-
-// ===== To-Do API =====
+    // ===== To-Do API =====
     if (path.startsWith("/api/todo/")) {
       if (!env.DB) return json({ error: "DB not bound" }, 500);
 
@@ -1446,6 +1384,61 @@ if (path === "/api/home/reset" && req.method === "POST") {
   }
 }
 
+
+    // ===== Lucky Cube API (D1) =====
+    if (path === "/api/luckycube/data") {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      // Ensure table exists (safe to run)
+      try {
+        await env.DB.prepare(
+          "CREATE TABLE IF NOT EXISTS luckycube_data (user_id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        ).run();
+      } catch (e) {
+        console.log("luckycube table ensure failed", e);
+      }
+
+      if (req.method === "GET") {
+        const row = await env.DB.prepare(
+          "SELECT json FROM luckycube_data WHERE user_id = ?"
+        ).bind(uid).first();
+
+        let parsed = null;
+        if (row && row.json) {
+          try { parsed = JSON.parse(row.json); } catch {}
+        }
+
+        return json(
+          { ok: true, data: parsed || { currentId: null, order: [], games: {}, lastPlayerCount: "" } },
+          200,
+          { "Cache-Control": "no-store" }
+        );
+      }
+
+      if (req.method === "PUT") {
+        const body = await safeReadJson(req);
+        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+        // Optional size guard (~250KB)
+        const jsonStr = JSON.stringify(body);
+        if (jsonStr.length > 250000) return json({ error: "too_large" }, 413);
+
+        const now = new Date().toISOString();
+        await env.DB.prepare(
+          "INSERT INTO luckycube_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
+          "ON CONFLICT(user_id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at"
+        ).bind(uid, jsonStr, now).run();
+
+        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
+      }
+
+      return json({ error: "method_not_allowed" }, 405);
+    }
+
+
 const DEFAULT_UNASSIGNED = ["settings","vokabeln","lernen","packliste","einkauf","todo","misterx","webcam"];
 
 export default {
@@ -1480,8 +1473,6 @@ let assetPath = path;
       if (path === "/settings") assetPath = "/settings.html";
       if (path === "/einkaufsliste") assetPath = "/einkaufsliste.html";
       if (path === "/todo") assetPath = "/todo.html";
-      if (path === "/spiele/lucky-cube" || path === "/spiele/lucky-cube/") assetPath = "/spiele/lucky-cube.html";
-      if (path === "/lucky-cube" || path === "/lucky-cube/") assetPath = "/spiele/lucky-cube.html";
       if (path === "/lernen") assetPath = "/lernen.html";
       if (path === "/lernen/") assetPath = "/lernen.html";
       if (path === "/lernen/ki") assetPath = "/lernen-ki.html";

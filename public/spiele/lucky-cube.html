@@ -880,7 +880,7 @@ select, input {
   word-break:break-word;
 }
 
-/* bei Ereigniskarten
+// bei Ereigniskarten
 eventLog.unshift({
   player: player,
   text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
@@ -912,6 +912,10 @@ eventLog.unshift({
   box-shadow:0 4px 15px rgba(0,0,0,0.1);
   max-width:400px;         /* gleiche Breite wie .settings-section */
   margin:0 auto;           /* zentriert */
+}
+
+/* Statistik nutzt den gleichen Kasten wie die Settings */
+.stats-section{ /* nur Alias – falls du später abweichende Abstände brauchst */
 }
 
 /* Tabelle kompakt und zentriert im Panel */
@@ -983,6 +987,76 @@ eventLog.unshift({
 }
 
   </style>
+<style>
+
+/* ===== Theme (Dark default) ===== */
+:root{
+  --bg0:#05080f;
+  --bg1:#0a1020;
+  --panel:rgba(18,28,55,.72);
+  --panel2:rgba(10,18,38,.78);
+  --border:rgba(255,255,255,.10);
+  --text:rgba(255,255,255,.94);
+  --mut:rgba(255,255,255,.66);
+  --acc:#2ee88f;
+  --shadow:0 22px 70px rgba(0,0,0,.55);
+}
+body{
+  color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 15% 0%, rgba(46,232,143,.18), transparent 60%),
+    radial-gradient(1200px 700px at 85% 10%, rgba(90,120,255,.12), transparent 60%),
+    linear-gradient(180deg,var(--bg1),var(--bg0));
+}
+
+/* Inputs/Selects: nicht hellgrau */
+input,select,textarea{
+  background:rgba(0,0,0,.22) !important;
+  color:var(--text) !important;
+  border:1px solid var(--border) !important;
+}
+select option{ background:#0b1326 !important; color:var(--text) !important; }
+
+/* Cards/Boxes */
+.settings-section,.auction-section,.event-section,.players-section,.stats-section,.mode-box,.game-box,.card,.panel,.box{
+  background:var(--panel);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+}
+
+/* Buttons */
+.button, button, .btn, .btn-primary{
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
+  color:var(--text);
+}
+.btn-primary, .primary, .ok, .confirm, .green{
+  background:linear-gradient(180deg, rgba(46,232,143,.95), rgba(46,232,143,.70)) !important;
+  color:#00150a !important;
+  border-color:rgba(46,232,143,.45) !important;
+  box-shadow:0 14px 40px rgba(46,232,143,.18) !important;
+}
+
+/* Light theme (wenn Dark Mode aus) */
+body.light{
+  --bg0:#f2f6ff;
+  --bg1:#e6eeff;
+  --panel:rgba(255,255,255,.86);
+  --panel2:rgba(255,255,255,.92);
+  --border:rgba(0,0,0,.10);
+  --text:rgba(0,0,0,.88);
+  --mut:rgba(0,0,0,.55);
+  --shadow:0 18px 55px rgba(0,0,0,.14);
+  background:linear-gradient(180deg,var(--bg1),var(--bg0));
+}
+body.light input, body.light select, body.light textarea{
+  background:rgba(0,0,0,.04) !important;
+  color:var(--text) !important;
+}
+body.light select option{ background:#ffffff !important; color:#000 !important; }
+
+</style>
+
 </head>
 <body>
 
@@ -990,28 +1064,13 @@ eventLog.unshift({
   <h1>
     <div class="icon-btn" onclick="showHelp(currentContext)">❓</div>
     🎲 Lucky Cube 🎲
-    <div class="icon-btn" onclick="openSettings()">⚙️</div>
+    <div class="icon-btn" onclick="goHomeApp()" title="Home">🏠</div>
+    <div class="icon-btn" onclick="openSettings()" title="Einstellungen">⚙️</div>
   </h1>
 </div>
 
-  <div id="app-section">
-    <h2>Spieleranzahl wählen</h2>
-	<select id="playerCount">
-	  <option value="" disabled>Bitte wählen</option>
-	  <option value="2">2 Spieler</option>
-	  <option value="3">3 Spieler</option>
-	  <option value="4" selected>4 Spieler</option> <!-- voreingestellt -->
-	  <option value="5">5 Spieler</option>
-	  <option value="6">6 Spieler</option>
-	  <option value="7">7 Spieler</option>
-	  <option value="8">8 Spieler</option>
-	</select>
-    <br><br>
-    <div class="button" onclick="confirmPlayerCount()">Weiter</div>
-  </div>
+  <div id="app-section"><div class="settings-section"><div style="color:var(--mut);font-weight:800;">Lade…</div></div></div>
 
- 
-  
   <script>
 /* ===== Global ===== */
 let totalPlayers = 0;
@@ -1020,13 +1079,12 @@ let eventLog = [];  // [{player:"Alice", text:"Goldregen", time:"12:34:56"}]
 // === Snapshot für Ereigniskarten (UI-Zustand merken) ===
 window._eventcardSnapshot = null;
 
-// --- EventLog NICHT mehr beim Start leeren (wird gespeichert) ---
+// --- EventLog NICHT mehr automatisch loeschen (wird ueber D1 gespeichert) ---
 
 /* === Event-Log persistent speichern === */
 function saveEventLog() {
   try {
     localStorage.setItem("eventLog", JSON.stringify(eventLog.slice(0, 300))); // capped
-    if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
   } catch(e) { console.warn("saveEventLog failed:", e); }
 }
 function loadEventLog() {
@@ -1080,6 +1138,7 @@ let jackpotState = {
 };
 
 let settings = {
+  darkMode: true,
   devMode: false,
   externalRoll: false,
   directHome: false,
@@ -1093,6 +1152,7 @@ if (saved) {
     settings.externalRoll = (settings.externalRoll === true || settings.externalRoll === "yes");
     settings.devMode      = (settings.devMode === true || settings.devMode === "yes");
     settings.directHome   = (settings.directHome === true || settings.directHome === "yes");
+    if (typeof settings.darkMode === "undefined") settings.darkMode = true;
   } catch (e) {
     console.error("Fehler beim Laden", e);
   }
@@ -1100,114 +1160,258 @@ if (saved) {
 
 function saveSettings() {
   localStorage.setItem("settings", JSON.stringify(settings));
-  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
+  try { persistRuntimeToGame(); } catch(e) {}
 }
 
+/* ===== D1 Storage + Runden (Sessions) ===== */
+let cloudData = { currentId: null, order: [], games: {}, lastPlayerCount: "" };
+let _saveTimer = null;
+let _savePending = false;
 
-// ===== D1 Cloud Sync (Cloudflare Worker) =====
-const LUCKYCUBE_API = "/api/luckycube/data";
-let _cloudLoaded = false;
-let _cloudDirty = false;
-let _cloudSaveTimer = null;
-let _cloudSaving = false;
-
-function _loginRedirect() {
-  const rt = location.pathname + location.search;
-  location.href = "/login?returnTo=" + encodeURIComponent(rt);
+async function apiGetLucky() {
+  const r = await fetch("/api/luckycube/data", { credentials:"include" });
+  if (r.status === 401) { location.href = "/login.html"; return null; }
+  const j = await r.json().catch(()=>null);
+  if (!j || j.ok !== true) throw new Error(j?.error || "load_failed");
+  return j.data || { currentId:null, order:[], games:{}, lastPlayerCount:"" };
 }
 
-function _collectCloudPayload(){
-  const payload = { v: 1, settings: null, stats: null, trophyStats: null, eventLog: null };
-  try { const s = localStorage.getItem("settings"); if (s) payload.settings = JSON.parse(s); } catch {}
-  try { const s = localStorage.getItem("stats"); if (s) payload.stats = JSON.parse(s); } catch {}
-  try { const s = localStorage.getItem("trophyStats"); if (s) payload.trophyStats = JSON.parse(s); } catch {}
-  try { const s = localStorage.getItem("eventLog"); if (s) payload.eventLog = JSON.parse(s); } catch {}
-  return payload;
+async function apiPutLucky(data) {
+  const r = await fetch("/api/luckycube/data", {
+    method:"PUT",
+    headers:{ "Content-Type":"application/json" },
+    credentials:"include",
+    body: JSON.stringify(data)
+  });
+  if (r.status === 401) { location.href = "/login.html"; return; }
+  const j = await r.json().catch(()=>null);
+  if (!j || j.ok !== true) throw new Error(j?.error || "save_failed");
+  try { persistRuntimeToGame(); } catch(e) {}
 }
 
-function _applyCloudPayload(data){
-  if (!data || typeof data !== "object") return;
-  if (data.settings)   { try { localStorage.setItem("settings", JSON.stringify(data.settings)); } catch {} }
-  if (data.stats)      { try { localStorage.setItem("stats", JSON.stringify(data.stats)); } catch {} }
-  if (data.trophyStats){ try { localStorage.setItem("trophyStats", JSON.stringify(data.trophyStats)); } catch {} }
-  if (data.eventLog)   { try { localStorage.setItem("eventLog", JSON.stringify(data.eventLog)); } catch {} }
+function scheduleSave() {
+  _savePending = true;
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(async ()=>{
+    _saveTimer = null;
+    if (!_savePending) return;
+    _savePending = false;
+    try { await apiPutLucky(cloudData); }
+    catch(e){ console.error("D1 save failed", e); }
+  }, 250);
 }
 
-function reloadSettingsFromLocalStorage(){
-  const saved = localStorage.getItem("settings");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      settings = parsed;
-      settings.externalRoll = (settings.externalRoll === true || settings.externalRoll === "yes");
-      settings.devMode      = (settings.devMode === true || settings.devMode === "yes");
-      settings.directHome   = (settings.directHome === true || settings.directHome === "yes");
-    } catch (e) {}
+function makeId() {
+  return "game_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+}
+
+function getGame(id) {
+  if (!id) return null;
+  return cloudData.games?.[id] || null;
+}
+
+function ensureGame(id) {
+  if (!cloudData.games) cloudData.games = {};
+  if (!cloudData.order) cloudData.order = [];
+  if (!cloudData.games[id]) {
+    cloudData.games[id] = {
+      id,
+      name: "Runde",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      totalPlayers: 0,
+      playerNames: [],
+      settings: null,
+      stats: null,
+      trophyStats: null,
+      eventLog: []
+    };
   }
+  return cloudData.games[id];
 }
 
-async function cloudLoad(){
-  try {
-    const r = await fetch(LUCKYCUBE_API, {
-      method: "GET",
-      credentials: "include",
-      headers: { "Accept": "application/json" }
-    });
-    if (r.status === 401) { _loginRedirect(); return; }
-    if (!r.ok) { console.warn("LuckyCube cloudLoad failed", r.status); return; }
-
-    const j = await r.json();
-    if (j && j.ok) {
-      if (j.data) _applyCloudPayload(j.data);
-      _cloudLoaded = true;
-
-      // Nach Cloud-Load alles aus localStorage neu einlesen
-      reloadSettingsFromLocalStorage();
-      try { loadEventLog(); } catch {}
-      try { loadStats(); } catch {}
-      try { loadTrophies(); } catch {}
-    }
-  } catch(e) {
-    console.warn("LuckyCube cloudLoad error", e);
-  }
+function setActiveGame(id) {
+  cloudData.currentId = id;
+  ensureGame(id);
+  if (!cloudData.order.includes(id)) cloudData.order.unshift(id);
+  scheduleSave();
 }
 
-function scheduleCloudSave(){
-  _cloudDirty = true;
-  if (!_cloudLoaded) return; // verhindert, dass local direkt das Cloud-Default überschreibt
-  if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
-  _cloudSaveTimer = setTimeout(cloudSave, 600);
+function applyTheme() {
+  const dark = (settings.darkMode !== false);
+  document.body.classList.toggle("light", !dark);
 }
 
-async function cloudSave(){
-  if (!_cloudLoaded || !_cloudDirty || _cloudSaving) return;
-  _cloudSaving = true;
-  _cloudDirty = false;
-  try {
-    const payload = _collectCloudPayload();
-    const raw = JSON.stringify(payload);
-    const r = await fetch(LUCKYCUBE_API, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: raw
-    });
-    if (r.status === 401) { _loginRedirect(); return; }
-    if (!r.ok) {
-      console.warn("LuckyCube cloudSave failed", r.status);
-      _cloudDirty = true;
-    }
-  } catch(e) {
-    console.warn("LuckyCube cloudSave error", e);
-    _cloudDirty = true;
-  } finally {
-    _cloudSaving = false;
-  }
+function persistRuntimeToGame() {
+  const g = getGame(cloudData.currentId);
+  if (!g) return;
+  g.updatedAt = Date.now();
+  g.totalPlayers = totalPlayers || g.totalPlayers || 0;
+  g.playerNames = Array.isArray(playerNames) ? playerNames.slice() : (g.playerNames||[]);
+  g.settings = settings;
+  try { g.stats = stats; } catch {}
+  try { g.trophyStats = trophyStats; } catch {}
+  g.eventLog = Array.isArray(eventLog) ? eventLog.slice(0,300) : [];
+  scheduleSave();
 }
 
-// Start: Cloud laden (ohne UI zu blockieren)
-setTimeout(cloudLoad, 0);
-window.addEventListener("beforeunload", () => { try { cloudSave(); } catch {} });
+function loadGameToRuntime(g) {
+  if (!g) return;
+  totalPlayers = g.totalPlayers || 0;
+  playerNames = Array.isArray(g.playerNames) ? g.playerNames.slice() : [];
+  settings = g.settings || settings;
+  if (typeof settings.darkMode === "undefined") settings.darkMode = true;
+  applyTheme();
+  try { stats = g.stats || stats; } catch {}
+  try { trophyStats = g.trophyStats || trophyStats; } catch {}
+  eventLog = Array.isArray(g.eventLog) ? g.eventLog.slice() : [];
+}
+
+function goHomeApp() {
+  try { persistRuntimeToGame(); } catch {}
+  location.href = "/home";
+}
+
+function goRoundsMenu() {
+  try { persistRuntimeToGame(); } catch {}
+  renderRoundsMenu();
+}
+
+function renderRoundsMenu() {
+  currentContext = "setup";
+  const el = document.getElementById("app-section");
+  if (!el) return;
+
+  const rows = (cloudData.order || []).filter(id => cloudData.games && cloudData.games[id]).map(id => cloudData.games[id]);
+
+  const list = rows.length ? rows.map(g=>{
+    const active = (g.id === cloudData.currentId);
+    const players = (g.playerNames||[]).length ? g.playerNames.join(", ") : "—";
+    return `
+      <div class="player-row" style="display:flex;align-items:center;gap:10px;${active?'outline:2px solid rgba(46,232,143,.35);border-radius:16px;padding:10px;':''}">
+        <div style="font-size:22px;">🎲</div>
+        <div style="flex:1;">
+          <div style="font-weight:900;">${escapeHtml(g.name||"Runde")}</div>
+          <div style="color:var(--mut);font-size:13px;">${escapeHtml(players)} • ${new Date(g.updatedAt||g.createdAt).toLocaleString("de-DE")}</div>
+        </div>
+        <button class="btn-primary" style="padding:10px 12px;border-radius:12px;" onclick="openRound('${g.id}')">Öffnen</button>
+        <button class="btn" style="padding:10px 12px;border-radius:12px;" onclick="renameRoundPrompt('${g.id}')">Umbenennen</button>
+        <button class="btn" style="padding:10px 12px;border-radius:12px;" onclick="deleteRoundPrompt('${g.id}')">Löschen</button>
+      </div>
+    `;
+  }).join("") : `<div style="color:var(--mut);">Keine Runden vorhanden.</div>`;
+
+  const last = cloudData.lastPlayerCount || "";
+  el.innerHTML = `
+    <div class="settings-section">
+      <div class="auction-header">
+        <div class="auction-title">🎲 Runden</div>
+        <div style="display:flex;gap:10px;">
+          <div class="icon-btn" onclick="showHelp('setup')" title="Hilfe">❓</div>
+          <div class="icon-btn" onclick="openSettings()" title="Einstellungen">⚙️</div>
+        </div>
+      </div>
+
+      <h2>Neue Runde</h2>
+      <label>Rundenname</label>
+      <input id="roundName" type="text" maxlength="30" placeholder="z.B. Freitagabend">
+      <br><br>
+      <label>Spieleranzahl wählen</label>
+      <select id="playerCount">
+        <option value="" ${last===""?"selected":""} disabled>Bitte wählen</option>
+        ${[2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${String(n)===String(last)?"selected":""}>${n} Spieler</option>`).join("")}
+      </select>
+      <br><br>
+      <button class="btn-primary" onclick="createRound()">Runde erstellen</button>
+
+      <h2 style="margin-top:18px;">Aktuelle Spiele</h2>
+      ${list}
+    </div>
+  `;
+}
+
+function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function createRound() {
+  const name = (document.getElementById("roundName")?.value || "").trim() || "Runde";
+  const pc = document.getElementById("playerCount")?.value;
+  if (!pc) { alert("Bitte Spieleranzahl wählen."); return; }
+  cloudData.lastPlayerCount = pc;
+  const id = makeId();
+  setActiveGame(id);
+  const g = ensureGame(id);
+  g.name = name;
+  g.totalPlayers = parseInt(pc,10);
+  g.playerNames = [];
+  g.eventLog = [];
+  g.settings = settings;
+  totalPlayers = g.totalPlayers;
+  playerNames = [];
+  eventLog = [];
+  persistRuntimeToGame();
+  showNameInputs();
+}
+
+function openRound(id){
+  persistRuntimeToGame();
+  setActiveGame(id);
+  const g = ensureGame(id);
+  loadGameToRuntime(g);
+  // If names missing -> names screen else home menu
+  if (!playerNames || !playerNames.length) showNameInputs();
+  else { initDeck(); ensureEventSystemReady(); showHome(); }
+}
+
+function renameRoundPrompt(id){
+  const g = getGame(id);
+  if (!g) return;
+  const n = prompt("Neuer Name:", g.name || "Runde");
+  if (n === null) return;
+  g.name = (n.trim() || g.name || "Runde");
+  g.updatedAt = Date.now();
+  scheduleSave();
+  renderRoundsMenu();
+}
+
+function deleteRoundPrompt(id){
+  if (!confirm("Runde wirklich löschen?")) return;
+  delete cloudData.games[id];
+  cloudData.order = (cloudData.order||[]).filter(x=>x!==id);
+  if (cloudData.currentId === id) cloudData.currentId = cloudData.order[0] || null;
+  scheduleSave();
+  renderRoundsMenu();
+}
+
+function openRoundFromSettings(){
+  goRoundsMenu();
+}
+
+function endGameFromSettings(){
+  // Zusammenfassung + Optionen
+  const g = getGame(cloudData.currentId);
+  const name = g?.name || "Runde";
+  const players = (g?.playerNames || playerNames || []).join(", ") || "—";
+  const html = `
+    <div class="help-overlay">
+      <div class="help-box">
+        <div class="help-header">
+          <h2>Spiel beenden: ${escapeHtml(name)}</h2>
+          <div class="help-close" onclick="document.body.removeChild(this.closest('.help-overlay'))">✖</div>
+        </div>
+        <div style="color:var(--mut);margin-bottom:10px;">Spieler: ${escapeHtml(players)}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn" onclick="document.body.removeChild(this.closest('.help-overlay')); openRoundFromSettings();">Zum Runden-Menü</button>
+          <button class="btn" onclick="document.body.removeChild(this.closest('.help-overlay')); deleteRoundPrompt('${escapeHtml(cloudData.currentId)}');">Runde löschen</button>
+          <button class="btn-primary" onclick="document.body.removeChild(this.closest('.help-overlay')); closeSettings();">Zurück ins Spiel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
 
 
 let currentContext = "home";
@@ -1316,6 +1520,7 @@ function saveNames() {
   const err = document.getElementById("nameError");
   if (message) { err.textContent = message; return; } else { err.textContent = ""; }
   playerNames = temp;
+  try { persistRuntimeToGame(); } catch(e) {}
   showHome();
   initDeck();
 }
@@ -1735,6 +1940,20 @@ function showSettings() {
         <div class="icon-btn" onclick="closeSettings()" title="Zurück">✖</div>
       </div>
 
+      <!-- Dark Mode -->
+      <div class="settings-row">
+        <label for="darkMode">Dark Mode:</label>
+        <label class="switch">
+          <input type="checkbox" id="darkMode" onchange="toggleDarkMode(this.checked)">
+          <span class="track"></span>
+        </label>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 6px 0;">
+        <button class="btn" onclick="goRoundsMenu()">Runden-Menü</button>
+        <button class="btn" onclick="endGameFromSettings()">Spiel beenden</button>
+      </div>
+
       <!-- Extern würfeln -->
       <div class="settings-row">
         <label for="externalRoll">Extern würfeln:</label>
@@ -1788,6 +2007,15 @@ function toggleDevMode(checked) {
   settings.devMode = !!checked;
   saveSettings();
   showSettings(); // zeigt/verbirgt Direct-Home-Zeile sofort
+}
+
+
+function toggleDarkMode(checked) {
+  settings.darkMode = !!checked;
+  saveSettings();
+  applyTheme();
+  // speichern in D1
+  try { persistRuntimeToGame(); } catch {}
 }
 
 function toggleDirectHome(checked) {
@@ -4033,30 +4261,26 @@ function streakCashOut(amount) {
 }
 
 // === App-Start (REPLACE WHOLE onload) ===
-window.onload = () => {
-  if (settings.devMode && settings.directHome) {
-    totalPlayers = 4;
-    playerNames = ["Alice", "Bob", "Carol", "Dave"];
-    initDeck();
-    ensureEventSystemReady();
-    showHome();
-  } else {
-    document.getElementById("app-section").innerHTML = `
-      <h2>Spieleranzahl wählen</h2>
-      <select id="playerCount">
-        <option value="" disabled ${settings.devMode ? "" : "selected"}>Bitte wählen</option>
-        <option value="2">2 Spieler</option>
-        <option value="3">3 Spieler</option>
-        <option value="4" ${settings.devMode ? "selected" : ""}>4 Spieler</option>
-        <option value="5">5 Spieler</option>
-        <option value="6">6 Spieler</option>
-        <option value="7">7 Spieler</option>
-        <option value="8">8 Spieler</option>
-      </select>
-      <br><br>
-      <div class="button" onclick="confirmPlayerCount()">Weiter</div>
-    `;
-  } //  ← DIESE Klammer hat dir gefehlt
+window.onload = async () => {
+  try {
+    // erst D1 laden
+    cloudData = await apiGetLucky();
+    if (!cloudData) return;
+  } catch (e) {
+    console.error("LuckyCube load failed", e);
+    cloudData = { currentId:null, order:[], games:{}, lastPlayerCount:"" };
+  }
+
+  // Wenn es ein aktuelles Spiel gibt, in Runtime laden
+  if (cloudData.currentId && cloudData.games && cloudData.games[cloudData.currentId]) {
+    const g = ensureGame(cloudData.currentId);
+    loadGameToRuntime(g);
+  }
+
+  applyTheme();
+
+  // Start immer im Runden-Menü (wie gewünscht: Runden sichtbar nach Reload)
+  renderRoundsMenu();
 };
 
 // Unicode-Faces: ⚀ ⚁ ⚂ ⚃ ⚄ ⚅
@@ -4187,7 +4411,7 @@ async function doBattleAnimated() {
   }
 }
 
-//<!-- ===== 50-50 ===== -->
+<!-- ===== 50-50 ===== -->
 let allnothingStats = { win: 0, lose: 0 };
 let allnothingState = { playerIdx: null, trophyLine: "" };
 
@@ -4290,7 +4514,6 @@ function saveStats() {
     totalOnly[key] = { total: stats[key].total };  // Session wird NICHT gespeichert
   }
   localStorage.setItem("stats", JSON.stringify(totalOnly));
-  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
 
 function loadStats() {
@@ -4318,7 +4541,6 @@ let trophyStats = { total: 0, session: 0 };
 
 function saveTrophies() {
   localStorage.setItem("trophyStats", JSON.stringify({ total: trophyStats.total }));
-  if (typeof scheduleCloudSave === 'function') scheduleCloudSave();
 }
 function loadTrophies() {
   const t = localStorage.getItem("trophyStats");
