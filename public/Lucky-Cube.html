@@ -1,0 +1,4651 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lucky Cube</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+/* ===== Base ===== */
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f8ff;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+}
+h1 {
+  color: #006080;
+  font-size: 2.2em;
+  margin-top: 20px;
+}
+.button {
+  display:inline-block;
+  background:#00cc44;
+  color:#fff;
+  padding:12px 18px;
+  margin:8px;
+  border-radius:8px;
+  cursor:pointer;
+  user-select:none;
+  font-size:1.05em;
+  width:200px;
+}
+.button:hover { background:#00e65c; }
+select, input {
+  padding:10px;
+  border-radius:5px;
+  border:1px solid #ccc;
+  font-size:1em;
+  margin:5px;
+}
+
+#app-section { margin-top: 20px; }
+
+/* ===== Shared layout ===== */
+.section {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 14px;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+.row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:8px 0;
+  flex-wrap:wrap;
+}
+.small { font-size:.9em; color:#555; }
+.error { color:#c30000; margin-top:6px; font-size:.9em; }
+
+/* ===== Auction ===== */
+.auction-wrap { max-width:640px; margin:0 auto; text-align:left; }
+.input-eur {
+  display:flex;
+  align-items:center;
+  border:1px solid #ccc;
+  border-radius:6px;
+  padding:0 10px;
+}
+.input-eur input {
+  border:none;
+  outline:none;
+  padding:10px 6px;
+  width:120px;
+  background:transparent;
+}
+.input-eur span { margin-left:6px; }
+.bid-list { margin-top:10px; }
+.bid-item {
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:6px;
+  padding:8px 10px;
+  margin:6px 0;
+}
+
+/* ===== Battle ===== */
+.battle-wrap { max-width:640px; margin:0 auto; text-align:left; }
+.mode-btn {
+  display:inline-block;
+  padding:8px 12px;
+  border:1px solid #006080;
+  border-radius:8px;
+  cursor:pointer;
+}
+.mode-btn.active { background:#006080; color:#fff; }
+
+/* ===== Name setup & manager ===== */
+.player-row {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin:6px auto;
+  width:100%;
+  max-width:400px;
+}
+.drag-handle {
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border-radius:6px;
+  background:#eee;
+  cursor:grab;
+  user-select:none;
+  font-size:1.1em;
+  flex-shrink:0;
+}
+.drag-handle:active { background:#ddd; cursor:grabbing; }
+.player-row input {
+  flex:1;
+  min-width:0;
+  padding:8px;
+  border:1px solid #ccc;
+  border-radius:6px;
+  font-size:1em;
+}
+.name-counter {
+  font-size:.9em;
+  color:#555;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+
+/* ===== Lotto Bereich ===== */
+.lotto-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(560px, 92vw);
+  margin: 0 auto;
+}
+
+/* EINMAL definiert, Grid bleibt bestehen */
+.lotto-header {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;  /* links | mitte | rechts */
+  align-items: center;
+  width: 50%;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.lotto-header .icon-btn:first-child { justify-self: start; }
+.lotto-header .icon-btn:last-child  { justify-self: end; }
+
+.lotto-btn-left, .lotto-btn-right {
+  position: absolute;
+  top: -50px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #00cc44;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.lotto-btn-left { left: 0; }
+.lotto-btn-right { right: 0; }
+.lotto-btn-left:hover,
+.lotto-btn-right:hover { background:#00e65c; }
+.lotto-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.lotto-title {
+  justify-self: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.4rem;   /* größer als Standard */
+}
+
+.lotto-player {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.6rem;   /* jetzt deutlich sichtbar */
+  margin: 6px 0 0 0;
+}
+.lotto-grid { margin-top: 8px; }
+
+.lotto-area p {
+  margin: 12px 0;              /* konsistente Abstände */
+  text-align: center;
+}
+.lotto-grid {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+.lotto-num {
+  width: 90px;
+  height: 90px;
+  border-radius: 12px;
+  border: 2px solid #cfe2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  user-select: none;
+}
+.lotto-num.open   { color:#b00020; border-color:#ffb3b3; background:#ffe6e6; }
+.lotto-num.active { color:#0057d9; border-color:#a7c4ff; background:#eaf1ff; cursor:pointer; }
+.lotto-num.done   { color:#0b7a28; border-color:#a5d6a7; background:#e8f5e9; cursor:pointer; }
+
+/* ===== Icon Button (❓ / ⚙️ / ✖) ===== */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #00cc44;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+.icon-btn span { font-size: 1.4em; line-height: 1; display: block; }
+.icon-btn:hover { background: #00e65c; }
+
+.lotto-num.clickable { cursor: pointer; }
+
+/* ===== Hauptbuttons konsistent grün ===== */
+#app-section .button {
+  display: block;
+  margin: 10px auto;
+  width: 240px;
+}
+
+/* ===== Header (auch für Settings/Jackpot/Streak) ===== */
+.auction-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.auction-title {
+  font-size: 2em;
+  font-weight: 700;
+}
+.main-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  margin-bottom: 20px;
+}
+.main-header h1 {
+  font-size: 2.2em;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* Lotterie/Lucky-Streak Header wirklich zentriert */
+.lotto-header{
+  display: grid !important;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;              /* nicht 50% */
+  max-width: 300px;         /* optional, passend zu .lotto-area */
+  margin: 0 auto 20px;      /* zentriert den Block */
+}
+
+.lotto-header .icon-btn:first-child { justify-self: start; }
+.lotto-header .icon-btn:last-child  { justify-self: end;  }
+
+.lotto-title{
+  justify-self: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+
+
+/* ===== Popup Overlay ===== */
+.help-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.help-box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  position: relative;
+}
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.help-header h2 { margin: 0; font-size: 1.4em; color: #006080; }
+.help-close { font-size: 1.4em; font-weight: bold; cursor: pointer; color: #333; }
+.help-close:hover { color: #c30000; }
+
+/* ===== Settings Box ===== */
+.settings-section {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  max-width: 400px;
+  margin: 0 auto;
+}
+.settings-title {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #006080;
+}
+
+/* Settings Zeilen + Responsive */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 0;
+  font-size: 1.05em;
+}
+.settings-row label:first-child {
+  min-width: 260px;   /* genug Platz, damit alles einzeilig bleibt */
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+@media (max-width: 480px) {
+  .settings-row { align-items: flex-start; }
+  .settings-row label:first-child { min-width: 0; }
+}
+
+/* ===== EINDEUTIGER Toggle: an links / aus rechts ===== */
+.switch {
+  position: relative;           /* wichtig: Referenz für .track */
+  display: inline-block;
+  width: 88px;                  /* Breite des Schalters */
+  height: 36px;                 /* Höhe des Schalters */
+}
+.switch input {
+  position: absolute;
+  opacity: 0;                   /* unsichtbar, aber fokussierbar */
+  width: 0;
+  height: 0;
+}
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: #cfd8dc;
+  border-radius: 999px;
+  transition: background .2s ease;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+}
+.switch .track::after {         /* Knopf */
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  left: 4px;
+  top: 4px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  transition: transform .2s ease;
+}
+/* Basis: AUS -> Text rechts */
+.switch .track::before {
+  content: attr(data-off);
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 700;
+  font-size: .85rem;
+  color: #455a64;
+  transition: all .2s ease;
+}
+/* AN: grün, Knopf rechts, Text links */
+.switch input:checked + .track { background: #00cc44; }
+.switch input:checked + .track::after { transform: translateX(52px); } /* 88 - 36 = 52 */
+.switch input:checked + .track::before {
+  content: attr(data-on);
+  left: 14px;
+  right: auto;
+  color: #fff;
+}
+/* deaktiviert (optional) */
+.switch input:disabled + .track { background: #e0e0e0; }
+.switch input:disabled + .track::after { box-shadow: none; }
+
+/* ===== Dice Animation ===== */
+.dice-el {
+  position: fixed;
+  top: 0; left: 0;
+  width: 80px; height: 80px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28);
+  display: grid;
+  place-items: center;
+  font-size: 48px;
+  user-select: none;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+/* ===== Poker UI (aufgeräumt) ===== */
+.poker-area{
+  width:min(680px,95vw);
+  margin:0 auto;
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:12px;
+  padding:10px 12px;
+}
+.poker-row{
+  display:grid;
+  grid-template-columns:1fr 100px 200px;
+  align-items:center;
+  gap:12px;
+  padding:8px 0;
+  border-bottom:1px solid #eee;
+}
+.poker-row:last-child{border-bottom:none}
+.poker-name{
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  text-align:left;
+}
+.poker-payout{
+  text-align:right;
+  padding-right:6px;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.poker-boxes{
+  display:grid;
+  grid-template-columns:repeat(5,32px);
+  gap:8px;
+  justify-content:start;
+}
+.poker-check{
+  width:32px;height:32px;
+  display:grid;place-items:center;
+  border:1px solid #ccc;border-radius:6px;
+  cursor:pointer;user-select:none;
+  font-size:1.05rem;background:#fff;
+}
+.poker-check.active{background:#e8f5e9;border-color:#a5d6a7}
+
+@media (max-width:520px){
+  .poker-row{
+    grid-template-columns:1fr 90px;
+    grid-template-areas:
+      "name payout"
+      "boxes boxes";
+  }
+  .poker-name{grid-area:name}
+  .poker-payout{grid-area:payout}
+  .poker-boxes{grid-area:boxes}
+}
+
+/* ===== Modal-Ausrichtung: „Wer spielt diese Runde?“ mittig ===== */
+.modal .field{margin:12px 0;text-align:center}
+.modal .field label{display:block;font-weight:600;margin-bottom:6px;text-align:center}
+
+
+/* ===== 50-50 ===== */
+    .auction-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .auction-title {
+      font-size: 2em;
+      font-weight: 700;
+    }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: #00cc44;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .icon-btn span { font-size: 1.4em; }
+    .icon-btn:hover { background:#00e65c; }
+
+    .allnothing-wrap {
+      max-width: 400px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .button {
+      display:inline-block;
+      background:#00cc44;
+      color:#fff;
+      padding:14px 20px;
+      margin:12px;
+      border-radius:10px;
+      cursor:pointer;
+      user-select:none;
+      font-size:1.2em;
+      width:200px;
+    }
+    .button:hover { background:#00e65c; }
+
+    .result {
+      font-size: 1.4em;
+      margin-top: 18px;
+      font-weight: 700;
+    }
+    .lose { color:#d32f2f; }
+    .win { color:#2e7d32; }
+	
+/* ===== Roulette (sauber) ===== */
+.roulette-wrap{
+  position:relative;
+  width:320px;
+  aspect-ratio:1/1;
+  margin:0 auto 20px;
+}
+.roulette-wheel{
+  width:100%; height:100%;
+  border-radius:50%;
+  border:6px solid #222;
+  transform: rotate(0deg);
+  transition: transform 3s cubic-bezier(.1,.7,.3,1);
+  box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 0 0 6px #222;
+  position:relative;
+  overflow:hidden;
+}
+.roulette-numlabel{
+  position:absolute;
+  left:50%; top:50%;
+  font-weight:700;
+  font-size:1rem;
+  color:#fff;
+  text-shadow:0 0 2px #000, 0 0 4px #000;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.roulette-ball-container{
+  position:absolute;
+  inset:0;
+  transform: rotate(-90deg);   /* 12-Uhr-Start */
+  transition: transform 3s cubic-bezier(.1,.7,.3,1);
+  pointer-events:none;
+}
+.roulette-ball{
+  position:absolute;
+  width:8%; height:8%;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+
+.roulette-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  max-width:340px; margin:10px auto;
+}
+.roulette-btn{
+  padding:12px; border-radius:10px; cursor:pointer;
+  background:#00cc44; color:#fff; text-align:center; font-size:1.05em; user-select:none;
+  border:3px solid transparent;
+}
+.roulette-btn:hover{ background:#00e65c; }
+.roulette-btn.active{ border-color:#000; }
+
+.roulette-input{
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  background:#fff; border:1px solid #ccc; border-radius:10px; padding:6px 10px;
+}
+.roulette-input input{ width:70px; border:none; outline:none; font-size:1rem; text-align:center; }
+
+.roulette-small{ font-size:.9em; color:#555; margin-top:6px; text-align:center; }
+
+.action-row {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  max-width: 340px;
+  margin: 12px auto 6px;
+}
+
+#playBtn,
+#stakeBtn {
+  flex: 1;              /* beide gleich groß */
+  max-width: 160px;     /* ca. halbes Roulette */
+  text-align: center;
+}
+
+.disabled{ filter:grayscale(.4); opacity:.7; cursor:not-allowed; }
+
+#warnMsg{ color:#c62828; margin-top:6px; min-height:1.2em; }
+
+.roulette-number-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  grid-column: span 2; /* nimmt volle Breite in Grid */
+}
+
+.roulette-number-row input {
+  width: 60px;          /* viel kleiner */
+  height: 28px;         /* halb so hoch wie Standard */
+  padding: 4px;
+  text-align: center;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.roulette-number-green-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  grid-column: span 2;
+  margin-top: 6px;
+}
+
+.roulette-number-green-row input {
+  width: 60px;
+  height: 28px;
+  padding: 4px;
+  text-align: center;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* grüner Button breiter machen */
+.roulette-btn.wide {
+  flex: 1;           /* nimmt mehr Platz */
+  min-width: 120px;  /* ungefähr wie Gerade/Ungerade */
+  text-align: center;
+}
+
+/* ===== Modal Styles ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  background: rgba(0,0,0,0.6);
+  display: none;       /* Standard: unsichtbar */
+  align-items: center; /* zentriert vertikal */
+  justify-content: center; /* zentriert horizontal */
+  z-index: 2000;
+}
+
+.modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.modal h2 {
+  margin-top: 0;
+  color: #006080;
+}
+
+.modal .hint {
+  font-size: .9em;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.modal .field {
+  margin: 12px 0;
+}
+
+.modal .field label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.modal .field input {
+  width: 120px;         /* statt 100% */
+  padding: 6px 8px;
+  font-size: 1em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  text-align: center;   /* Zahl mittig */
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.modal .btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1em;
+}
+
+.modal .btn.primary {
+  background: #00cc44;
+  color: #fff;
+}
+
+.modal .btn.primary:hover {
+  background: #00e65c;
+}
+
+.inventory {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px auto;
+  max-width: 500px;
+  text-align: left;
+}
+
+.inv-cards {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inv-card {
+  background: #f0f8ff;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 0.95em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.inv-card button {
+  background: #00cc44;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.inv-card button:hover {
+  background: #00e65c;
+}
+
+/* Einheitliche Button-Reihe in Modals */
+.modal-actions.centered {
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Gleich breite Modal-Buttons */
+.modal .btn.equal {
+  flex: 1;
+  max-width: 140px;
+}
+
+/* ===== Event Log (Layout wie Skizze) ===== */
+.event-log{
+  display: flex;
+  flex-direction: column;
+  align-items: center;   /* Karten zentrieren */
+  gap: 14px;
+}
+
+.event-card{
+  background:#fff;
+  border:1px solid #ccc;
+  border-radius:12px;
+  padding:14px 18px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+
+  max-width: 650px;   /* ungefähr wie oben zwischen ? und ⚙️ */
+  width: 100%;
+
+  display:grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px 20px;
+}
+
+/* Linke Spalte: Spieler + Zeit mittig */
+.event-left{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+.event-player{
+  font-weight:700;
+  color:#006080;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.event-time{
+  color:#555;
+  font-size:0.9em;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+/* Rechte Spalte neu strukturieren */
+.event-right{
+  display:flex;
+  flex-direction:column;
+  align-items:center;   /* zentriert statt rechts */
+  text-align:center;
+}
+
+.event-kind{
+  margin-bottom:6px;
+  padding:4px 10px;
+  border-radius:10px;
+  background:#f6fbff;
+  border:1px solid #cfe2ff;
+  font-weight:700;
+}
+
+.event-text{
+  color:#333;
+  word-break:break-word;
+}
+
+// bei Ereigniskarten
+eventLog.unshift({
+  player: player,
+  text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
+  kind: "card",
+  time: now.toLocaleTimeString()
+});
+
+// bei Trophäen
+eventLog.unshift({
+  player: player,
+  text: `🏆 ${amount} Trophäe${amount>1?"n":""} erhalten`,
+  kind: "trophy",
+  time: now.toLocaleTimeString()
+});
+
+// bei Artefaktum-Käufen
+eventLog.unshift({
+  player: player,
+  text: `🛒 ${itemName} gekauft`,
+  kind: "shop",
+  time: now.toLocaleTimeString()
+});
+
+/* ===== Panel (gemeinsamer weißer Kasten) ===== */
+.panel{
+  background:#ffffff;
+  border-radius:14px;
+  padding:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.1);
+  max-width:400px;         /* gleiche Breite wie .settings-section */
+  margin:0 auto;           /* zentriert */
+}
+
+/* Statistik nutzt den gleichen Kasten wie die Settings */
+.stats-section{ /* nur Alias – falls du später abweichende Abstände brauchst */
+}
+
+/* Tabelle kompakt und zentriert im Panel */
+.stats-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:12px 10px;    /* etwas Luft zwischen Spalten/Zeilen */
+  font-size:1.05em;
+}
+.stats-table th{
+  text-align:left;
+  font-weight:700;
+  padding-bottom:6px;
+}
+.stats-table td{
+  text-align:left;
+  white-space:nowrap;
+}
+
+/* ===== Statistik ===== */
+.panel.stats-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  max-width: 600px;
+  margin: 20px auto;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.stats-table th {
+  font-weight: 600;
+  color: #333;
+}
+
+.stats-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==== Artefaktum (3 Karten untereinander) ==== */
+.arte-wrap{max-width:520px;margin:0 auto}
+.arte-col{display:flex;flex-direction:column;gap:16px}
+.arte-card{
+  background:#fff;border:1px solid #ddd;border-radius:14px;
+  padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center
+}
+.arte-emoji{font-size:2.2rem;line-height:1}
+.arte-name{margin-top:6px;font-size:1.05rem}
+.arte-price{margin-top:8px;font-size:2rem;font-weight:800}
+.arte-buy{margin-top:10px;width:200px}
+.arte-foot{margin-top:8px;font-size:.9rem;color:#555;text-align:center}
+.button.disabled {
+  background:#cdeac7;   /* hellgrün-weiß */
+  color:#666;
+  cursor:default;
+  pointer-events:none;
+}
+
+  </style>
+</head>
+<body>
+
+<div class="main-header">
+  <h1>
+    <div class="icon-btn" onclick="showHelp(currentContext)">❓</div>
+    🎲 Lucky Cube 🎲
+    <div class="icon-btn" onclick="openSettings()">⚙️</div>
+  </h1>
+</div>
+
+  <div id="app-section">
+    <h2>Spieleranzahl wählen</h2>
+	<select id="playerCount">
+	  <option value="" disabled>Bitte wählen</option>
+	  <option value="2">2 Spieler</option>
+	  <option value="3">3 Spieler</option>
+	  <option value="4" selected>4 Spieler</option> <!-- voreingestellt -->
+	  <option value="5">5 Spieler</option>
+	  <option value="6">6 Spieler</option>
+	  <option value="7">7 Spieler</option>
+	  <option value="8">8 Spieler</option>
+	</select>
+    <br><br>
+    <div class="button" onclick="confirmPlayerCount()">Weiter</div>
+  </div>
+
+ 
+  
+  <script>
+/* ===== Global ===== */
+let totalPlayers = 0;
+let playerNames = [];
+let eventLog = [];  // [{player:"Alice", text:"Goldregen", time:"12:34:56"}]
+// === Snapshot für Ereigniskarten (UI-Zustand merken) ===
+window._eventcardSnapshot = null;
+
+// --- EventLog beim (Neu-)Start immer leeren ---
+try { localStorage.removeItem("eventLog"); } catch(e) {}
+eventLog = [];
+
+/* === Event-Log persistent speichern === */
+function saveEventLog() {
+  try {
+    localStorage.setItem("eventLog", JSON.stringify(eventLog.slice(0, 300))); // capped
+  } catch(e) { console.warn("saveEventLog failed:", e); }
+}
+function loadEventLog() {
+  try {
+    const raw = localStorage.getItem("eventLog");
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) eventLog = arr;
+    }
+  } catch(e) { console.warn("loadEventLog failed:", e); }
+}
+loadEventLog();
+
+// Auction mit geheimem Wert
+let auctionState = {
+  highestBid: 0,
+  highestBidder: null,
+  bids: [],
+  ended: true,
+  prize: null // Geheimwert
+};
+
+// Battle: immer frisch
+let battleState = { challenger: null, opponent: null, wager: 0, mode: "highest", rollA: null, rollB: null, ended: false, error: "" };
+
+// Lotto: 4 gemeinsame Zahlen (1–9), Zustand bleibt bis Rundenende
+let lottoState = {
+  numbers: [],       // [{ value:1..9, done:false }, ...] (4 Stück)
+  winner: null,
+  active: false,
+  ended: true,
+  turnIndex: 0,      // wer ist dran
+  activeIdx: 0       // welche der 4 Zahlen ist blau/aktiv
+};
+
+// Lucky Streak
+let streakState = {
+  buyIn: 0,           // 5/10/15/20
+  multiplier: 1,      // 1.25 / 1.5 / 1.75 / 2
+  steps: 0,           // wie oft erfolgreich (keine 1)
+  base: 10,           // Basisgewinn je Erfolg
+  ended: false,
+  payout: 0
+};
+
+// Jackpot
+let jackpotState = {
+  pot: 0,                 // aktueller Pot in €
+  history: [],            // [{round:n, winner:'Name', amount:€}, ...]
+  round: 1
+};
+
+let settings = {
+  devMode: false,
+  externalRoll: false,
+  directHome: false,
+};
+
+// beim Start laden
+const saved = localStorage.getItem("settings");
+if (saved) {
+  try {
+    settings = JSON.parse(saved);
+    settings.externalRoll = (settings.externalRoll === true || settings.externalRoll === "yes");
+    settings.devMode      = (settings.devMode === true || settings.devMode === "yes");
+    settings.directHome   = (settings.directHome === true || settings.directHome === "yes");
+  } catch (e) {
+    console.error("Fehler beim Laden", e);
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem("settings", JSON.stringify(settings));
+}
+
+let currentContext = "home";
+
+let _settingsPrevContext = null;
+let _settingsPrevHTML = "";
+
+/* ===== Setup ===== */
+function confirmPlayerCount() {
+  const selected = document.getElementById("playerCount").value;
+  if (!selected) {
+    document.getElementById("app-section").innerHTML += "<p class='error'>Bitte zuerst die Spieleranzahl wählen.</p>";
+    return;
+  }
+  totalPlayers = parseInt(selected, 10);
+
+  if (settings.devMode && settings.directHome) {
+    // sofort ins Menü
+    playerNames = ["Alice", "Bob", "Carol", "Dave"];
+    showHome();
+  } else if (settings.devMode && totalPlayers === 4) {
+    // DevMode: Namen schon drin
+    playerNames = ["Alice", "Bob", "Carol", "Dave"];
+    showNameInputs();
+  } else {
+    // normal
+    showNameInputs();
+  }
+}
+const DEV_MODE = true;
+
+function showNameInputs() {
+  currentContext = "players";
+
+  let defaultNames = ["Alice", "Bob", "Carol", "Dave"];
+
+  let html = `<h2>Spielernamen eingeben</h2><div id="nameList">`;
+
+  for (let i = 1; i <= totalPlayers; i++) {
+    let prefill = "";
+    if (settings.devMode && totalPlayers === 4) {
+      prefill = defaultNames[i-1] || "";
+    }
+    html += `
+      <div class="player-row" data-index="${i}">
+        <span class="drag-handle" draggable="true" title="Ziehen">≡</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input type="text" id="name${i}" maxlength="20" placeholder="Spieler ${i}" value="${prefill}"
+                 oninput="updateNameCounter('name${i}')">
+          <span id="counter-name${i}" class="name-counter">${prefill.length}/20</span>
+        </div>
+      </div>`;
+  }
+
+  html += `</div>
+           <div id="nameError" class="error"></div>
+           <div class="button" onclick="saveNames()">Weiter</div>`;
+
+  document.getElementById("app-section").innerHTML = html;
+  enableNameDragDrop();
+}
+
+function enableNameDragDrop() {
+  const list = document.getElementById("nameList");
+  let draggingRow = null;
+
+  // Drag nur am Griff starten
+  list.querySelectorAll(".drag-handle").forEach(handle => {
+    handle.addEventListener("dragstart", e => {
+      draggingRow = handle.closest(".player-row");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "drag");
+    });
+  });
+
+  // Droppen auf Zeilen
+  list.querySelectorAll(".player-row").forEach(row => {
+    row.addEventListener("dragover", e => e.preventDefault());
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      if (!draggingRow || draggingRow === row) return;
+
+      const all = Array.from(list.children);
+      const from = all.indexOf(draggingRow);
+      const to   = all.indexOf(row);
+      if (from < to) row.after(draggingRow);
+      else row.before(draggingRow);
+
+      // IDs der Inputs neu setzen (name1, name2, …)
+      Array.from(list.querySelectorAll(".player-row input")).forEach((inp, i) => {
+        inp.id = "name" + (i + 1);
+      });
+    });
+  });
+}
+
+function saveNames() {
+  let message = "";
+  const temp = [];
+  for (let i = 1; i <= totalPlayers; i++) {
+    const val = document.getElementById(`name${i}`).value.trim();
+    if (!val) { message = "Bitte alle Namen eingeben!"; break; }
+    if (temp.includes(val)) { message = `Der Name "${val}" ist bereits vergeben!`; break; }
+    temp.push(val);
+  }
+  const err = document.getElementById("nameError");
+  if (message) { err.textContent = message; return; } else { err.textContent = ""; }
+  playerNames = temp;
+  showHome();
+  initDeck();
+}
+
+function showHome() {
+  currentContext = "home";
+  if (typeof _killOverlays === "function") _killOverlays();
+
+  // Buttons zusammenbauen
+  let html = "";
+
+  html += `
+    <div class="button" id="btnLotto">🎯 Lotto</div>
+    <div class="button" id="btnAuction">💰 Auktion</div>
+    <div class="button" id="btnJackpot">🎰 Jackpot</div>
+    <div class="button" id="btnStreak">🎲 Lucky Streak</div>
+    <div class="button" id="btnPoker">🃏 Poker</div>
+    <div class="button" id="btnAllNothing">🎲 All or Nothing</div>
+	<div class="button" id="btnRoulette">🎡 Roulette</div>
+    <div class="button" id="btnEventCards">🎴 Ereigniskarten</div>
+    <div class="button" id="btnInventory">🎒 Inventar</div>
+    <div class="button" id="btnArtefaktum">🗿 Artefaktum</div>
+  `;
+
+  if (!settings.externalRoll) {
+    html += `<div class="button" id="btnBattle">⚔️ Battle</div>`;
+  }
+
+  const app = document.getElementById("app-section");
+  if (app) app.innerHTML = html;
+
+  // Sicheres Binden: nur wenn Ziel wirklich eine Funktion ist
+  const bind = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el && typeof fn === "function") el.addEventListener("click", fn);
+  };
+
+  bind("btnRoulette", window.startRoulette);
+  bind("btnLotto",      window.startLotto);
+  bind("btnAuction",    window.startAuction);
+  bind("btnJackpot",    window.startJackpot);
+  bind("btnStreak",     window.startStreak);
+  bind("btnPoker",      window.startPoker);
+  bind("btnAllNothing", window.startAllNothing);
+  bind("btnEventCards", window.startEventCardDraw);
+  bind("btnInventory",  window.showInventory);   // ← existiert jetzt sicher (eigene Funktion anlegen)
+  if (!settings.externalRoll) bind("btnBattle",  window.startBattle);
+  bind("btnArtefaktum", window.startArtefaktum);
+}
+
+// global verfügbar machen
+window.showHome = showHome;
+
+// global machen
+window.showHome = showHome;
+
+// global machen (falls woanders überschrieben wurde)
+window.showHome = showHome;
+
+function renderPlayerInventories() {
+  let html = "<h2>🎒 Inventar</h2>";
+
+  playerNames.forEach((name, idx) => {
+    const cards = playerHands[idx] || [];
+    let cardHtml = "";
+
+    if (cards.length === 0) {
+      cardHtml = "<div class='small'>Keine Karten</div>";
+    } else {
+      cardHtml = cards.map((c, i) => `
+        <div class="inv-card">
+          ${c.text}
+          <button onclick="playEventCard(${idx}, ${i})">Spielen</button>
+        </div>
+      `).join("");
+    }
+
+    html += `
+      <div class="inventory">
+        <b>${name}</b>
+        <div class="inv-cards">${cardHtml}</div>
+      </div>
+    `;
+  });
+
+  return html;
+}
+
+// === Ereigniskarten ===
+// Kategorien:
+//   - mode: "instant" → sofort ausspielen
+//   - mode: "inventory" → muss ins Inventar gelegt werden
+//   - mode: "both" → Spieler darf wählen (sofort oder ins Inventar)
+
+const EVENT_CARDS = [
+  { text: "Du erhältst +5 €", mode: "instant" },
+  { text: "Du erhältst +10 €", mode: "instant" },
+  { text: "Du erhältst +15 €", mode: "instant" },
+  { text: "Du erhältst +20 €", mode: "instant" },
+  { text: "Du erhältst +25 €", mode: "instant" },
+  { text: "Du verlierst –5 €", mode: "instant" },
+  { text: "Du verlierst –10 €", mode: "instant" },
+  { text: "Du verlierst –15 €", mode: "instant" },
+  { text: "Du verlierst –20 €", mode: "instant" },
+  { text: "Du verlierst –25 €", mode: "instant" },
+  { text: "Erhalte 1 Trophäe", mode: "instant" },
+  { text: "Erhalte 2 Trophäen (selten)", mode: "instant" },
+  { text: "Stehle 1 Trophäe von einem Mitspieler", mode: "instant" },
+  { text: "Du musst 1 Trophäe an einen Mitspieler abgeben", mode: "instant" },
+  { text: "Dein nächster Wurf wird verdoppelt", mode: "instant" },
+  { text: "Setze eine Runde aus", mode: "instant" },
+  { text: "Erhalte einen Extra-Zug", mode: "instant" },
+
+  { text: "1 Runde unbesiegbar gegen Knockback", mode: "both" },
+  { text: "1 Runde sicher vor Diebstahl", mode: "both" },
+  { text: "2 Runden sicher vor Knockback", mode: "both" },
+  { text: "2 Runden sicher vor Diebstahl", mode: "both" },
+  { text: "Dein Inventar kann nicht beklaut werden", mode: "both" },
+  { text: "Das Museum kann nicht ausgeraubt werden", mode: "both" },
+
+  { text: "Erhalte 20 Gratis-Lose im Lotto", mode: "inventory" },
+
+  { text: "Erhalte ein Knockback-Upgrade", mode: "instant" },
+  { text: "Wähle einen Spieler, der 1 Runde aussetzt", mode: "instant" },
+  { text: "Tausche deine Position mit einem Mitspieler", mode: "instant" },
+  { text: "Tausche eine Ereigniskarte mit einem Mitspieler", mode: "instant" },
+  { text: "Gib 10 € einem Mitspieler und erhalte dafür 1 Trophäe von ihm", mode: "instant" },
+  { text: "Ziehe sofort eine zweite Ereigniskarte", mode: "instant" },
+  { text: "Würfle: gerade = +30 €, ungerade = –30 €", mode: "instant" },
+  { text: "Risiko-Karte: Verdopple deinen nächsten Gewinn oder Verlust", mode: "instant" },
+  { text: "Bestimme, wer der nächste Spieler ist", mode: "instant" },
+  { text: "Wähle, ob ein Mitspieler 10 € bekommt oder verliert", mode: "instant" },
+  { text: "Alle Spieler würfeln: kleinste Zahl verliert 5 € an jeden", mode: "instant" },
+  { text: "Mini-Steuer: alle Spieler geben dir 5 €", mode: "instant" },
+  { text: "Zwangsspende: du gibst allen Spielern 5 €", mode: "instant" },
+  { text: "Goldregen: jeder +10 €, du +20 €", mode: "instant" },
+  { text: "Schwarzer Tag: jeder –5 €, du –10 €", mode: "instant" },
+  { text: "Tausche deinen Würfel mit dem linken Nachbarn", mode: "instant" },
+  { text: "Stehle 1 Ereigniskarte von einem Mitspieler", mode: "instant" },
+  { text: "Blockiere 1 Ereigniskarte eines Mitspielers", mode: "instant" },
+  { text: "Gib 1 Trophäe ab an einen Mitspieler", mode: "instant" },
+  { text: "Dein Knockbackstick verliert ein Upgrade", mode: "instant" }
+];
+
+function startEventCardDraw() {
+  currentContext = "eventcard";
+  pendingEventCard = null;
+  ensureEventSystemReady();
+
+  const options = playerNames.map((n,i)=>`<option value="${i}">${n}</option>`).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">🎴 Ereigniskarte ziehen</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="small">Wähle einen Spieler:</div>
+      <select id="eventPlayer" onchange="enableEventDrawBtn()">
+        <option value="" disabled selected>Bitte wählen</option>
+        ${options}
+      </select>
+      <div style="margin-top:12px;">
+        <div id="eventDrawBtn" class="button disabled" onclick="confirmEventDraw()"
+             style="pointer-events:none;opacity:0.6;">
+          Karte ziehen
+        </div>
+      </div>
+      <div id="eventCardResult"></div>
+    </div>
+  `;
+}
+
+function enableEventDrawBtn() {
+  const sel = document.getElementById("eventPlayer");
+  const btn = document.getElementById("eventDrawBtn");
+  if (!sel || !btn) return;
+  const ok = sel.value !== "";
+  btn.classList.toggle("disabled", !ok);
+  btn.style.pointerEvents = ok ? "auto" : "none";
+  btn.style.opacity = ok ? "1" : "0.6";
+}
+
+// === State ===
+let playerHands = [];        // Inventar pro Spieler
+let pendingEventCard = null; // gerade gezogene Karte
+
+// Karten mischen
+function shuffleEventCards() {
+  for (let i = EVENT_CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [EVENT_CARDS[i], EVENT_CARDS[j]] = [EVENT_CARDS[j], EVENT_CARDS[i]];
+  }
+}
+
+// Nächste Karte erzeugen (inkl. eindeutiger ID)
+function randomEventCard() {
+  const base = EVENT_CARDS[Math.floor(Math.random() * EVENT_CARDS.length)];
+  return { ...base, _uid: Math.random().toString(36).slice(2) + Date.now().toString(36) };
+}
+
+// Hände initialisieren
+function initDeck() {
+  playerHands = playerNames.map(() => []);
+}
+
+// Immer sicherstellen, dass Hände passen
+function ensureEventSystemReady() {
+  if (!Array.isArray(playerHands) || playerHands.length !== playerNames.length) {
+    const old = Array.isArray(playerHands) ? playerHands : [];
+    playerHands = playerNames.map((_, i) => old[i] || []);
+  }
+}
+
+// Karte ziehen
+function drawEventCard(playerIdx, returnOnly = false) {
+  const card = randomEventCard();
+  if (returnOnly) return card;
+
+  if (card.mode === "instant") {
+    resolveEventCard(card, playerIdx);
+  } else if (card.mode === "inventory") {
+    if (!playerHands[playerIdx]) playerHands[playerIdx] = [];
+    playerHands[playerIdx].push(card);
+  } else if (card.mode === "both") {
+    pendingEventCard = card; // Spieler darf wählen im UI
+  }
+  return card;
+}
+
+function showInventory() {
+  currentContext = "inventory";
+  ensureEventSystemReady();
+
+  const app = document.getElementById("app-section");
+  if (!app) return;
+
+  app.innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">🧳 Inventar</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+    ${renderPlayerInventories()}
+  `;
+}
+window.showInventory = showInventory; // global verfügbar machen
+
+// UI: Karte zeigen nach Ziehen
+function confirmEventDraw() {
+  const sel = document.getElementById("eventPlayer");
+  const idx = Number(sel && sel.value);
+  if (isNaN(idx)) return;
+
+  ensureEventSystemReady();
+
+  // 👉 Nur VORSCHAU: Karte ziehen, aber NICHT ins Inventar legen und NICHT loggen
+  const card = drawEventCard(idx, true); // returnOnly = true  -> keine Seiteneffekte
+  pendingEventCard = card;
+
+  let html = `
+    <div style="font-size:1.4em;margin-top:12px;">${playerNames[idx]} zieht:</div>
+    <div style="background:#fff;border:2px solid #333;border-radius:12px;
+                padding:20px;margin:20px auto;max-width:420px;
+                font-size:1.2em;box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+      ${card.text}
+    </div>
+  `;
+
+  if (card.mode === "instant") {
+    html += `
+      <div class="small">(Sofortkarte – muss direkt eingesetzt werden)</div>
+      <div class="button" onclick="playEventCardImmediate(${idx})">Jetzt ausführen</div>
+    `;
+  } else if (card.mode === "inventory") {
+    html += `
+      <div class="small">(Inventarkarte – wird gesichert)</div>
+      <div class="button" onclick="keepEventCard(${idx})">Sichern</div>
+    `;
+  } else if (card.mode === "both") {
+    html += `
+      <div class="small">(Kann sofort gespielt oder ins Inventar gelegt werden)</div>
+      <div class="button" onclick="playEventCardImmediate(${idx})">Jetzt ausführen</div>
+      <div class="button" onclick="keepEventCard(${idx})">Behalten</div>
+    `;
+  }
+
+  const box = document.getElementById("eventCardResult");
+  if (box) box.innerHTML = html;
+
+  // ⛔️ KEIN eventLog hier – erst beim tatsächlichen Einlösen
+}
+
+// Karte sofort ausführen
+function playEventCardImmediate(playerIdx) {
+  if (!pendingEventCard) return;
+  const card = pendingEventCard;
+  pendingEventCard = null;
+
+  // 👉 Jetzt WIRKLICH einlösen (hier wird geloggt)
+  resolveEventCard(card, playerIdx);
+
+  const target = document.getElementById("eventCardResult");
+  if (target) {
+    target.innerHTML = `
+      <div style="margin-top:15px;color:#006080;font-weight:600;">
+        🎯 Karte wurde ausgespielt.
+      </div>
+    `;
+  }
+}
+
+// Karte ins Inventar legen
+function keepEventCard(playerIdx) {
+  if (!pendingEventCard) return;
+  ensureEventSystemReady();
+
+  // 👉 Nur ins Inventar legen – KEIN Log!
+  if (!playerHands[playerIdx]) playerHands[playerIdx] = [];
+  playerHands[playerIdx].push(pendingEventCard);
+  pendingEventCard = null;
+
+  const target = document.getElementById("eventCardResult");
+  if (target) {
+    target.innerHTML = `
+      <div style="margin-top:15px;color:#0b7a28;font-weight:600;">
+        ✅ Karte wurde ins Inventar gelegt.
+      </div>
+      <div style="margin-top:20px;">
+        <div class="button" onclick="showInventory()">🎒 Inventar öffnen</div>
+      </div>
+    `;
+  }
+}
+
+// Karte aus Inventar spielen
+function playEventCard(playerIdx, cardIdx) {
+  const card = (playerHands[playerIdx] || []).splice(cardIdx, 1)[0];
+  if (!card) return;
+  resolveEventCard(card, playerIdx);
+  showInventory();
+}
+
+// Effekte (Platzhalter – hier kannst du deine Logik einbauen)
+function resolveEventCard(card, playerIdx) {
+  // 1) Basics
+  const player = (playerNames && playerNames[playerIdx]) ? playerNames[playerIdx] : "Spieler";
+  const now    = new Date();
+
+  // 2) Ereignis im Verlauf loggen (mit Typ "card") + speichern
+  try {
+    if (typeof addEventLog === "function") {
+      // Einheitliche zentrale Logging-Funktion (beschriftet & speichert)
+      addEventLog({
+        player: player,
+        kind:   "card",                     // ← WICHTIG: damit showEventLog korrekt labelt
+        text:   String(card && card.text ? card.text : ""),
+        time:   now.toLocaleTimeString()
+      });
+    } else {
+      // Fallback: direkt ins Array + optional speichern
+      window.eventLog = Array.isArray(window.eventLog) ? window.eventLog : [];
+      window.eventLog.unshift({
+        player: player,
+        kind:   "card",                     // ← WICHTIG
+        text:   String(card && card.text ? card.text : ""),
+        time:   now.toLocaleTimeString()
+      });
+      if (typeof saveEventLog === "function") {
+        try { saveEventLog(); } catch (e) { /* noop */ }
+      } else {
+        // Minimaler Fallback: selbst persistieren (ohne Größenlimit)
+        try { localStorage.setItem("eventLog", JSON.stringify(window.eventLog)); } catch (e) {}
+      }
+    }
+  } catch (e) {
+    console.warn("Ereigniskarte konnte nicht geloggt werden:", e);
+  }
+
+  // 3) Effekte der Karte anwenden (hier deine Game-Logik einbauen – Beispiele/Platzhalter)
+  try {
+    const text = String(card && card.text ? card.text : "");
+
+    // Beispielhafte, einfache Muster – passe das an deine Regeln an:
+    if (/erhältst\s*\+?(\d+)\s*€/i.test(text)) {
+      const amount = parseInt(RegExp.$1, 10);
+      // TODO: Guthaben des Spielers um 'amount' erhöhen
+    } else if (/verlierst\s*[-–—]?\s*(\d+)\s*€/i.test(text)) {
+      const amount = parseInt(RegExp.$1, 10);
+      // TODO: Guthaben des Spielers um 'amount' verringern
+    } else if (/Erhalte\s*(\d+)\s*Trophä/i.test(text)) {
+      const n = parseInt(RegExp.$1, 10) || 1;
+      if (typeof awardTrophies === "function") {
+        try { awardTrophies(player, n); } catch (e) {}
+      }
+    } else if (/Erhalte\s*1\s*Trophä/i.test(text)) {
+      if (typeof awardTrophies === "function") {
+        try { awardTrophies(player, 1); } catch (e) {}
+      }
+    }
+
+    // ggf. weitere Karten-Typen hier behandeln …
+
+  } catch (e) {
+    console.warn("Karten-Effekt konnte nicht angewendet werden:", e);
+  }
+}
+
+function showSettings() {
+  currentContext = "settings";
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="settings-section">
+      <!-- Header -->
+      <div class="auction-header">
+        <div class="auction-title">⚙️ Einstellungen</div>
+        <div class="icon-btn" onclick="closeSettings()" title="Zurück">✖</div>
+      </div>
+
+      <!-- Extern würfeln -->
+      <div class="settings-row">
+        <label for="externalRoll">Extern würfeln:</label>
+        <label class="switch">
+          <input type="checkbox" id="externalRoll"
+                 ${settings.externalRoll ? "checked" : ""}
+                 onchange="toggleExternalRoll(this.checked)">
+          <span class="track" data-on="an" data-off="aus"></span>
+        </label>
+      </div>
+
+      <!-- Dev-Modus -->
+      <div class="settings-row">
+        <label for="devMode">Dev-Modus:</label>
+        <label class="switch">
+          <input type="checkbox" id="devMode"
+                 ${settings.devMode ? "checked" : ""}
+                 onchange="toggleDevMode(this.checked)">
+          <span class="track" data-on="an" data-off="aus"></span>
+        </label>
+      </div>
+
+      <!-- Direkt zum Home-Screen (nur sichtbar, wenn Dev an) -->
+      <div class="settings-row" id="directHomeRow" style="display:${settings.devMode ? "flex" : "none"};">
+        <label for="directHome">Direkt zum Home-Screen:</label>
+        <label class="switch">
+          <input type="checkbox" id="directHome"
+                 ${settings.directHome ? "checked" : ""}
+                 onchange="toggleDirectHome(this.checked)">
+          <span class="track" data-on="an" data-off="aus"></span>
+        </label>
+      </div>
+
+      <!-- Aktionen -->
+      <div style="margin-top:18px;">
+        <div class="button" onclick="managePlayers()">👥 Spieler verwalten</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="button" onclick="openStatistics()">📊 Statistik</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="button" onclick="showEventLog()">📜 Ereignisverlauf</div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleDevMode(checked) {
+  settings.devMode = !!checked;
+  saveSettings();
+  showSettings(); // zeigt/verbirgt Direct-Home-Zeile sofort
+}
+
+function toggleDirectHome(checked) {
+  settings.directHome = !!checked;
+  saveSettings();
+}
+
+function toggleExternalRoll(checked) {
+  settings.externalRoll = !!checked;
+  saveSettings();
+  // kein showHome() -> kein Teleport
+}
+
+/* ===== Settings: Kontext merken + Snapshots ===== */
+window._settingsPrevContext = window._settingsPrevContext || "home";
+
+function openSettings() {
+  // Herkunft merken
+  const ctx = (typeof currentContext === "string" && currentContext) ? currentContext : "home";
+  window._settingsPrevContext = ctx;
+
+  /* 🃏 Poker – Snapshot */
+  if (ctx === "poker" && window.pokerState) {
+    window._pokerSnapshot = JSON.parse(JSON.stringify(window.pokerState));
+  } else {
+    window._pokerSnapshot = null;
+  }
+
+  /* 🎴 Ereigniskarten – Snapshot */
+  if (ctx === "eventcard") {
+    const sel = document.getElementById("eventPlayer");
+    const res = document.getElementById("eventCardResult");
+    const btn = document.getElementById("eventDrawBtn");
+    window._eventcardSnapshot = {
+      selected:  sel ? sel.value : "",
+      resultHTML: res ? res.innerHTML : "",
+      btnEnabled: btn ? !btn.classList.contains("disabled") : false,
+      pending:   (typeof pendingEventCard === "object" && pendingEventCard)
+                   ? JSON.parse(JSON.stringify(pendingEventCard))
+                   : null
+    };
+  } else {
+    window._eventcardSnapshot = null;
+  }
+
+  /* ⚖️ All or Nothing – Snapshot */
+  if (ctx === "allnothing") {
+    const sel = document.getElementById("aonPlayer");
+    const res = document.getElementById("allnothingResult");
+    const tro = document.getElementById("allnothingTrophy");
+    window._aonSnapshot = {
+      selected:  sel ? sel.value : "",
+      resultHTML: res ? res.innerHTML : "",
+      trophyHTML: tro ? tro.innerHTML : ""
+    };
+  } else {
+    window._aonSnapshot = null;
+  }
+
+  /* 🎲 Lucky Streak – Snapshot */
+  if (ctx === "streak" && typeof window.streakState === "object" && window.streakState) {
+    window._streakSnapshot = JSON.parse(JSON.stringify(window.streakState));
+  } else {
+    window._streakSnapshot = null;
+  }
+
+  /* 🎰 Jackpot – Snapshot */
+  if (ctx === "jackpot") {
+    window._jackpotSnapshot = {
+      bet:   document.getElementById("jackpotBet")?.value || "",
+      roll:  document.getElementById("jackpotRoll")?.value || "",
+      pSel:  document.getElementById("jackpotPlayer")?.value || "",
+      res:   document.getElementById("jackpotResult")?.innerHTML || "",
+      err:   document.getElementById("jackpotErr")?.innerHTML || ""
+    };
+  } else {
+    window._jackpotSnapshot = null;
+  }
+
+  currentContext = "settings";
+  showSettings();
+}
+
+/** ===== Einstellungen schließen – exakt zum gemerkten Screen zurück ===== */
+function closeSettings() {
+  const prev = window._settingsPrevContext || "home";
+  window._settingsPrevContext = null;   // Reset für den nächsten Durchlauf
+  currentContext = prev;
+
+  /* 🃏 Poker: nie neu starten – Snapshot rendern */
+  if (prev === "poker") {
+    if (window._pokerSnapshot) {
+      window.pokerState = window._pokerSnapshot;
+      window._pokerSnapshot = null;
+    }
+    if (typeof renderPokerUI === "function") renderPokerUI();
+    else if (typeof startPoker === "function") startPoker();
+    return;
+  }
+
+  /* 🎴 Ereigniskarten: UI + Snapshot zurückspielen */
+  if (prev === "eventcard") {
+    startEventCardDraw(); // Basis-UI
+    if (window._eventcardSnapshot) {
+      const snap = window._eventcardSnapshot;
+
+      const sel = document.getElementById("eventPlayer");
+      if (sel && snap.selected) sel.value = snap.selected;
+
+      if (typeof enableEventDrawBtn === "function") enableEventDrawBtn();
+
+      const res = document.getElementById("eventCardResult");
+      if (res && snap.resultHTML) res.innerHTML = snap.resultHTML;
+
+      if (snap.pending) pendingEventCard = snap.pending;
+
+      const btn = document.getElementById("eventDrawBtn");
+      if (btn) {
+        if (snap.btnEnabled) {
+          btn.classList.remove("disabled");
+          btn.style.pointerEvents = "auto";
+          btn.style.opacity = "1";
+        } else {
+          btn.classList.add("disabled");
+          btn.style.pointerEvents = "none";
+          btn.style.opacity = "0.6";
+        }
+      }
+      window._eventcardSnapshot = null;
+    }
+    return;
+  }
+
+  /* ⚖️ All or Nothing: UI + Snapshot zurückspielen */
+  if (prev === "allnothing") {
+    startAllNothing();
+    if (window._aonSnapshot) {
+      const snap = window._aonSnapshot;
+
+      const sel = document.getElementById("aonPlayer");
+      if (sel && snap.selected) sel.value = snap.selected;
+
+      const res = document.getElementById("allnothingResult");
+      if (res && snap.resultHTML) res.innerHTML = snap.resultHTML;
+
+      const tro = document.getElementById("allnothingTrophy");
+      if (tro && snap.trophyHTML) tro.innerHTML = snap.trophyHTML;
+
+      window._aonSnapshot = null;
+    }
+    return;
+  }
+
+  /* 🎲 Lucky Streak: Zustand zurück, NICHT neu starten */
+  if (prev === "streak") {
+    if (window._streakSnapshot) {
+      window.streakState = window._streakSnapshot;
+      window._streakSnapshot = null;
+    }
+    if (typeof renderStreakUI === "function") renderStreakUI();
+    else if (typeof startStreak === "function") startStreak(); // Fallback
+    return;
+  }
+
+  /* 🎰 Jackpot: UI + Snapshot zurückspielen */
+  if (prev === "jackpot") {
+    startJackpot(); // Basis-UI
+    try {
+      const snap = window._jackpotSnapshot;
+      if (snap) {
+        const sel   = document.getElementById("jackpotPlayer");
+        const betEl = document.getElementById("jackpotBet");
+        const rolEl = document.getElementById("jackpotRoll");
+        const resEl = document.getElementById("jackpotResult");
+        const errEl = document.getElementById("jackpotErr");
+
+        if (sel && snap.pSel !== "") sel.value = snap.pSel;
+        if (betEl) betEl.value = snap.bet || "";
+        if (rolEl) rolEl.value = snap.roll || "";
+        if (resEl) resEl.innerHTML = snap.res || "";
+        if (errEl) errEl.innerHTML = snap.err || "";
+      }
+    } catch (e) {
+      console.warn("Jackpot restore failed:", e);
+    }
+    window._jackpotSnapshot = null;
+    return;
+  }
+
+/* 🗿 Artefaktum: zurück zum Angebot */
+if (prev === "artefaktum") {
+  // Angebote sind via window._arteCache 1 Minute gecached,
+  // _bought-Status steckt in den Items – einfach neu rendern.
+  if (typeof startArtefaktum === "function") startArtefaktum();
+  else if (window.startArtefaktum) window.startArtefaktum();
+  return;
+}
+
+  /* 🌍 Alle anderen Kontexte normal herstellen */
+  switch (prev) {
+    case "roulette":  startRoulette();  break;
+    case "auction":   startAuction();   break;
+    case "lotto":     startLotto();     break;
+    case "battle":    startBattle();    break;
+    case "inventory": showInventory();  break;
+    case "eventlog":  showEventLog();   break;
+    case "stats":     showStatistics(); break;
+    case "home":      showHome();       break;
+    default:          showHome();
+  }
+}
+
+function setTheme(val) {
+  console.log("Theme gesetzt auf:", val);
+  // hier später CSS-Klassen oder Styles wechseln
+}
+
+function toggleSound(on) {
+  console.log("Soundeffekte:", on ? "An" : "Aus");
+  // hier später Sounds steuern
+}
+
+function setLanguage(lang) {
+  console.log("Sprache:", lang);
+  // hier später Text-Labels austauschen
+}
+
+/* ===== Spieler verwalten ===== */
+function updateNameCounter(inputId) {
+  const input = document.getElementById(inputId);
+  const counter = document.getElementById("counter-" + inputId);
+  if (input && counter) {
+    counter.textContent = `${input.value.length}/20`;
+  }
+}
+
+function managePlayers() {
+  currentContext = "players";
+  const listHTML = playerNames.map((name, idx) => `
+    <div class="player-row" data-index="${idx}" style="display:flex;align-items:center;gap:6px;">
+      <span class="drag-handle" draggable="true" title="Ziehen">≡</span>
+      <input type="text" id="player${idx}" maxlength="20" value="${name}"
+             oninput="updateNameCounter('player${idx}'); renamePlayer(${idx}, this.value)">
+      <span id="counter-player${idx}" class="name-counter">${name.length}/20</span>
+      <span class="button" style="width:auto;padding:6px 10px;font-size:.9em;" onclick="deletePlayer(${idx})">❌</span>
+    </div>
+  `).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="lotto-header">
+      <div class="lotto-title">👥 Spieler verwalten</div>
+      <div class="icon-btn" onclick="showSettings()">✖</div>
+    </div>
+
+    <div id="playerList">${listHTML}</div>
+
+	<div class="input-wrap">
+	  <input type="text" id="newPlayerName" maxlength="20" placeholder="Neuer Spieler"
+			 oninput="updateNameCounter('newPlayerName')">
+	  <span id="counter-newPlayerName" class="name-counter">0/20</span>
+	</div>
+    <div class="button" style="width:200px;margin-top:8px;" onclick="addPlayer()">➕ Hinzufügen</div>
+    <div id="playerError" class="error"></div>
+  `;
+
+  enablePlayerDragDrop();
+}
+
+/**
+ * Benennt einen bestehenden Spieler um. Die Eingabe wird getrimmt und
+ * geprüft, ob der Name bereits von einem anderen Spieler verwendet wird.
+ * Ist der Name bereits vergeben, wird eine Fehlermeldung angezeigt und
+ * das Eingabefeld zurück auf den vorherigen Namen gesetzt.
+ */
+function renamePlayer(idx, newName) {
+  const trimmed = newName.trim();
+  const errorEl = document.getElementById("playerError");
+  // Leere Namen sind nicht erlaubt
+  if (trimmed === "") {
+    if (errorEl) {
+      errorEl.textContent = "Bitte einen Namen eingeben.";
+    }
+    const input = document.getElementById('player' + idx);
+    if (input) {
+      input.value = playerNames[idx];
+      updateNameCounter('player' + idx);
+    }
+    return;
+  }
+  // Prüfe, ob der neue Name bereits an einer anderen Position verwendet wird
+  const duplicate = playerNames.some((n, i) => i !== idx && n === trimmed);
+  if (duplicate) {
+    if (errorEl) {
+      errorEl.textContent = `Der Name "${trimmed}" ist bereits vergeben.`;
+    }
+    // Eingabefeld wieder auf den alten Wert setzen und Zähler aktualisieren
+    const input = document.getElementById('player' + idx);
+    if (input) {
+      input.value = playerNames[idx];
+      updateNameCounter('player' + idx);
+    }
+    return;
+  }
+  // Kein Duplikat: Fehler zurücksetzen und Namen aktualisieren
+  if (errorEl) errorEl.textContent = "";
+  playerNames[idx] = trimmed;
+}
+
+// === Spieler hinzufügen (REPLACE) ===
+function addPlayer() {
+  const name = document.getElementById("newPlayerName").value.trim();
+  const errorEl = document.getElementById("playerError");
+  if (!name) { errorEl.textContent = "Bitte einen Namen eingeben."; return; }
+  if (playerNames.includes(name)) { errorEl.textContent = `Der Name "${name}" ist bereits vergeben.`; return; }
+  errorEl.textContent = "";
+
+  playerNames.push(name);
+  // neue, leere Hand für den Spieler
+  if (!Array.isArray(playerHands)) playerHands = [];
+  playerHands.push([]);
+
+  managePlayers();
+}
+
+// === Spieler löschen (REPLACE) ===
+function deletePlayer(idx) {
+  playerNames.splice(idx, 1);
+  if (Array.isArray(playerHands)) playerHands.splice(idx, 1);
+  managePlayers();
+}
+
+function renderHeader(title, context) {
+  return `
+    <div style="display:flex;align-items:center;justify-content:center;position:relative;">
+      <h1 style="flex:1;text-align:center;">${title}</h1>
+      <div class="icon-btn" style="position:absolute;right:50px;top:10px;" onclick="showHelp('${context}')">❓</div>
+      <div class="icon-btn" style="position:absolute;right:10px;top:10px;" onclick="showSettings()">⚙️</div>
+    </div>
+  `;
+}
+
+function colorfulRouletteWord() {
+  const letters = "Roulette".split("");
+  const colors = ["red", "black", "green"];
+  return letters.map((ch,i)=>{
+    const col = colors[i % colors.length];
+    return `<span style="color:${col}">${ch}</span>`;
+  }).join("");
+}
+
+function showHelp(context) {
+  let text = "";
+  switch (context) {
+	case "lotto":
+	  text = "🎯 <b>Lotto:</b><br>" +
+			"<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+			 "Es werden zufällig <span style='color:#0057d9;font-weight:bold;'>4 Zahlen</span> gezogen.<br>" +
+			 "Dann würfelt <span style='color:#0057d9;font-weight:bold;'>jeder 1x</span>, wenn er am Zug ist, und legt <span style='color:#0b7a28;font-weight:bold;'>1 €</span> in den Pot.<br>" +
+			 " <br>" +
+			 "Variante 1: Der Spieler muss eine <span style='color:#0b7a28;font-weight:bold;'>3</span> Würfeln würfelt aber eine <span style='color:#b00020;font-weight:bold;'>5</span> und schafft es nicht,<br>" +
+			 "dann drückt man auf den button 👤 und die nächste Person ist ander reihe.<br>" +
+			 " <br>" +
+			 "Variante 2: Der Spieler muss eine <span style='color:#0b7a28;font-weight:bold;'>3</span> Würfeln und würfelt auch die <span style='color:#0b7a28;font-weight:bold;'>3</span><br>" +
+			 "Jetzt wird die Zahl abgehackt, in dem man auf sie drückt<br>" +
+			 " <br>" +
+			 "Wer die <span style='color:#b00020;font-weight:bold;'>letzte Zahl</span> ankreuzt, gewinnt den Pot.";
+	break;
+	case "auction":
+	  text = "💰 <b>Auktion:</b><br>" +
+		"<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+		  "Alle Spieler können Gebote abgeben, ohne den Wert des Gewinns zu kennen.<br>" +
+		  "Der Geheimwert liegt zufällig zwischen <b>0 €</b> und <b>200 €</b>.<br><br>" +
+		  "➡️ Der <span class='text-green'>höchstbietende Spieler</span> gewinnt die Auktion.<br>" +
+		  "➡️ Erst nach dem Ende wird der Geheimwert aufgedeckt und ausgezahlt." +
+		"</div>";
+	  break;
+	case "battle":
+	  text = "⚔️ <b>Battle:</b><br>" +
+			"<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+			 "Zwei Spieler treten gegeneinander an.<br>" +
+			 "Beide wählen einen Einsatz (💶) und würfeln je 1x.<br><br>" +
+			 "<b>Modi:</b><br>" +
+			 "🔺 Höchste Zahl gewinnt<br>" +
+			 "🔻 Kleinste Zahl gewinnt<br><br>" +
+			 "➡️ Der Gewinner erhält den <span class='text-green'>Einsatz</span> vom Verlierer.";
+	  break;
+	case "jackpot":
+	  text = "🎰 <b>Jackpot:</b><br>" +
+			"<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+			 "Der Spieler setzt einen Einsatz (💶).<br>" +
+			 "Dann würfelt er 1x und trägt sein Ergebnis ein.<br><br>" +
+			 "<div style='text-align:left;margin:10px auto;max-width:250px;'>" +
+			"❌ <span style='color:#e53935;'>1</span> = Alles verloren<br>" +
+			"😬 <span style='color:#fb8c00;'>2</span> = Hälfte zurück<br>" +
+			"🙂 <span style='color:#1e88e5;'>3</span> = Einsatz zurück<br>" +
+			"🎉 <span style='color:#43a047;'>4</span> = 1,5× Gewinn<br>" +
+			"🥳 <span style='color:#2e7d32;'>5</span> = Doppelter Gewinn<br>" +
+			"🎲 <span style='color:#8e24aa;'>6</span> = Nochmal würfeln!"
+			 "</div>";
+	  break;
+	case "streak":
+	  text = "🎲 <b>Lucky Streak:</b><br>" +
+			"<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+			 "Der Spieler würfelt so lange, bis er stoppt oder verliert.<br><br>" +
+			 "Regeln:<br>" +
+		  	 "❌ <span class='text-red'>1</span> = Alles verloren<br>" +
+		  	 "✅ <span class='text-green'>2–5</span> = +1 € (1€ mehr pro Runde)<br><br>" +
+		  	 "😬 <span class='text-orange'>6</span> = Gewinn halbiert<br>" +
+			 "➡️ Nach jedem erfolgreichen Wurf kann man entscheiden: <b>Weiter</b> oder <b>Stopp</b>.";
+	  break;
+	case "roulette":
+	  text = "🎡 <b>Roulette:</b><br>" +
+		"<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+		  "Man legt seinen Einsatz fest und würfelt mit dem <b>" + colorfulRouletteWord() + "</b> Würfel, um festzulegen worauf gesetzt werden soll.<br><br>" +
+		  "👉 <u>Auszahlungen:</u><br>" +
+		  "🔢 Zahl 2–12 = <b>×50</b><br>" +
+		  "➖ Gerade / 〰️ Ungerade = <b>×2</b><br>" +
+		  "🔴 Rot / ⚫ Schwarz = <b>×2</b><br>" +
+		  "🟢 Grün = <b>×30</b><br><br>" +
+		"</div>";
+	  break;
+	case "poker":
+  text = "🃏 <b>Poker:</b><br>" +
+    "<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+      "Jeder Spieler würfelt <span style='color:#006080;font-weight:bold;'>5× mit allen 5 Würfeln</span>.<br>" +
+      "Nach jeder Runde wird das Ergebnis in die Tabelle eingetragen.<br><br>" +
+
+      "<span style='color:#2e7d32;font-weight:bold;'>✔️ Jede Kombination</span> darf <b>nur 1×</b> gewählt werden.<br>" +
+      "<span style='color:#d32f2f;font-weight:bold;'>❌ Ausnahme:</span> <span style='color:#000;'>Niete (0 €)</span> darf bis zu <b>5×</b> gewählt werden.<br><br>" +
+
+      "<span style='color:#fbc02d;font-weight:bold;'>⭐ Bonus:</span> Wer " +
+      "<span style='color:#9c27b0;font-weight:bold;'>5× Niete</span> schafft, gewinnt automatisch " +
+      "<span style='color:#1e88e5;font-weight:bold;'>200 €</span>!<br><br>" +
+
+      "<span style='color:#00897b;font-weight:bold;'>➡️ Ende:</span> Nach <b>5 Einträgen</b> ist das Spiel vorbei.<br><br>" +
+	  " Der Einsatz beträgt <span style='color:#e53935;'><b>50 €</b></span> wird aber Automatisch abgezogen" +
+    "</div>";
+  break;
+case "allnothing":
+  text = "🎲 <b>All or Nothing:</b><br>" +
+    "Du Bezahlst am Anfang 20 €.<br>" +
+    "Drücke auf <b>All or Nothing</b>:<br>" +
+    "✅ Gewinn = 40 € Auszahlung<br>" +
+    "❌ Verlust = 0 €<br><br>" +
+    "Reine 50/50-Chance!";
+  break;
+
+case "home":
+  text = "🏠 <b>Ziel des Spiels:</b><br>" +
+    "<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+      "Sammle Geld, setze es in verschiedenen Glücksspielen ein und sichere dir Trophäen.<br>" +
+      "Mit deinem gewonnenen Geld kannst du Artefakte kaufen und sie zusammen mit deinen gewonnenen Trophäen zu neuen Statuen craften.<br>" +
+      "So entsteht nach und nach dein eigenes Museum.<br><br>" +
+      "<b>Das große Ziel:</b><br>" +
+      "Wer es schafft, sein Museum mit allen vier Statuen von der Steintafel zu füllen " +
+      "und zusätzlich den goldenen Würfel auszustellen, gewinnt das Spiel." +
+    "</div>";
+  break;
+
+case "settings":
+  text = "⚙️ <b>Einstellungen:</b><br>" +
+    "<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+      "Hier kannst du festlegen, ob du extern würfeln möchtest oder direkt in der App.<br><br>" +
+      "<b>Spieler verwalten:</b><br>" +
+      "Alte Spieler löschen, Spieler umbenennen oder neue Spieler anlegen.<br><br>" +
+      "<b>Statistik:</b><br>" +
+      "Sieh nach, wie oft du in jedem Spiel gespielt hast – sowohl in dieser Session als auch insgesamt seit Beginn des Spiels.<br><br>" +
+      "<b>Ereignisverlauf:</b><br>" +
+      "Hier erkennst du, wer ein Artefakt gekauft oder eine Ereigniskarte gezogen hat.<br>" +
+      "Das ist hilfreich, falls du den Effekt einer Karte noch einmal nachlesen möchtest.<br>" +
+      "Außerdem wird angezeigt, wer eine Trophäe erhalten hat." +
+    "</div>";
+  break;
+
+case "eventcard":
+  text = "🎴 <b>Ereigniskarten:</b><br>" +
+    "<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+      "Kaufe eine Ereigniskarte für <b>10 €</b>. Anschließend ziehst du eine Karte.<br><br>" +
+      "👉 Steht auf der Karte nur der Button <b>„Jetzt einlösen“</b>, musst du den Effekt sofort anwenden. " +
+      "Im Ereignisverlauf wird angezeigt, welche Karte du eingelöst hast.<br><br>" +
+      "👉 Steht auf der Karte nur der Button <b>„Jetzt sichern“</b>, kannst du die Karte in dein Inventar legen " +
+      "und sie zu einem späteren Zeitpunkt einlösen.<br><br>" +
+      "👉 Sind beide Buttons vorhanden (<b>„Jetzt einlösen“</b> und <b>„Jetzt sichern“</b>), kannst du selbst entscheiden, " +
+      "ob du den Effekt sofort nutzt oder die Karte für später aufbewahrst." +
+    "</div>";
+  break;
+
+case "inventory":
+  text = "🎒 <b>Inventar:</b><br>" +
+    "<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+      "Hier siehst du alle deine <b>gesicherten Ereigniskarten</b>.<br>" +
+      "Du kannst sie jederzeit aus dem Inventar heraus einlösen." +
+    "</div>";
+  break;
+
+case "artefaktum":
+  text = "🗿 <b>Artefaktum:</b><br>" +
+    "<div style='text-align:left;margin:10px auto;max-width:600px;'>" +
+      "Hier kannst du eines oder mehrere der <b>drei angebotenen Artefakte</b> kaufen.<br>" +
+      "Jedes Artefakt kostet <b>50 €</b>.<br><br>" +
+      "Die Auswahl an Artefakten <b>wechselt regelmäßig</b>, sodass immer neue Möglichkeiten entstehen." +
+    "</div>";
+  break;
+
+    default:
+      text = "ℹ️ Keine Hilfe verfügbar.";
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "help-overlay";
+  overlay.innerHTML = `
+    <div class="help-box">
+      <div class="help-header">
+        <h2>ℹ️ Spielinformationen</h2>
+        <div class="help-close" onclick="closeHelp(this)">✖</div>
+      </div>
+      <div>${text.replace(/\n/g, "<br>")}</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function closeHelp(el) {
+  document.body.removeChild(el.closest(".help-overlay"));
+}
+
+function enablePlayerDragDrop() {
+  const list = document.getElementById("playerList");
+  let draggingRow = null;
+
+  // Drag nur am Griff starten
+  list.querySelectorAll(".drag-handle").forEach(handle => {
+    handle.addEventListener("dragstart", e => {
+      draggingRow = handle.closest(".player-row");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "drag");
+    });
+  });
+
+  // Droppen auf Zeilen
+  list.querySelectorAll(".player-row").forEach(row => {
+    row.addEventListener("dragover", e => e.preventDefault());
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      if (!draggingRow || draggingRow === row) return;
+
+      const all = Array.from(list.children);
+      const from = all.indexOf(draggingRow);
+      const to   = all.indexOf(row);
+      if (from < to) row.after(draggingRow);
+      else row.before(draggingRow);
+
+      // Array entsprechend neu bauen (nach DOM)
+      playerNames = Array.from(list.querySelectorAll(".player-row input")).map(inp => inp.value.trim());
+      managePlayers();
+    });
+  });
+}
+
+/* ===== Helpers ===== */
+function getRandomIntInclusive(min, max) {
+  const lo = Math.ceil(min);
+  const hi = Math.floor(max);
+  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+}
+
+// === Auktion: Chance berechnen anhand der Distanz zum Geheimpreis ===
+// Beispiel: secret=40, bid=20  -> |40-20|/40*100 = 50%
+//          secret=24, bid=20   -> |24-20|/24*100 ≈ 16.7%
+//          secret=90, bid=20   -> |90-20|/90*100 ≈ 77.8%
+function calcAuctionTrophyChance(bid, secret) {
+  const denom = Math.max(1, Number(secret) || 0); // nie durch 0 teilen
+  const dist  = Math.abs((Number(secret) || 0) - (Number(bid) || 0));
+  const pct   = Math.round((dist / denom) * 100);
+  return Math.min(100, Math.max(0, pct));
+}
+
+// Lucky Streak – Trophäen-Chance: linear bis 21 € (erste Summe > 20 €)
+function streakTrophyChance(finalWin, cap = 21) {
+  const w = Math.max(0, Number(finalWin) || 0);
+  return Math.round(Math.min(100, (w / cap) * 100));
+}
+
+/* === Lucky Streak: Trophäen nach finalem Gewinn bewerten === */
+function streakTrophyOutcome(finalWin, player) {
+  const w = Math.max(0, Number(finalWin) || 0);
+  // Standard-Text
+  let msg = "❌ Du hast keine Trophäe gewonnen.";
+
+  if (w > 20) {
+    // Sicher ab > 20 €
+    if (typeof awardTrophies === "function") awardTrophies(player, 1);
+    msg = "🏆 Du hast eine Trophäe gewonnen.";
+  } else if (w > 0) {
+    // Linear bis 20 € (10 € = 50 %, 20 € = 100 %)
+    const chance = Math.min(100, Math.round((w / 20) * 100));
+    if (Math.random() * 100 < chance) {
+      if (typeof awardTrophies === "function") awardTrophies(player, 1);
+      msg = "🏆 Du hast eine Trophäe gewonnen.";
+    }
+  }
+  return msg;
+}
+
+// Vergibt ggf. 1 Trophäe und gibt eine kurze Zeile fürs UI zurück.
+// Keine Prozent-Ausgabe.
+function maybeAwardStreakTrophy(finalWin, player = (playerNames[0] || "Spieler")) {
+  if (finalWin <= 0) return "";           // bei 0 € nichts anzeigen
+
+  if (finalWin >= 21) {                   // garantiert ab >20 €
+    awardTrophies(player, 1);
+    return "🏆 Trophäe erhalten";
+  }
+
+  const chance = streakTrophyChance(finalWin, 21);
+  if (Math.random() * 100 < chance) {
+    awardTrophies(player, 1);
+    return "🏆 Trophäe erhalten";
+  }
+  return "❌ Keine Trophäe";
+}
+
+// Glatte Kurve für < 50 €: bis 25 € linear, danach "ease-out" steiler.
+// Beispiele: 25€ → 50%, 45€ → ~99%, 0€ → 0%, 50€+ → 100%
+function trophyChanceByNet(net, cap = 50) {
+  const n = Math.max(0, Number(net) || 0);
+  if (n <= 0) return 0;
+  if (n >= cap) return 100;
+
+  const half = cap / 2; // 25 bei cap=50
+  if (n <= half) {
+    // 0..25 € → 0..50 % (linear)
+    return Math.round((n / cap) * 100);
+  }
+  // 25..50 € → 50..100 % mit Ease-Out (p=3)
+  const t = (n - half) / half;            // 0..1
+  const eased = 1 - Math.pow(1 - t, 3);   // easeOutCubic
+  return Math.min(100, Math.round(50 + 50 * eased));
+}
+
+// Vergibt Trophäen anhand der AUSZAHLUNG (payout), nicht netto.
+// Regel: payout >= 50 € -> 100% sicher, darunter Kurve (trophyChanceByNet).
+function awardTrophiesByBetPayout(game, player, bet, payout) {
+  const p = Math.max(0, Number(payout) || 0);
+
+  let drop = 0;
+  let chance = trophyChanceByNet(p, 50);
+
+  // Sicher ab 50 €
+  if (p >= 50) {
+    drop = 1;
+  } else if (p > 0) {
+    if (Math.random() * 100 < chance) drop = 1;
+  } else {
+    chance = 0;
+  }
+
+  if (drop > 0) {
+    awardTrophies(player, drop);
+    // Optional: kurzes Log (falls du das hier möchtest)
+    const now = new Date();
+    eventLog.unshift({
+      player,
+      text: `🏆 ${drop} Trophäe${drop>1?"n":""} erhalten`,
+      time: now.toLocaleTimeString()
+    });
+  }
+
+  return { drop, chance, payout: p };
+}
+
+/* ===== Lotto ===== */
+function startLotto() {
+  currentContext = "lotto";
+
+  if (!lottoState.active || lottoState.ended) {
+    const startIdx = (playerNames && playerNames.length)
+      ? getRandomIntInclusive(0, playerNames.length - 1)
+      : 0;
+
+    lottoState = {
+      numbers: Array.from({ length: 4 }, () => ({
+        value: getRandomIntInclusive(1, 6),
+        done: false
+      })),
+      winner: null,
+      trophyWon: null,     // <— NEU: wird am Ende gesetzt (true/false)
+      active: true,
+      ended: false,
+      turnIndex: startIdx,
+      activeIdx: 0
+    };
+  }
+
+  renderLottoUI();
+}
+
+function getLastDoneIndex() {
+  let last = -1;
+  for (let i = 0; i < lottoState.numbers.length; i++) {
+    if (lottoState.numbers[i].done) last = i;
+  }
+  return last;
+}
+
+// Einzelne Kachel rendern
+function renderTile(num, idx) {
+  // Statusklasse ermitteln
+  let cls = "open";
+  if (num.done) cls = "done";
+  else if (idx === lottoState.activeIdx) cls = "active";
+
+  // Klickbarkeit: 
+  // - setzen: nur aktive (blaue) offene Zahl
+  // - rückgängig: nur zuletzt gesetzte grüne Zahl
+  const lastDone = getLastDoneIndex();
+  const isClickable =
+    (!num.done && idx === lottoState.activeIdx) ||
+    (num.done && idx === lastDone);
+
+  const onClick = isClickable ? `onclick="attemptToggle(${idx})"` : "";
+  const clickableClass = isClickable ? "clickable" : "";
+
+  return `
+    <div class="lotto-tile">
+      <div class="lotto-num ${cls} ${clickableClass}" ${onClick}>${num.value}</div>
+    </div>
+  `;
+}
+
+function attemptToggle(idx) {
+  if (lottoState.ended) return;
+
+  const n = lottoState.numbers[idx];
+
+  if (!n.done) {
+    // öffnen (🔳 -> ✅) nur bei aktiver blauer Zahl
+    if (idx !== lottoState.activeIdx) return;
+    toggleActiveCheck(idx);
+    return;
+  }
+
+  // rückgängig (✅ -> 🔳) nur bei der zuletzt gesetzten grünen
+  const last = getLastDoneIndex();
+  if (idx !== last) return;
+  undoLastDone(idx);
+}
+
+function renderLottoUI() {
+  const app = document.getElementById("app-section");
+  if (!app) return;
+
+  // === GEWINN-SCREEN ===
+  if (lottoState.winner) {
+    const trophyLine =
+      lottoState.trophyWon === true
+        ? `<p style="margin:4px 0 12px;">🏅 Du hast eine Trophäe gewonnen.</p>`
+        : `<p style="margin:4px 0 12px;">❌ Du hast keine Trophäe gewonnen.</p>`;
+
+    app.innerHTML = `
+      <div class="lotto-area">
+        <div class="lotto-header">
+          <!-- Links: Neue Runde -->
+          <div class="icon-btn" onclick="startLotto()" title="Neue Runde">🔁</div>
+          <div class="lotto-title">🎯 Lotto</div>
+          <!-- Rechts: Schließen -->
+          <div class="icon-btn" onclick="showHome()" title="Schließen">✖</div>
+        </div>
+
+        <div class="lotto-player" style="margin-top:8px;">${lottoState.winner}</div>
+        <p style="margin:6px 0 6px;">gewinnt den Pot! 🏆</p>
+        ${trophyLine}
+      </div>
+    `;
+    return;
+  }
+
+  // === LAUFENDE RUNDE ===
+  const pn = (playerNames && playerNames.length) ? playerNames : ["Spieler"];
+  const currentPlayer = pn[lottoState.turnIndex % pn.length];
+
+  const tiles = lottoState.numbers.map((n, i) => {
+    const cls = n.done ? "done" : (i === lottoState.activeIdx ? "active" : "open");
+    return `<div class="lotto-num ${cls}" onclick="attemptToggle(${i})">${n.value}</div>`;
+  }).join("");
+
+  app.innerHTML = `
+    <div class="lotto-area">
+      <div class="lotto-header">
+        <!-- Links: Nächster Spieler -->
+        <div class="icon-btn" onclick="nextPlayer()" title="Nächster Spieler">👤</div>
+        <div class="lotto-title">🎯 Lotto</div>
+        <!-- Rechts: Schließen -->
+        <div class="icon-btn" onclick="showHome()" title="Schließen">✖</div>
+      </div>
+
+      <div class="lotto-player">${currentPlayer}</div>
+      <div class="lotto-grid">${tiles}</div>
+    </div>
+  `;
+}
+
+function toggleActiveCheck(idx) {
+  if (lottoState.ended) return;
+  if (idx !== lottoState.activeIdx) return;
+
+  const n = lottoState.numbers[idx];
+  if (!n || n.done) return;
+
+  // Zahl setzen
+  n.done = true;
+
+  // Prüfen, ob alle gesetzt sind
+  const allDone = lottoState.numbers.every(x => x && x.done === true);
+  if (allDone) {
+    const pn = (playerNames && playerNames.length) ? playerNames : ["Spieler"];
+    const winnerName = pn[lottoState.turnIndex % pn.length];
+
+    lottoState.winner = winnerName;
+    lottoState.ended = true;
+
+    // 50%-Chance auf Trophäe
+    lottoState.trophyWon = Math.random() < 0.5;
+
+    // Stats/Trophäen nur ausführen, wenn vorhanden — niemals Spielabbruch
+    if (typeof safeIncreaseStat === "function") safeIncreaseStat("lotto");
+    else if (typeof increaseStat === "function") { try { increaseStat("lotto"); } catch(e){ console.warn(e); } }
+
+    if (lottoState.trophyWon) {
+      if (typeof safeCalcTrophyDrop === "function") safeCalcTrophyDrop("lotto", winnerName);
+      else if (typeof calcTrophyDrop === "function") { try { calcTrophyDrop("lotto", winnerName); } catch(e){ console.warn(e); } }
+    }
+
+    // Direkt Endscreen rendern
+    return renderLottoUI();
+  }
+
+  // Nächster Spieler & nächste offene Zahl aktivieren
+  const pn = (playerNames && playerNames.length) ? playerNames : ["Spieler"];
+  lottoState.turnIndex = (lottoState.turnIndex + 1) % pn.length;
+
+  const nextOpen = lottoState.numbers.findIndex((z, i) => !z.done && i > idx);
+  if (nextOpen !== -1) lottoState.activeIdx = nextOpen;
+
+  renderLottoUI();
+}
+
+function undoLastDone(idx) {
+  // Nur letzte grüne Zahl darf rückgängig sein – das ist bereits in attemptToggle geprüft
+  const n = lottoState.numbers[idx];
+  n.done = false;
+
+  // Aktive (blaue) Zahl wird diese eben geöffnete Position
+  lottoState.activeIdx = idx;
+
+  // KEIN Spielerwechsel beim Rückgängig-machen
+  renderLottoUI();
+}
+
+function checkActive(idx) {
+  const activeIdx = lottoState.numbers.findIndex(n => !n.done);
+  if (idx !== activeIdx || lottoState.ended) return;
+
+  const n = lottoState.numbers[idx];
+  n.done = true;
+  n.checkedBy = playerNames[lottoState.turnIndex % playerNames.length];
+
+  if (lottoState.numbers.every(x => x.done)) {
+    lottoState.winner = n.checkedBy || "Spieler";
+    lottoState.ended = true;
+  } else {
+    lottoState.turnIndex = (lottoState.turnIndex + 1) % playerNames.length;
+  }
+  renderLottoUI();
+}
+
+function nextPlayer() {
+  if (lottoState.ended) return;
+
+  // Wenn die aktuelle Zahl erledigt ist, blau auf die nächste offene schieben
+  if (lottoState.numbers[lottoState.activeIdx]?.done) {
+    const nextOpen = lottoState.numbers.findIndex((z, i) => !z.done && i > lottoState.activeIdx);
+    if (nextOpen !== -1) {
+      lottoState.activeIdx = nextOpen;
+    } else {
+      // keine weitere offene Zahl -> ggf. schon als Sieger markiert
+      // (falls noch nicht gesetzt, nicht beenden – der Haken bestimmt den Sieger)
+    }
+  }
+
+  // Spieler reihum
+  lottoState.turnIndex = (lottoState.turnIndex + 1) % playerNames.length;
+  renderLottoUI();
+}
+
+// ==== SAFE HELPERS (optional, aber empfohlen) ====
+function safeIncreaseStat(mode) {
+  try {
+    if (typeof increaseStat === "function") increaseStat(mode);
+  } catch (e) {
+    console.warn("increaseStat() schlug fehl:", e);
+  }
+}
+function safeCalcTrophyDrop(mode, winnerName) {
+  try {
+    if (typeof calcTrophyDrop === "function") calcTrophyDrop(mode, winnerName);
+  } catch (e) {
+    console.warn("calcTrophyDrop() schlug fehl:", e);
+  }
+}
+
+/* — Damit showHome/Buttons SICHER dieses Poker verwenden — */
+window.startPoker = startPoker;
+
+/* — Damit showHome/Buttons SICHER dieses Poker verwenden — */
+window.startPoker = startPoker;
+
+/* ===== Battle (wie gehabt) ===== */
+function startBattle() {
+  currentContext = "battle";
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">⚔️ Battle</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+
+    <div class="battle-wrap">
+      <div class="section">
+        <div class="row">
+          <div style="flex:1;">
+            <div class="small">Herausforderer</div>
+            <select id="challenger">${playerNames.map(n=>`<option value="${n}">${n}</option>`).join("")}</select>
+          </div>
+          <div style="flex:1;">
+            <div class="small">Gegner</div>
+            <select id="opponent">${playerNames.map(n=>`<option value="${n}">${n}</option>`).join("")}</select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <div class="small">Einsatz</div>
+            <label class="input-eur">
+              <input type="number" id="wager" min="1" step="1" placeholder="Betrag">
+              <span>€</span>
+            </label>
+          </div>
+
+          <div style="margin-left:auto;">
+            <div class="small">Modus</div>
+            <div class="row">
+              <div id="modeHighest" class="mode-btn active" onclick="setBattleMode('highest')">Höchste Zahl</div>
+              <div id="modeLowest" class="mode-btn" onclick="setBattleMode('lowest')">Kleinste Zahl</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="battleError" class="error" style="display:none;"></div>
+      </div>
+
+      <div class="section">
+        <div class="row" style="justify-content:center;">
+          <div class="button" id="battleRollBtn" onclick="doBattleAnimated()">Würfeln</div>
+        </div>
+        <div id="battleOutcome" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  `;
+}
+
+function setBattleMode(mode) {
+  battleState.mode = mode;
+  const hi = document.getElementById('modeHighest');
+  const lo = document.getElementById('modeLowest');
+  if (hi && lo) { hi.classList.toggle('active', mode==='highest'); lo.classList.toggle('active', mode==='lowest'); }
+}
+function showBattleError(msg) {
+  const el = document.getElementById('battleError');
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.display = msg ? 'block' : 'none';
+}
+function rollDie(max=6) { return Math.floor(Math.random() * max) + 1; }
+function doBattle() {
+  const challenger = document.getElementById('challenger').value;
+  const opponent   = document.getElementById('opponent').value;
+  const wager      = Number(document.getElementById('wager').value);
+  if (!challenger || !opponent) { showBattleError('Bitte beide Spieler wählen.'); return; }
+  if (challenger === opponent)  { showBattleError('Herausforderer und Gegner müssen unterschiedlich sein.'); return; }
+  if (!wager || wager <= 0)     { showBattleError('Bitte einen gültigen Einsatz (> 0) eingeben.'); return; }
+  showBattleError('');
+
+  const a = rollDie(6), b = rollDie(6);
+  let winner = null;
+  if (battleState.mode === 'highest') { if (a>b) winner=challenger; else if (b>a) winner=opponent; }
+  else { if (a<b) winner=challenger; else if (b<a) winner=opponent; }
+
+  const out = document.getElementById('battleOutcome');
+  if (!winner) out.innerHTML = `🎲 ${challenger} würfelt <b>${a}</b> | ${opponent} <b>${b}</b><br><span class="small">Unentschieden – bitte nochmal.</span>`;
+  else {
+    const loser = (winner===challenger)?opponent:challenger;
+    out.innerHTML = `🎲 ${challenger} würfelt <b>${a}</b> | ${opponent} <b>${b}</b><br><b>${winner}</b> gewinnt <b>${wager} €</b> von ${loser}.`;
+  }
+}
+
+/* ===== Roulette Logik ===== */
+
+function ensureRouletteReady() {
+  // Reihenfolge + Segmentgröße bereitstellen, falls noch nicht definiert
+  if (!window.ROULETTE_ORDER) window.ROULETTE_ORDER = [1,2,3,4,5,6,7,8,9,10,11,12];
+  if (!window.ROULETTE_SEG_DEG) window.ROULETTE_SEG_DEG = 360 / window.ROULETTE_ORDER.length;
+
+  // State anlegen, falls noch nicht initialisiert (z. B. wegen früherem Fehler im Script)
+  if (typeof window.rouletteState !== "object" || window.rouletteState === null) {
+    window.rouletteState = {
+      betType: null,
+      betNumber: null,
+      stake: null,
+      rotation: 0,
+      spinning: false,
+      stakeSet: false,
+      currentPlayerIdx: null,
+      _tempBetType: null
+    };
+  }
+}
+
+function startRoulette(){
+  ensureRouletteReady();
+  currentContext = "roulette";
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">🎡 Roulette</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+
+    <div class="roulette-wrap">
+      <div id="rouletteWheel" class="roulette-wheel"></div>
+      <div id="rouletteBallContainer" class="roulette-ball-container">
+        <div id="rouletteBall" class="roulette-ball"></div>
+      </div>
+    </div>
+
+    <div class="roulette-grid">
+      <div id="btnEven"  class="roulette-btn" onclick="rouletteSelect('even')">Gerade</div>
+      <div id="btnOdd"   class="roulette-btn" onclick="rouletteSelect('odd')">Ungerade</div>
+      <div id="btnRed"   class="roulette-btn" onclick="rouletteSelect('red')">Rot</div>
+      <div id="btnBlack" class="roulette-btn" onclick="rouletteSelect('black')">Schwarz</div>
+
+      <div class="roulette-number-green-row">
+        <input id="rouletteNumber" type="number" min="1" max="12" step="1"
+               placeholder="" oninput="rouletteSetNumber(this.value)">
+        <div id="btnNumber" class="roulette-btn" onclick="rouletteSelect('number')">Setzen</div>
+        <div id="btnGreen" class="roulette-btn wide" onclick="rouletteSelect('green')">Grün</div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <div id="playBtn"  class="roulette-btn disabled" onclick="rouletteSpin()">Spielen</div>
+      <div id="stakeBtn" class="roulette-btn" onclick="openStakeModal()">Einsatz</div>
+    </div>
+    <div id="warnMsg">Du musst zuerst eine Wette setzen und den Einsatz festlegen.</div>
+
+    <!-- Ergebnis-Modal -->
+    <div id="resultModal" class="modal-backdrop" style="display:none;">
+      <div class="modal">
+        <h2>Runden-Ergebnis</h2>
+        <div id="resultSummary" class="hint" style="margin-top:6px;"></div>
+        <div class="modal-actions" style="margin-top:12px;">
+          <button class="btn primary" onclick="closeResultModal()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Einsatz-Modal -->
+    <div id="stakeModal" class="modal-backdrop" style="display:none;">
+      <div class="modal">
+        <h2>Einsatz wählen</h2>
+        <div class="hint">Gib deinen Einsatz (≥1 €) ein.</div>
+        <div class="field">
+          <label for="stakeInput">Einsatz (€)</label>
+          <input id="stakeInput" type="number" min="1" step="1" value="1" />
+        </div>
+        <div id="modalError" class="error"></div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeStakeModal()">Abbrechen</button>
+          <button class="btn primary" onclick="submitStake()">Einsatz setzen</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // State zurücksetzen
+  rouletteState.betType = null;
+  rouletteState.betNumber = null;
+  rouletteState.stake = null;
+  rouletteState.rotation = 0;
+  rouletteState.spinning = false;
+  rouletteState.stakeSet = false;
+  rouletteState.currentPlayerIdx = null;
+  rouletteState._tempBetType = null;
+
+  renderWheel();
+  enablePlayIfReady();
+}
+
+/* ===== Roulette: Konstanten & State ===== */
+const ROULETTE_ORDER = [1,2,3,4,5,6,7,8,9,10,11,12];
+const ROULETTE_SEG_DEG = 360 / ROULETTE_ORDER.length;
+
+function rouletteColor(n){ return n===1 ? 'green' : (n%2===0 ? 'red' : 'black'); }
+
+let rouletteState = {
+  betType:null,
+  betNumber:null,
+  stake:null,
+  rotation:0,
+  spinning:false,
+  stakeSet:false,
+  currentPlayerIdx:null,
+  _tempBetType:null
+};
+
+/* ===== Rad zeichnen ===== */
+function renderWheel(){
+  const wheel = document.getElementById("rouletteWheel");
+  if(!wheel) return;
+  const grad = ROULETTE_ORDER.map((n,i)=>{
+    const col = rouletteColor(n)==='green' ? '#1eaf5a' : (rouletteColor(n)==='red' ? '#e74c3c' : '#2c3e50');
+    const a0 = i * ROULETTE_SEG_DEG;
+    const a1 = (i+1) * ROULETTE_SEG_DEG;
+    return `${col} ${a0}deg ${a1}deg`;
+  }).join(',');
+  wheel.style.background = `conic-gradient(${grad})`;
+
+  const START_OFFSET = -90;
+  const BORDER = 6, INNER = 6, labelOffset = 26;
+  const RADIUS = wheel.clientWidth/2 - BORDER - INNER - labelOffset;
+
+  wheel.innerHTML = ROULETTE_ORDER.map((n,i)=>{
+    const mid = (i + 0.5) * ROULETTE_SEG_DEG + START_OFFSET;
+    return `<div class="roulette-numlabel"
+      style="transform: translate(-50%,-50%) rotate(${mid}deg) translate(${RADIUS}px) rotate(${-mid}deg);">
+      ${n}
+    </div>`;
+  }).join('');
+}
+
+/* ===== Helpers ===== */
+function getRotationDegrees(el){
+  const tr = getComputedStyle(el).getPropertyValue("transform");
+  if (tr === "none") return 0;
+  const [a,b] = tr.slice(7,-1).split(',').map(parseFloat);
+  let angle = Math.round(Math.atan2(b,a) * (180/Math.PI));
+  return (angle<0 ? angle+360 : angle);
+}
+function getResult(ballAngle, wheelAngle){
+  let rel = ((ballAngle - wheelAngle + 90) % 360 + 360) % 360;
+  const idx = Math.floor(rel / ROULETTE_SEG_DEG);
+  return ROULETTE_ORDER[idx];
+}
+function jackpotTrophyChance(bet, cap = 50) {
+  const b = Math.max(0, Number(bet) || 0);
+  const pct = Math.round(Math.min(100, (b / cap) * 100));
+  return pct;
+}
+
+/* ===== Auswahl & UI ===== */
+function clearActive(){ document.querySelectorAll('.roulette-btn').forEach(b=>b.classList.remove('active')); }
+
+function enablePlayIfReady(){
+  const play = document.getElementById('playBtn');
+  const warn = document.getElementById('warnMsg');
+  if(!play || !warn) return;
+
+  const numberOk = (rouletteState.betType!=='number') || (rouletteState.betNumber>=1 && rouletteState.betNumber<=12);
+  const playerOk = (rouletteState.currentPlayerIdx !== null && rouletteState.currentPlayerIdx >= 0);
+  const ready = !!rouletteState.betType && rouletteState.stakeSet && numberOk && playerOk;
+
+  play.classList.toggle('disabled', !ready);
+  warn.textContent = ready ? '' : 'Du musst zuerst eine Wette, den Einsatz und den Spieler festlegen.';
+}
+
+function rouletteSetNumber(v){
+  const n = parseInt(v,10);
+  if(!isNaN(n)) rouletteState.betNumber = n;
+  enablePlayIfReady();
+}
+function rouletteSelect(type){
+  clearActive();
+  const idMap = { even:'btnEven', odd:'btnOdd', red:'btnRed', black:'btnBlack', green:'btnGreen', number:'btnNumber' };
+  const elId = idMap[type];
+  if (elId){ const el = document.getElementById(elId); if(el) el.classList.add('active'); }
+  rouletteState.betType = type;
+  enablePlayIfReady();
+}
+
+/* ===== Modals ===== */
+function openStakeModal(){
+  const m = document.getElementById('stakeModal');
+  if(!m) return;
+
+  const err = document.getElementById('modalError');
+  if (err) err.textContent = '';
+
+  let playerRow = document.getElementById('stakePlayerRow');
+  if (!playerRow) {
+    const modalBox = m.querySelector('.modal');
+    const actions  = m.querySelector('.modal-actions');
+
+    playerRow = document.createElement('div');
+    playerRow.className = 'field';
+    playerRow.id = 'stakePlayerRow';
+    playerRow.innerHTML = `
+      <label for="stakePlayerSel">Spieler</label>
+      <select id="stakePlayerSel"></select>
+    `;
+    if (modalBox && actions) modalBox.insertBefore(playerRow, actions);
+  }
+
+  const sel = document.getElementById('stakePlayerSel');
+  if (sel) {
+    sel.innerHTML = playerNames
+      .map((n,i)=>`<option value="${i}" ${rouletteState.currentPlayerIdx===i?'selected':''}>${n}</option>`)
+      .join('');
+  }
+
+  m.style.display = 'flex';
+  const input = document.getElementById('stakeInput');
+  if (input) { input.focus(); input.select(); }
+}
+function closeStakeModal(){ const m = document.getElementById('stakeModal'); if(m) m.style.display='none'; }
+function openResultModal(html){
+  const m = document.getElementById('resultModal');
+  const t = document.getElementById('resultSummary');
+  if(!m || !t) return;
+  t.innerHTML = html;
+  m.style.display = 'flex';
+}
+function closeResultModal(){ const m = document.getElementById('resultModal'); if(m) m.style.display='none'; }
+
+function submitStake(){
+  const errEl = document.getElementById('modalError');
+
+  const stake = parseInt(document.getElementById('stakeInput').value,10);
+  if (isNaN(stake) || stake < 1){
+    if (errEl) errEl.textContent = 'Bitte einen Einsatz von mindestens 1 € eingeben.';
+    return;
+  }
+
+  const sel = document.getElementById('stakePlayerSel');
+  const idx = sel ? parseInt(sel.value,10) : NaN;
+  if (isNaN(idx)) {
+    if (errEl) errEl.textContent = 'Bitte einen Spieler auswählen.';
+    return;
+  }
+
+  rouletteState.stake = stake;
+  rouletteState.stakeSet = true;
+  rouletteState.currentPlayerIdx = idx;
+
+  closeStakeModal();
+  enablePlayIfReady();
+}
+
+function colorDe(c){ return c==='red'?'rot':c==='black'?'schwarz':c==='green'?'grün':c; }
+
+/* ===== Spin ===== */
+async function rouletteSpin(){
+  const play = document.getElementById('playBtn');
+  if (!play || play.classList.contains('disabled') || rouletteState.spinning) return;
+
+  rouletteState.spinning = true;
+  play.classList.add('disabled');
+
+  try {
+    const wheel = document.getElementById("rouletteWheel");
+    const ballC = document.getElementById("rouletteBallContainer");
+    const ball  = document.getElementById("rouletteBall");
+
+    const wheelTarget = rouletteState.rotation + 1080 + Math.random()*360;
+    const ballTarget  = Math.random()*360;
+
+    wheel.style.transition = "transform 3s cubic-bezier(.1,.7,.3,1)";
+    wheel.style.transform  = `rotate(${wheelTarget}deg)`;
+
+    ballC.style.transition = "transform 3s cubic-bezier(.1,.7,.3,1)";
+    ballC.style.transform  = `rotate(${ballTarget}deg)`;
+
+    const radius = (wheel.clientWidth/2) - 20;
+    ball.style.transition  = "transform 0.6s cubic-bezier(.2,.8,.2,1)";
+    ball.style.transform   = `translate(-50%,-50%) translateX(${radius}px)`;
+
+    rouletteState.rotation = wheelTarget;
+
+    await new Promise(r=>setTimeout(r, 3000));
+
+    const wheelDeg = getRotationDegrees(wheel);
+    const ballDeg  = getRotationDegrees(ballC);
+    const result   = getResult(ballDeg, wheelDeg);
+    const color    = rouletteColor(result);
+
+    const idx = ROULETTE_ORDER.indexOf(result);
+    let midAngle = wheelDeg - 90 + (idx + 0.5) * ROULETTE_SEG_DEG;
+    const current = getRotationDegrees(ballC);
+    while (midAngle - current > 180) midAngle -= 360;
+    while (midAngle - current < -180) midAngle += 360;
+    ballC.style.transition = "transform 0.25s ease-out";
+    ballC.style.transform  = `rotate(${midAngle}deg)`;
+
+    const betTxt = (() => {
+      switch(rouletteState.betType){
+        case 'odd':   return 'Ungerade';
+        case 'even':  return 'Gerade';
+        case 'red':   return 'Rot';
+        case 'black': return 'Schwarz';
+        case 'green': return 'Grün';
+        case 'number':return `Zahl ${rouletteState.betNumber ?? '—'}`;
+        default:      return '—';
+      }
+    })();
+
+    const won = (() => {
+      if (rouletteState.betType==='number') return result===rouletteState.betNumber;
+      if (rouletteState.betType==='green')  return result===1;
+      if (rouletteState.betType==='red')    return color==='red';
+      if (rouletteState.betType==='black')  return color==='black';
+      if (rouletteState.betType==='even')   return result%2===0;
+      if (rouletteState.betType==='odd')    return result%2===1;
+      return false;
+    })();
+
+    const mult = (() => {
+      if (rouletteState.betType==='number') return 50;
+      if (rouletteState.betType==='green')  return 30;
+      if (['red','black','even','odd'].includes(rouletteState.betType)) return 2;
+      return 0;
+    })();
+    const payout = won ? (rouletteState.stake || 0) * mult : 0;
+
+    const player = playerNames[rouletteState.currentPlayerIdx ?? 0] || "Spieler";
+
+    let trophies = 0;
+    if (won) {
+      if (['even','odd','red','black'].includes(rouletteState.betType)) {
+        trophies = 1;
+      } else if (rouletteState.betType === 'green' || rouletteState.betType === 'number') {
+        trophies = 10;
+      }
+    }
+    if (trophies > 0) awardTrophies(player, trophies);
+
+    await new Promise(r=>setTimeout(r, 3000));
+    ball.style.transition = "transform 0.4s cubic-bezier(.33,1,.68,1)";
+    ball.style.transform  = "translate(-50%,-50%)";
+    await new Promise(r=>setTimeout(r, 450));
+
+    openResultModal(
+      `Du hast <b>${result} ${colorDe(color)}</b>.<br>
+       <b>Deine Wette:</b> ${betTxt}.<br>
+       <b>Spieler:</b> ${player}.<br>
+       <b>Einsatz:</b> ${rouletteState.stake}€.<br>
+       <b>Auszahlung:</b> ${payout}€.<br>
+       <b>Trophäen:</b> ${trophies > 0 ? '🏆 ×'+trophies : '❌ Keine'}`
+    );
+
+    if (typeof increaseStat === 'function') increaseStat('roulette');
+  } finally {
+    rouletteState.spinning = false;
+    play.classList.remove('disabled');
+    enablePlayIfReady();
+  }
+}
+
+/* --- Roulette-Handler global machen (für onclick="...") --- */
+window.startRoulette     = startRoulette;
+window.rouletteSelect    = rouletteSelect;
+window.rouletteSetNumber = rouletteSetNumber;
+window.openStakeModal    = openStakeModal;
+window.closeStakeModal   = closeStakeModal;
+window.submitStake       = submitStake;
+window.rouletteSpin      = rouletteSpin;
+window.openResultModal   = openResultModal;
+window.closeResultModal  = closeResultModal;
+
+/* --- (optional, aber hilfreich) Overlays wegräumen --- */
+function _killOverlays() {
+  try {
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.help-overlay').forEach(el => el.remove());
+  } catch (e) {
+    console.warn("Overlay-Cleanup failed:", e);
+  }
+}
+
+/* ===== Auction (ohne Geheimwert) ===== */
+function startAuction(){
+  currentContext = "auction";
+  if (auctionState.ended) {
+    auctionState = { highestBid: 0, highestBidder: null, bids: [], ended: false,
+                     prize: getRandomIntInclusive(0,200) };
+  }
+  const opts = playerNames.map(n => `<option value="${n}">${n}</option>`).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-area">
+      <div class="auction-header">
+        <div class="auction-title">💰 Auktion</div>
+        <div class="icon-btn" onclick="showHome()">✖</div>
+      </div>
+
+      <!-- Geheimwert + Höchstgebot im gleichen Block -->
+      <div id="topBidBox" style="text-align:center;margin-bottom:15px;">
+        <div style="font-size:0.95em;color:#555;">
+          Geheimwert: <span id="secretValue">? €</span>
+        </div>
+        <div style="font-size:2.2em;font-weight:700;">
+          <span id="topBidValue">${auctionState.highestBid}</span> €
+        </div>
+        <div style="font-size:1.3em;color:#333;" id="topBidder">
+          ${auctionState.highestBidder || "—"}
+        </div>
+      </div>
+
+      <!-- Gebot abgeben -->
+      <div class="bid-row">
+        <input type="number" id="bidAmount" min="1" step="1" placeholder="Betrag">
+        <select id="bidPlayer">
+          <option value="" disabled selected>Spieler</option>
+          ${opts}
+        </select>
+        <div class="button" onclick="placeBid()">Bieten</div>
+      </div>
+      <div id="bidError" class="error"></div>
+
+      <!-- Verlauf -->
+      <div id="bidList" style="margin-top:20px;"></div>
+
+      <!-- Ende -->
+      <div style="margin-top:20px;">
+        <div class="button" onclick="endAuction()">Auktion beenden</div>
+      </div>
+      <div id="result" style="margin-top:10px;"></div>
+    </div>
+  `;
+
+  renderBidList();
+}
+
+function showBidError(msg) {
+  const el = document.getElementById('bidError');
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function placeBid() {
+  if (auctionState.ended) return;
+  const amount = Number(document.getElementById('bidAmount').value);
+  const player = document.getElementById('bidPlayer').value;
+
+  if (!player) { showBidError('Bitte Spieler auswählen.'); return; }
+  if (!amount || amount <= 0) { showBidError('Bitte einen gültigen Betrag eingeben (> 0).'); return; }
+  if (amount <= auctionState.highestBid) { showBidError(`Gebot muss größer als ${auctionState.highestBid} € sein.`); return; }
+
+  showBidError('');
+  auctionState.highestBid = amount;
+  auctionState.highestBidder = player;
+  auctionState.bids.push({ name: player, amount });
+
+  document.getElementById('bidAmount').value = '';
+  updateTopBidDisplay();
+  renderBidList();
+}
+
+function updateTopBidDisplay() {
+  const v = document.getElementById('topBidValue');
+  const b = document.getElementById('topBidder');
+  if (v) v.textContent = auctionState.highestBid;
+  if (b) b.textContent = auctionState.highestBidder || "—";
+}
+
+function renderBidList() {
+  const list = document.getElementById('bidList');
+  if (!list) return;
+  if (auctionState.bids.length === 0) {
+    list.innerHTML = `<div class="small">Noch keine Gebote.</div>`;
+    return;
+  }
+  list.innerHTML = auctionState.bids
+    .slice().reverse()
+    .map(b => `
+      <div class="bid-item" style="text-align:center; font-size:1.2em; margin:8px auto; max-width:200px;">
+        <div style="font-weight:700;">${b.amount} €</div>
+        <div style="font-size:0.95em; color:#333;">${b.name}</div>
+      </div>
+    `)
+    .join('');
+}
+
+function endAuction() {
+  if (auctionState.ended) return;
+  auctionState.ended = true;
+
+  const winner = auctionState.highestBidder;
+  const bid    = auctionState.highestBid;
+  const prize  = auctionState.prize;
+  const resultEl = document.getElementById('result');
+
+  document.getElementById('secretValue').textContent = prize + " €";
+
+  if (!winner) {
+    resultEl.innerHTML = `<div class="error">Es gibt kein gültiges Gebot. Die Auktion endet ohne Gewinner.</div>`;
+    return;
+  }
+
+  const profit = prize - bid; 
+  const profitText = profit >= 0
+    ? `Gewinn: <strong>+${profit} €</strong> 🎉`
+    : `Verlust: <strong>${profit} €</strong> 😬`;
+
+  // === Trophäen-Berechnung ===
+  // Formel: je näher am Preis, desto schlechter die Chance
+  let ratio   = Math.min(bid, prize) / Math.max(bid, prize); // 0..1
+  let chance  = Math.round((1 - ratio) * 100);               // in %
+  let drop    = (Math.random() * 100 < chance) ? 1 : 0;
+
+  if (drop > 0) awardTrophies(winner, drop);
+
+  resultEl.innerHTML = `
+    <div><strong>${winner}</strong> hat die Auktion gewonnen.</div>
+    <div>Gebot: <b>${bid} €</b> · Geheimer Wert: <b>${prize} €</b></div>
+    <div style="margin-top:8px;">${profitText}</div>
+    <div style="margin-top:6px;">
+      ${drop>0 ? "🏆 "+drop+" Trophäe erhalten" : "❌ Keine Trophäe erhalten"}
+    </div>
+  `;
+
+  increaseStat("auction");
+}
+
+/* ===== Poker (kompletter Block) ===== */
+
+const POKER_BUYIN = 50; // nur Info – NICHT abziehen (Buy-in extern)
+
+let pokerState = {
+  entries: [],             // gewählte Kategorien (Indices)
+  total: 0,                // Gewinn (ohne Buy-in-Abzug)
+  ended: false,            // Runde beendet?
+  started: false,          // Spieler bereits gewählt?
+  currentPlayerIdx: null,  // Index im playerNames-Array
+  currentPlayerName: null  // stabiler Name für Logs/UI
+};
+
+const POKER_CATEGORIES = [
+  { name: "Niete",           payout: 0,   max: 5 },
+  { name: "Kleine Straße",   payout: 10,  max: 1 },
+  { name: "Paar",            payout: 10,  max: 1 },
+  { name: "Zwei Paare",      payout: 20,  max: 1 },
+  { name: "Drilling",        payout: 30,  max: 1 },
+  { name: "Full House",      payout: 40,  max: 1 },
+  { name: "Große Straße",    payout: 50,  max: 1 },
+  { name: "Vierling",        payout: 60,  max: 1 },
+  { name: "Fünfling",        payout: 100, max: 1 }
+];
+
+/* === Einstieg === */
+function startPoker() {
+  currentContext = "poker";
+  pokerState = {
+    entries: [],
+    total: 0,
+    ended: false,
+    started: false,
+    currentPlayerIdx: null,
+    currentPlayerName: null
+  };
+
+  const app = document.getElementById("app-section");
+  app.innerHTML = `
+    <div class="lotto-header" style="display:grid;grid-template-columns:48px 1fr 48px;align-items:center;">
+      <div class="icon-btn" onclick="showHome()" title="Zurück">✖</div>
+      <div class="lotto-title">🃏 Poker</div>
+      <div class="icon-btn" onclick="showHelp && showHelp('poker')" title="Hilfe">❓</div>
+    </div>
+    <div class="section" style="text-align:center;margin-top:10px;">
+      <div class="small">Bitte Spieler auswählen…</div>
+    </div>
+  `;
+  openPokerPlayerModal();
+}
+
+/* === Rendering === */
+function renderPokerUI() {
+  const app = document.getElementById("app-section");
+  if (!app) return;
+
+  // Endscreen
+  if (pokerState.ended) {
+    const onlyNiete = pokerState.entries.every(e => POKER_CATEGORIES[e].name === "Niete");
+    const total = pokerState.total || 0;
+    const player = pokerState.currentPlayerName || playerNames[pokerState.currentPlayerIdx ?? 0] || "Spieler";
+
+    const headline = onlyNiete ? "Alles Niete!" : "Ende der Runde";
+    const winLine  = onlyNiete ? `Alles Niete, Gewinn <b>${total} €</b>` : `Gewinn: <b>${total} €</b>`;
+
+    app.innerHTML = `
+      <div class="lotto-header" style="display:grid;grid-template-columns:48px 1fr 48px;align-items:center;">
+        <div class="icon-btn" onclick="startPoker()" title="Neue Runde">🔁</div>
+        <div class="lotto-title">🃏 Poker</div>
+        <div class="icon-btn" onclick="showHome()" title="Zurück">✖</div>
+      </div>
+      <div class="poker-result" style="text-align:center;">
+        <div class="small" style="margin-top:6px;">Spieler: <b>${player}</b></div>
+        <div style="font-size:1.6rem;margin:12px 0;">${headline}</div>
+        <div style="font-size:1.4rem;margin:8px 0;">${winLine}</div>
+        <div style="margin-top:8px;">${pokerState.trophyLine || "❌ Du bekommst keine Trophäe."}</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Kein Spieler gewählt
+  if (!pokerState.started) {
+    app.innerHTML = `
+      <div class="lotto-header" style="display:grid;grid-template-columns:48px 1fr 48px;align-items:center;">
+        <div class="icon-btn" onclick="showHome()" title="Zurück">✖</div>
+        <div class="lotto-title">🃏 Poker</div>
+        <div class="icon-btn" onclick="showHelp && showHelp('poker')" title="Hilfe">❓</div>
+      </div>
+      <div class="section" style="text-align:center;margin-top:10px;">
+        <div class="small">Bitte Spieler auswählen…</div>
+        <div class="button" style="width:220px;margin-top:12px;" onclick="openPokerPlayerModal()">Spieler wählen</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Laufende Runde
+  const player = pokerState.currentPlayerName || playerNames[pokerState.currentPlayerIdx ?? 0] || "Spieler";
+  const cats = POKER_CATEGORIES.map((cat, idx) => {
+    const usedCount = pokerState.entries.filter(e => e === idx).length;
+    const btns = [];
+    for (let i = 0; i < cat.max; i++) {
+      const checked = i < usedCount;
+      const disabled = pokerState.entries.length >= 5 && !checked;
+      btns.push(`
+        <span class="poker-check ${checked ? "active" : ""}"
+              onclick="selectPoker(${idx}, ${i})"
+              style="${disabled ? 'pointer-events:none;opacity:.5;' : ''}">
+          ${checked ? "✅" : "🔳"}
+        </span>
+      `);
+    }
+    return `
+      <div class="poker-row">
+        <span class="poker-name">${cat.name}</span>
+        <span class="poker-payout">${cat.payout} €</span>
+        <span class="poker-boxes">${btns.join("")}</span>
+      </div>
+    `;
+  }).join("");
+
+  app.innerHTML = `
+    <div class="lotto-header" style="display:grid;grid-template-columns:48px 1fr 48px;align-items:center;">
+      <div class="icon-btn" onclick="startPoker()" title="Neue Runde">🔁</div>
+      <div class="lotto-title">🃏 Poker</div>
+      <div class="icon-btn" onclick="showHome()" title="Zurück">✖</div>
+    </div>
+    <div class="poker-area">${cats}</div>
+  `;
+}
+
+/* === Modal: Spielerauswahl === */
+function openPokerPlayerModal() {
+  closePokerPlayerModal();
+
+  const overlay = document.createElement("div");
+  overlay.id = "pokerPlayerModal";
+  overlay.className = "modal-backdrop";
+  overlay.style.display = "flex";
+	overlay.innerHTML = `
+	  <div class="modal">
+		<h2>Spieler wählen</h2>
+		<div class="field" style="margin-top:8px;">
+		  <label for="pokerPlayerSel">Wer spielt diese Runde?</label>
+		  <select id="pokerPlayerSel">
+			<option value="" disabled ${pokerState.currentPlayerIdx===null ? "selected" : ""}>Bitte wählen</option>
+			${playerNames.map((n,i)=>`<option value="${i}" ${pokerState.currentPlayerIdx===i ? "selected" : ""}>${n}</option>`).join("")}
+		  </select>
+		</div>
+		<div id="pokerPlayerErr" class="error"></div>
+
+		<!-- Buttons in einer Zeile, gleich groß, mittig -->
+		<div class="modal-actions" style="justify-content:center; gap:12px;">
+		  <button class="btn" style="flex:1; max-width:140px;" onclick="closePokerPlayerModalAndBack()">Abbrechen</button>
+		  <button class="btn primary" style="flex:1; max-width:140px;" onclick="confirmPokerPlayerFromModal()">Runde starten</button>
+		</div>
+	  </div>
+	`;
+  document.body.appendChild(overlay);
+
+  const sel = document.getElementById("pokerPlayerSel");
+  if (sel) sel.focus();
+}
+function closePokerPlayerModal(){ const m=document.getElementById("pokerPlayerModal"); if(m) m.remove(); }
+function closePokerPlayerModalAndBack(){ closePokerPlayerModal(); if(!pokerState.started) showHome(); }
+function confirmPokerPlayerFromModal(){
+  const sel = document.getElementById("pokerPlayerSel");
+  const err = document.getElementById("pokerPlayerErr");
+  const idx = sel ? parseInt(sel.value,10) : NaN;
+
+  if (Number.isNaN(idx)){
+    if (err) err.textContent = "Bitte zuerst einen Spieler wählen.";
+    return;
+  }
+
+  pokerState.currentPlayerIdx  = idx;
+  pokerState.currentPlayerName = playerNames[idx] || "Spieler";
+  pokerState.started = true;
+
+  closePokerPlayerModal();
+  renderPokerUI();
+}
+
+/* === Auswahl / Abschluss === */
+// KORREKTE Poker-Auswahl: Gewinn ohne Buy-in abziehen + Trophäe dem gewählten Spieler
+function selectPoker(idx, slot) {
+  if (pokerState.ended || !pokerState) return;
+
+  const cat = POKER_CATEGORIES[idx];
+  const usedCount = pokerState.entries.filter(e => e === idx).length;
+
+  // Ein-/Aushaken pro Kategorie
+  if (cat.max === 1) {
+    if (usedCount) {
+      const pos = pokerState.entries.indexOf(idx);
+      if (pos !== -1) pokerState.entries.splice(pos, 1);
+    } else {
+      pokerState.entries.push(idx);
+    }
+  } else {
+    // Mehrfachkategorie (Niete) sequentiell
+    if (slot === usedCount) {
+      if (usedCount < cat.max) pokerState.entries.push(idx);
+    } else if (slot === usedCount - 1) {
+      const pos = pokerState.entries.lastIndexOf(idx);
+      if (pos !== -1) pokerState.entries.splice(pos, 1);
+    }
+  }
+
+  // Ende nach 5 Einträgen
+  if (pokerState.entries.length === 5) {
+    const onlyNiete = pokerState.entries.every(e => POKER_CATEGORIES[e].name === "Niete");
+    const gross = onlyNiete
+      ? 200
+      : pokerState.entries.map(i => POKER_CATEGORIES[i].payout).reduce((a, b) => a + b, 0);
+
+    // WICHTIG: Buy-in NICHT abziehen – Gewinn wird vollständig angezeigt
+    pokerState.total = gross;
+    pokerState.ended = true;
+
+    // Statistik (best effort)
+    try { if (typeof increaseStat === "function") increaseStat("poker"); } catch {}
+
+    // Den GEWÄHLTEN Spieler zuverlässig ermitteln
+    const player =
+      pokerState.currentPlayerName ||
+      (Number.isInteger(pokerState.currentPlayerIdx) ? playerNames[pokerState.currentPlayerIdx] : null) ||
+      "Spieler";
+
+    // Trophäen-Logik:
+    // >= 50 € => garantiert 1 Trophäe
+    // < 50 €  => Chance = round(gross/50 * 100)
+    let gotTrophy = false;
+    if (gross >= 50) {
+      try { awardTrophies(player, 1); gotTrophy = true; } catch {}
+    } else if (gross > 0) {
+      const chance = Math.round((gross / 50) * 100);
+      if (Math.random() * 100 < chance) {
+        try { awardTrophies(player, 1); gotTrophy = true; } catch {}
+      }
+    }
+
+    // Optional: kurze Trophy-Zeile in den State, falls du sie im UI zeigen willst
+    pokerState.trophyLine = gotTrophy ? "🏆 Trophäe erhalten" : "❌ Keine Trophäe";
+  }
+
+  renderPokerUI();
+}
+
+/* === Hilfe-Text (optional im Help-Overlay) === */
+function getPokerHelpText() {
+  return `
+    <div style='text-align:left;max-width:600px;margin:10px auto;'>
+      Jeder Spieler würfelt <b>5× mit allen 5 Würfeln</b> und wählt pro Runde eine Kombination aus.
+      <br><br>✔️ Jede Kombi 1×, <b>Niete</b> bis zu 5× (sequentiell).
+      <br><br><b>Bonus:</b> 5× Niete ergibt automatisch <b>200 € Gewinn</b>.
+      <br><br><b>Buy-in:</b> ${POKER_BUYIN} € (extern – wird nicht abgezogen).
+      <br><br><b>Trophäen:</b> >50 € garantiert, sonst Gewinn/50 % Chance.
+    </div>`;
+}
+
+/* === Globals/Exports === */
+window.startPoker = startPoker;
+window.openPokerPlayerModal = openPokerPlayerModal;
+window.closePokerPlayerModalAndBack = closePokerPlayerModalAndBack;
+window.confirmPokerPlayerFromModal = confirmPokerPlayerFromModal;
+window.selectPoker = selectPoker;
+
+/* ===== Lucky Streak ===== */
+window.streakState = window.streakState || {
+  win: 0,
+  steps: 0,
+  ended: false,
+  started: false,
+  currentPlayerIdx: null,
+  currentPlayerName: null
+};
+
+function startStreak(reset = true) {
+  currentContext = "streak";
+
+  if (reset) {
+    resetStreakState();
+  } else {
+    // Falls was fehlt, sicherstellen
+    streakState = Object.assign({
+      win: 0, steps: 0, ended: false, started: false,
+      currentPlayerIdx: null, currentPlayerName: null
+    }, streakState || {});
+  }
+
+  // Wenn noch kein Spieler gewählt: gleich das Popup öffnen
+  if (!streakState.started) {
+    renderStreakUI();       // Basis UI (Header, Hintergrund)
+    openStreakPlayerModal();// Popup direkt öffnen
+  } else {
+    renderStreakUI();       // normale UI
+  }
+}
+
+function resetStreakState() {
+  streakState = {
+    win: 0,
+    steps: 0,
+    ended: false,
+    started: false,
+    currentPlayerIdx: null,
+    currentPlayerName: null
+  };
+}
+
+function renderStreakUI() {
+  const app = document.getElementById("app-section");
+  if (!app) return;
+
+  // Spieler noch nicht gewählt
+  if (!streakState.started) {
+    app.innerHTML = `
+      <div class="lotto-header">
+        <div class="icon-btn" onclick="showHome()" title="Zurück">✖</div>
+        <div class="lotto-title">🎲 Lucky Streak</div>
+        <div class="icon-btn" onclick="showHelp && showHelp('streak')" title="Hilfe">❓</div>
+      </div>
+      <div class="section" style="text-align:center;margin-top:10px;">
+        <div class="small">Bitte Spieler auswählen…</div>
+      </div>
+    `;
+    return;
+  }
+
+  // Runde läuft / beendet
+  const win   = streakState.win ?? 0;
+  const steps = streakState.steps ?? 0;
+  const next  = streakState.ended ? null : (win + (steps + 1));
+  const player = streakState.currentPlayerName || playerNames[streakState.currentPlayerIdx ?? 0] || "Spieler";
+
+  app.innerHTML = `
+    <div class="lotto-header">
+      <div class="icon-btn" onclick="startStreak()" title="Neue Runde">🔁</div>
+      <div class="lotto-title">🎲 Lucky Streak</div>
+      <div class="icon-btn" onclick="showHome()" title="Zurück">✖</div>
+    </div>
+
+      <div style="font-size:2.2em;font-weight:700;margin:6px 0 14px;">
+        Aktueller Gewinn:
+        <span id="streakWin">${win} €</span>
+        ${streakState.ended ? "" : `<span id="streakNext" class="small" style="font-weight:600;"> ➡️ ${next} €</span>`}
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:space-between;align-items:center;max-width:360px;margin:0 auto 10px;">
+        <div id="btnStreak1" class="button" style="width:100px;" onclick="handleStreakRoll(1)">1</div>
+        <div id="btnStreak2to5" class="button" style="width:100px;" onclick="handleStreakRoll('2-5')">2–5</div>
+        <div id="btnStreak6" class="button" style="width:100px;" onclick="handleStreakRoll(6)">6</div>
+      </div>
+
+      <div class="button" style="width:240px;" onclick="endStreak()">Stopp</div>
+
+      <div id="streakResult" style="margin-top:14px;font-size:1.1em;"></div>
+    </div>
+  `;
+
+  if (streakState.ended) setStreakButtonsDisabled(true);
+}
+
+/* === Modal: Spielerwahl (wie Poker) === */
+function openStreakPlayerModal() {
+  closeStreakPlayerModal();
+
+  const overlay = document.createElement("div");
+  overlay.id = "streakPlayerModal";
+  overlay.className = "modal-backdrop";
+  overlay.style.display = "flex";
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Spieler wählen</h2>
+      <div class="field">
+        <label for="streakPlayerSel">Wer spielt diese Runde?</label>
+        <select id="streakPlayerSel">
+          <option value="" disabled ${streakState.currentPlayerIdx===null ? "selected" : ""}>Bitte wählen</option>
+          ${playerNames.map((n,i)=>`<option value="${i}" ${streakState.currentPlayerIdx===i ? "selected" : ""}>${n}</option>`).join("")}
+        </select>
+      </div>
+      <div id="streakPlayerErr" class="error"></div>
+
+      <!-- exakt wie Poker -->
+      <div class="modal-actions centered">
+        <button class="btn equal" onclick="closeStreakPlayerModalAndBack()">Abbrechen</button>
+        <button class="btn primary equal" onclick="confirmStreakPlayerFromModal()">Runde starten</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const sel = document.getElementById("streakPlayerSel");
+  if (sel) sel.focus();
+}
+
+function closeStreakPlayerModal(){ const m=document.getElementById("streakPlayerModal"); if(m) m.remove(); }
+function closeStreakPlayerModalAndBack(){ closeStreakPlayerModal(); if(!streakState.started) showHome(); }
+function confirmStreakPlayerFromModal(){
+  const sel = document.getElementById("streakPlayerSel");
+  const err = document.getElementById("streakPlayerErr");
+  const idx = sel ? parseInt(sel.value,10) : NaN;
+
+  if (Number.isNaN(idx)){
+    if (err) err.textContent = "Bitte zuerst einen Spieler wählen.";
+    return;
+  }
+
+  streakState.currentPlayerIdx  = idx;
+  streakState.currentPlayerName = playerNames[idx] || "Spieler";
+  streakState.started = true;
+
+  closeStreakPlayerModal();
+  renderStreakUI();
+}
+
+/* === Spiel-Logik === */
+function handleStreakRoll(type) {
+  if (streakState.ended) return;
+  const out = document.getElementById("streakResult");
+  if (out) out.innerHTML = "";
+
+  const player =
+    streakState.currentPlayerName ||
+    playerNames[streakState.currentPlayerIdx ?? 0] ||
+    "Spieler";
+
+  if (type === 1) {
+    // ❌ 1 = Alles verloren
+    streakState.win = 0;
+    streakState.ended = true;
+    if (typeof increaseStat === "function") increaseStat("streak");
+
+    const winEl = document.getElementById("streakWin");
+    if (winEl) winEl.textContent = `${streakState.win} €`;
+
+    if (out) {
+      out.innerHTML =
+        `❌ 1 gewürfelt – alles verloren!<br>` +
+        `Spieler: <b>${player}</b>`;
+    }
+  }
+  else if (type === "2-5") {
+    // ✅ 2–5 = +1 €, progressiv
+    streakState.steps = (streakState.steps || 0) + 1;
+    streakState.win   = (streakState.win   || 0) + streakState.steps;
+
+    const winEl  = document.getElementById("streakWin");
+    const nextEl = document.getElementById("streakNext");
+    if (winEl)  winEl.textContent  = `${streakState.win} €`;
+    if (nextEl) nextEl.textContent = ` ➡️ ${streakState.win + (streakState.steps + 1)} €`;
+    return; // Runde läuft weiter
+  }
+  else if (type === 6) {
+    // 😬 6 = Gewinn halbiert + Runde endet
+    streakState.win   = Math.floor((streakState.win || 0) / 2);
+    streakState.ended = true;
+    if (typeof increaseStat === "function") increaseStat("streak");
+
+    const winEl = document.getElementById("streakWin");
+    if (winEl) winEl.textContent = `${streakState.win} €`;
+
+    // 🏆 Trophäe prüfen nach neuer Regel
+    const trophyMsg = streakTrophyOutcome(streakState.win, player);
+
+    if (out) {
+      out.innerHTML =
+        `😬 6 gewürfelt – Gewinn halbiert.<br>` +
+        `🏁 Auszahlung: <b>${streakState.win} €</b><br>` +
+        `${trophyMsg}<br>` ;
+    }
+  }
+
+  if (streakState.ended) {
+    const nextEl = document.getElementById("streakNext");
+    if (nextEl) nextEl.remove();
+    setStreakButtonsDisabled(true);
+  }
+}
+
+function endStreak() {
+  if (streakState.ended) return;
+  streakState.ended = true;
+  if (typeof increaseStat === "function") increaseStat("streak");
+
+  const player = streakState.currentPlayerName
+    || playerNames[streakState.currentPlayerIdx ?? 0]
+    || "Spieler";
+
+  // ✅ Trophäe anhand des finalen Gewinns prüfen
+  const trophyMsg = streakTrophyOutcome(streakState.win, player);
+
+  const out = document.getElementById("streakResult");
+  if (out) {
+    out.innerHTML =
+      `Auszahlung: <b>${streakState.win} €</b><br>` +
+      `${trophyMsg}<br>`;
+  }
+  const nextEl = document.getElementById("streakNext");
+  if (nextEl) nextEl.remove();
+  setStreakButtonsDisabled(true);
+}
+
+function setStreakButtonsDisabled(disabled) {
+  ["btnStreak1", "btnStreak2to5", "btnStreak6"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.opacity = disabled ? "0.6" : "1";
+    el.style.pointerEvents = disabled ? "none" : "auto";
+  });
+}
+
+/* Exporte, damit showHome-Bindings sicher funktionieren */
+window.startStreak = startStreak;
+window.openStreakPlayerModal = openStreakPlayerModal;
+window.confirmStreakPlayerFromModal = confirmStreakPlayerFromModal;
+
+/* ===== Jackpot ===== */
+function startJackpot() {
+  currentContext = "jackpot";
+
+  const playerOpts = (playerNames || []).map((n, i) => `<option value="${i}">${n}</option>`).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">🎰 Jackpot</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+
+    <div class="section" style="text-align:center;">
+      <div class="row" style="justify-content:center; gap:14px; flex-wrap:wrap;">
+        <div>
+          <div class="small">Spieler</div>
+          <select id="jackpotPlayer">
+            <option value="" disabled selected>Bitte wählen</option>
+            ${playerOpts}
+          </select>
+        </div>
+
+        <div>
+          <div class="small">Einsatz (€)</div>
+          <input type="number" id="jackpotBet" min="1" step="1" placeholder="Einsatz €">
+        </div>
+
+        <div>
+          <div class="small">Würfel (1–6)</div>
+          <input type="number" id="jackpotRoll" min="1" max="6" step="1"
+                 placeholder="Würfel (1-6)" oninput="limitRoll(this)">
+        </div>
+      </div>
+
+      <div id="jackpotErr" class="error" style="margin-top:6px;"></div>
+
+      <div class="button" onclick="evaluateJackpot()">Auswerten</div>
+      <div id="jackpotResult" style="margin-top:16px;font-size:1.2em;"></div>
+    </div>
+  `;
+}
+
+/** Abrunden zugunsten der Bank (immer nach unten) */
+function bankFloor(x) {
+  return Math.floor(Number(x) || 0);
+}
+
+function evaluateJackpot() {
+  const errEl = document.getElementById("jackpotErr");
+  const outEl = document.getElementById("jackpotResult");
+  if (errEl) errEl.textContent = "";
+  if (outEl) outEl.textContent = "";
+
+  const pIdx = parseInt((document.getElementById("jackpotPlayer") || {}).value, 10);
+  const bet  = parseInt((document.getElementById("jackpotBet") || {}).value, 10);
+  const roll = parseInt((document.getElementById("jackpotRoll") || {}).value, 10);
+
+  if (Number.isNaN(pIdx)) { if (errEl) errEl.textContent = "Bitte einen Spieler wählen."; return; }
+  if (!bet || bet < 1)     { if (errEl) errEl.textContent = "Bitte gültigen Einsatz (≥ 1 €) eingeben."; return; }
+  if (!roll || roll < 1 || roll > 6) { if (errEl) errEl.textContent = "Würfelzahl muss 1–6 sein."; return; }
+
+  const player = playerNames[pIdx] || "Spieler";
+
+  // Payout nach deinen Regeln
+  let payout = 0;
+  let line   = "";
+
+  switch (roll) {
+    case 1:
+      payout = 0;
+      line = "Alles verloren.";
+      break;
+    case 2:
+      payout = bankFloor(bet / 2);
+      line = `Hälfte zurück – ${payout} € von ${bet} €.`; 
+      break;
+    case 3:
+      payout = bet;
+      line = `Einsatz zurück – ${payout} €.`;
+      break;
+    case 4:
+      payout = bankFloor(bet * 1.5);
+      line = `×1,5 – Auszahlung ${payout} €.`;
+      break;
+    case 5:
+      payout = bet * 2;
+      line = `Doppelgewinn – Auszahlung ${payout} €.`;
+      break;
+    case 6:
+      if (outEl) {
+        outEl.innerHTML = `Du hast eine <b>6</b> eingetragen. 🎲 Bitte <b>nochmal würfeln</b> und die neue Zahl eintragen.`;
+      }
+      return;
+  }
+
+  const net = Math.max(0, payout - bet);
+
+  // Statistik (best effort)
+  try { if (typeof increaseStat === "function") increaseStat("jackpot"); } catch {}
+
+  // Trophäen – nur bei positivem Netto-Gewinn
+  let trophyText = "❌ Du hast keine Trophäe erhalten.";
+  if (net > 0) {
+    let res = null;
+    if (typeof awardTrophiesByBetPayout === "function") {
+      try {
+        res = awardTrophiesByBetPayout("jackpot", player, bet, payout);
+      } catch {}
+    } else if (typeof awardTrophies === "function") {
+      // Fallback: tatsächliche Vergabe (einfach 1) – dein awardTrophies schreibt ins Ereignis-Log
+      try { awardTrophies(player, 1); res = { drop: 1, chance: 100, net }; } catch {}
+    }
+
+    // Anzeige je nach Rückgabe
+    if (res && typeof res.drop === "number") {
+      trophyText = res.drop > 0 ? "🏆 Du hast eine Trophäe erhalten." : "❌ Du hast keine Trophäe erhalten.";
+    } else {
+      // Falls keine Info zurückkam: bei positivem Netto konservativ davon ausgehen, dass evtl. vergeben wurde
+      // (nur Anzeige – die echte Vergabe passiert in den Funktionen oben)
+      trophyText = "🏆 Du hast eine Trophäe erhalten.";
+    }
+  }
+
+  if (outEl) {
+    outEl.innerHTML = `
+      Spieler: <b>${player}</b><br>
+      Gewürfelt: <b>${roll}</b><br>
+      ${line}<br>
+      <div style="margin-top:8px;">${trophyText}</div>
+    `;
+  }
+}
+
+/* ===== Statistik-Navigation (zurück zur Quelle) ===== */
+window._statsPrevContext = window._statsPrevContext || null;
+
+function openStatistics() {
+  // merken, woher wir Statistik öffnen (Settings, Home, …)
+  window._statsPrevContext = typeof currentContext === "string" ? currentContext : "home";
+  showStatistics();
+}
+
+function closeStatistics() {
+  // wenn Statistik aus Settings kam -> zurück zu Settings
+  const prev = window._statsPrevContext || "home";
+  window._statsPrevContext = null;
+
+  if (prev === "settings" && typeof showSettings === "function") {
+    currentContext = "settings";
+    showSettings();
+  } else {
+    // sonst normal nach Home
+    currentContext = "home";
+    showHome();
+  }
+}
+
+function limitRoll(input) {
+  let val = parseInt(input.value, 10);
+  if (isNaN(val)) return;
+  if (val > 6) input.value = 6;
+  if (val < 1) input.value = 1;
+}
+
+function streakIncrease() {
+  if (streakState.ended) return;
+  streakState.steps += 1;     // „kein 1er gewürfelt“
+  renderStreakUI();
+}
+
+function streakLoseAll() {
+  if (streakState.ended) return;
+  streakState.ended = true;   // „1 gewürfelt“
+  streakState.payout = 0;
+  renderStreakUI();
+}
+
+function streakCashOut(amount) {
+  if (streakState.ended) return;
+  streakState.ended = true;
+  streakState.payout = Number(amount) || 0;
+  renderStreakUI();
+}
+
+// === App-Start (REPLACE WHOLE onload) ===
+window.onload = () => {
+  if (settings.devMode && settings.directHome) {
+    totalPlayers = 4;
+    playerNames = ["Alice", "Bob", "Carol", "Dave"];
+    initDeck();
+    ensureEventSystemReady();
+    showHome();
+  } else {
+    document.getElementById("app-section").innerHTML = `
+      <h2>Spieleranzahl wählen</h2>
+      <select id="playerCount">
+        <option value="" disabled ${settings.devMode ? "" : "selected"}>Bitte wählen</option>
+        <option value="2">2 Spieler</option>
+        <option value="3">3 Spieler</option>
+        <option value="4" ${settings.devMode ? "selected" : ""}>4 Spieler</option>
+        <option value="5">5 Spieler</option>
+        <option value="6">6 Spieler</option>
+        <option value="7">7 Spieler</option>
+        <option value="8">8 Spieler</option>
+      </select>
+      <br><br>
+      <div class="button" onclick="confirmPlayerCount()">Weiter</div>
+    `;
+  } //  ← DIESE Klammer hat dir gefehlt
+};
+
+// Unicode-Faces: ⚀ ⚁ ⚂ ⚃ ⚄ ⚅
+const DICE_CHARS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+/**
+ * Animiert einen Würfel über den Bildschirm und liefert die zufällige Endzahl (1–6).
+ * Nutzung: const n = await rollDiceAnimation();  // n = 1..6
+ */
+function rollDiceAnimation(options = {}) {
+  return new Promise(resolve => {
+    const final = getRandomIntInclusive(1, 6);
+    const duration = options.duration || getRandomIntInclusive(900, 1400); // ms
+    const startSide = Math.random() < 0.5 ? 'left' : 'right';
+    const startX = (startSide === 'left') ? -100 : (window.innerWidth + 100);
+    const endX = window.innerWidth / 2 - 40; // Würfelmitte ungefähr in Screenmitte
+    const y = getRandomIntInclusive(Math.floor(window.innerHeight * 0.25),
+                                    Math.floor(window.innerHeight * 0.65));
+
+    // Würfel erzeugen
+    const dice = document.createElement('div');
+    dice.className = 'dice-el';
+    dice.textContent = DICE_CHARS[0];
+    document.body.appendChild(dice);
+
+    // Faces schnell durchblättern
+    const faceTimer = setInterval(() => {
+      dice.textContent = DICE_CHARS[getRandomIntInclusive(0, 5)];
+    }, 70);
+
+    let startTime = null;
+    const totalRot = (startSide === 'left' ? 1 : -1) * 720; // 2 Umdrehungen
+
+    function frame(ts) {
+      if (!startTime) startTime = ts;
+      const t = (ts - startTime) / duration;
+      const p = Math.min(1, t);
+      // EaseOutCubic
+      const ease = 1 - Math.pow(1 - p, 3);
+      // Position + Rotation
+      const x = startX + (endX - startX) * ease;
+      const rot = totalRot * ease;
+      dice.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg)`;
+
+      if (p < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        // Stopp: endgültiges Face zeigen + kleines „Settle“
+        clearInterval(faceTimer);
+        dice.textContent = DICE_CHARS[final - 1];
+        dice.style.transition = 'transform 280ms ease-out';
+        dice.style.transform = `translate(${endX + (startSide==='left'?10:-10)}px, ${y}px) rotate(${totalRot + (startSide==='left'?10:-10)}deg)`;
+        setTimeout(() => {
+          dice.style.transform = `translate(${endX}px, ${y}px) rotate(${totalRot}deg)`;
+          setTimeout(() => { dice.remove(); resolve(final); }, 260);
+        }, 60);
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+let _battleRolling = false;
+
+function setBattleControlsDisabled(disabled) {
+  const btn = document.getElementById('battleRollBtn');
+  if (btn) {
+    btn.style.opacity = disabled ? '0.6' : '1';
+    btn.style.pointerEvents = disabled ? 'none' : 'auto';
+  }
+}
+
+function showBattleError(msg) {
+  const el = document.getElementById('battleError');
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.display = msg ? 'block' : 'none';
+}
+
+async function doBattleAnimated() {
+  if (_battleRolling) return;
+
+  const challenger = document.getElementById('challenger').value;
+  const opponent   = document.getElementById('opponent').value;
+  const wager      = Number(document.getElementById('wager').value);
+
+  if (!challenger || !opponent) { showBattleError('Bitte beide Spieler wählen.'); return; }
+  if (challenger === opponent)  { showBattleError('Herausforderer und Gegner müssen unterschiedlich sein.'); return; }
+  if (!wager || wager <= 0)     { showBattleError('Bitte einen gültigen Einsatz (> 0) eingeben.'); return; }
+  showBattleError('');
+
+  const out = document.getElementById('battleOutcome');
+  _battleRolling = true;
+  setBattleControlsDisabled(true);
+  try {
+    // Erstes Roll (Challenger)
+    out.innerHTML = `🎲 ${challenger} würfelt...`;
+    const a = await rollDiceAnimation();
+    out.innerHTML = `🎲 ${challenger} würfelt <b>${a}</b>`;
+
+    // kurze Pause
+    await new Promise(r => setTimeout(r, 300));
+
+    // Zweites Roll (Opponent)
+    out.innerHTML += `<br>🎲 ${opponent} würfelt...`;
+    const b = await rollDiceAnimation();
+    out.innerHTML = `🎲 ${challenger} würfelt <b>${a}</b> | ${opponent} <b>${b}</b>`;
+
+    // Auswertung
+    let winner = null;
+    if (battleState.mode === 'highest') {
+      if (a > b) winner = challenger;
+      else if (b > a) winner = opponent;
+    } else { // 'lowest'
+      if (a < b) winner = challenger;
+      else if (b < a) winner = opponent;
+    }
+
+    if (!winner) {
+      out.innerHTML += `<br><span class="small">Unentschieden – bitte nochmal.</span>`;
+    } else {
+      const loser = (winner === challenger) ? opponent : challenger;
+      out.innerHTML += `<br><b>${winner}</b> gewinnt <b>${wager} €</b> von ${loser}.`;
+    }
+  } finally {
+    _battleRolling = false;
+    setBattleControlsDisabled(false);
+  }
+}
+
+<!-- ===== 50-50 ===== -->
+let allnothingStats = { win: 0, lose: 0 };
+let allnothingState = { playerIdx: null, trophyLine: "" };
+
+function startAllNothing() {
+  currentContext = "allnothing";
+  const opts = playerNames.map((n, i) => `<option value="${i}">${n}</option>`).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">🎲 All or Nothing</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+
+    <div class="allnothing-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="text-align:left;">
+          <div>✅ Gewonnen: <span id="statWins">${allnothingStats.win}</span></div>
+          <div>❌ Verloren: <span id="statLoses">${allnothingStats.lose}</span></div>
+        </div>
+        <div><b>Einsatz: 20 €</b></div>
+      </div>
+
+      <div class="section" style="text-align:center;margin-bottom:8px;">
+        <div class="small" style="margin-bottom:6px;">Spieler wählen</div>
+        <select id="aonPlayer" onchange="setAonPlayer(this.value)">
+          <option value="" disabled selected>Bitte wählen</option>
+          ${opts}
+        </select>
+        <div id="aonErr" class="error" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="button" onclick="playAllOrNothing()">⚖️ All or Nothing</div>
+      <div id="allnothingResult" class="result"></div>
+      <div id="allnothingTrophy" class="small" style="margin-top:8px;"></div>
+    </div>
+  `;
+}
+function setAonPlayer(v) {
+  const idx = parseInt(v, 10);
+  allnothingState.playerIdx = Number.isNaN(idx) ? null : idx;
+  const err = document.getElementById("aonErr");
+  if (err) err.textContent = "";
+}
+
+function playAllOrNothing() {
+  const resultEl  = document.getElementById("allnothingResult");
+  const trophyEl  = document.getElementById("allnothingTrophy");
+  const errEl     = document.getElementById("aonErr");
+
+  // Spieler muss gewählt sein
+  if (allnothingState.playerIdx === null) {
+    if (errEl) errEl.textContent = "Bitte zuerst einen Spieler wählen.";
+    return;
+  }
+  if (errEl) errEl.textContent = "";
+
+  const player = playerNames[allnothingState.playerIdx] || "Spieler";
+  const win = Math.random() < 0.5;
+
+  if (win) {
+    allnothingStats.win++;
+    resultEl.innerHTML = "✅ Gewonnen! Auszahlung: <b>40 €</b>";
+    resultEl.className = "result win animate-pop";
+
+    // wie bei Poker: klare Trophy-Zeile anzeigen
+    const info = calcTrophyDrop("allnothing", player, 20, 40);
+    allnothingState.trophyLine = info;               // z. B. „🏆 Spieler erhält 1 Trophäe“
+    if (trophyEl) trophyEl.textContent = info;
+  } else {
+    allnothingStats.lose++;
+    resultEl.innerHTML = "❌ Verloren! Keine Auszahlung.";
+    resultEl.className = "result lose animate-pop";
+
+    // bei Verlust keine Trophy (explizit anzeigen – „wie bei Poker“)
+    allnothingState.trophyLine = "❌ Keine Trophäe erhalten";
+    if (trophyEl) trophyEl.textContent = allnothingState.trophyLine;
+  }
+
+  increaseStat("allnothing");
+  document.getElementById("statWins").textContent  = allnothingStats.win;
+  document.getElementById("statLoses").textContent = allnothingStats.lose;
+  setTimeout(() => resultEl.classList.remove("animate-pop"), 500);
+}
+
+// Statistik-Objekt global
+let stats = {
+  lotto:        { total: 0, session: 0 },
+  auction:      { total: 0, session: 0 },
+  jackpot:      { total: 0, session: 0 },
+  streak:       { total: 0, session: 0 },
+  roulette:     { total: 0, session: 0 },
+  poker:        { total: 0, session: 0 },
+  allnothing:   { total: 0, session: 0 }
+};
+
+// === nur Gesamt in localStorage speichern ===
+function saveStats() {
+  const totalOnly = {};
+  for (let key in stats) {
+    totalOnly[key] = { total: stats[key].total };  // Session wird NICHT gespeichert
+  }
+  localStorage.setItem("stats", JSON.stringify(totalOnly));
+}
+
+function loadStats() {
+  const s = localStorage.getItem("stats");
+  if (s) {
+    const totalOnly = JSON.parse(s);
+    for (let key in stats) {
+      if (totalOnly[key]) stats[key].total = totalOnly[key].total;
+      stats[key].session = 0; // immer neu anfangen
+    }
+  }
+}
+loadStats();
+
+// Statistik erhöhen
+function increaseStat(game) {
+  if (!stats[game]) return;
+  stats[game].total++;
+  stats[game].session++;
+  saveStats();
+}
+
+// === Trophäen Drop ===
+let trophyStats = { total: 0, session: 0 };
+
+function saveTrophies() {
+  localStorage.setItem("trophyStats", JSON.stringify({ total: trophyStats.total }));
+}
+function loadTrophies() {
+  const t = localStorage.getItem("trophyStats");
+  if (t) {
+    const d = JSON.parse(t);
+    trophyStats.total = d.total || 0;
+  }
+  trophyStats.session = 0;
+}
+loadTrophies();
+
+function awardTrophies(player, amount) {
+  if (amount <= 0) return;
+  trophyStats.total += amount;
+  trophyStats.session += amount;
+  saveTrophies?.();
+
+  // korrekt loggen + speichern
+  if (typeof logTrophies === "function") {
+    logTrophies(player || "Spieler", amount);
+  } else {
+    addEventLog({ player: player || "Spieler", kind:"trophy", text: `${amount} Trophäe${amount>1?"n":""}` });
+  }
+}
+
+/**
+ * Berechnet die Dropchance und vergibt Trophäen
+ * @param {string} game - Spielname ("lotto","auction","jackpot","streak","poker","allnothing","roulette")
+ * @param {string} player - Spielername
+ * @param {number} bet - Einsatz (€)
+ * @param {number} win - Gewinn (€)
+ * @param {object} extra - Zusatzinfos (z.B. {rolledSix:true, betType:"green"})
+ */
+ 
+function calcTrophyDrop(game, player, bet=0, win=0, extra={}) {
+  let trophies = 0;
+  let chance = 0;
+
+  switch(game) {
+    case "lotto":
+      chance = 50;
+      break;
+
+    case "auction":
+      if (win > 0) chance = ((win - bet) / win) * 100;
+      break;
+
+    case "jackpot":
+      chance = Math.min(100, win);
+      if (win > 50) trophies++;
+      break;
+
+    case "streak":
+      let finalWin = extra.rolledSix ? Math.floor(win/2) : win;
+      chance = Math.min(100, finalWin);
+      if (finalWin > 50) trophies++;
+      break;
+
+    case "poker":
+      chance = Math.min(100, win);
+      if (win > 50) trophies++;
+      break;
+
+    case "allnothing":
+      chance = 50; 
+      break;
+
+    case "roulette":
+      if (extra.betType === "green") { trophies += 5; break; }
+      if (extra.betType === "number") { trophies += 3; break; }
+      chance = 50 + Math.min(50, bet);
+      break;
+  }
+
+  if (Math.random() * 100 < chance) trophies++;
+
+  if (trophies > 0) {
+    awardTrophies(player, trophies);
+    return `🏆 ${player} erhält ${trophies} Trophäe${trophies>1?"n":""}`;
+  } else {
+    return `❌ ${player} hat keine Trophäen erhalten`;
+  }
+}
+
+/* Schöne Labels wie am Home-Bildschirm */
+const GAME_LABEL = {
+  lotto:      "🎯 Lotto",
+  auction:    "💰 Auktion",
+  jackpot:    "🎰 Jackpot",
+  streak:     "🎲 Lucky Streak",
+  roulette:   "🎡 Roulette",
+  poker:      "🃏 Poker",
+  allnothing: "⚖️ All or Nothing"   // <— korrekter Name
+};
+function gameLabel(key){ return GAME_LABEL[key] || key; }
+
+function showStatistics() {
+  currentContext = "stats";
+
+  let rows = Object.keys(stats).map(game => {
+    return `
+      <tr>
+        <td>${gameLabel(game)}</td>
+        <td>${stats[game].session}</td>
+        <td>${stats[game].total}</td>
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">📊 Statistik</div>
+      <div class="icon-btn" onclick="showSettings()">✖</div>
+    </div>
+
+    <div class="panel stats-section">
+      <table class="stats-table">
+        <tr>
+          <th>Spiel</th>
+          <th>Diese Session</th>
+          <th>Gesamt</th>
+        </tr>
+        ${rows}
+      </table>
+    </div>
+  `;
+}
+
+/* =========================
+   Ereignis-Log: Anzeige
+   ========================= */
+function showEventLog(){
+  currentContext = "eventlog";
+  const esc = s => String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+  const labelOf = k =>
+      k==="card"   ? "🎴 Ereigniskarte" :
+      k==="shop"   ? "🗿 Artefaktum"    :
+      k==="trophy" ? "🏆 Trophäe"       : "";
+
+  const rows = (Array.isArray(window.eventLog) && window.eventLog.length)
+    ? window.eventLog.map(e=>{
+        // Fallback für alte Einträge ohne kind
+        let kind = e.kind;
+        if(!kind && typeof e.text==="string"){
+          const t = e.text;
+          if (/Ereigniskarte/i.test(t)) kind = "card";
+          else if (/Troph(ä|ae)/i.test(t)) kind = "trophy";
+          else if (/(Artefaktum|gekauft|versteinert)/i.test(t)) kind = "shop";
+        }
+        const label = labelOf(kind);
+        const content = String(e.text||"").replace(/^Ereigniskarte:\s*/i,"").trim();
+
+        return `
+          <div class="event-card">
+            <div class="event-left">
+              <div class="event-player">👤 ${esc(e.player||"")}</div>
+              <div class="event-time">🕒 ${esc(e.time||"")}</div>
+            </div>
+            <div class="event-right">
+              ${label ? `<div class="event-kind">${label}</div>` : ""}
+              <div class="event-text">${esc(content)}</div>
+            </div>
+          </div>
+        `;
+      }).join("")
+    : `<div class="small" style="text-align:center;margin:20px 0;">Noch keine Ereignisse.</div>`;
+
+  const app = document.getElementById("app-section");
+  if (!app) return;
+  app.innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">📜 Ereignisverlauf</div>
+      <div class="icon-btn" onclick="showSettings()">✖</div>
+    </div>
+    <div class="event-log">${rows}</div>
+  `;
+}
+window.showEventLog = showEventLog;
+
+/* =========================
+   Ereignis-Log: Daten & Helper (kollisionssicher)
+   ========================= */
+// NIE mehr removeItem("eventLog") aufrufen!
+(function initEventLog(){
+  // vorhandenes Array weiterverwenden, sonst neu
+  if (!Array.isArray(window.eventLog)) window.eventLog = [];
+
+  function saveEventLog(){
+    try {
+      localStorage.setItem("eventLog", JSON.stringify(window.eventLog.slice(0,300)));
+    } catch(e) { console.warn("saveEventLog failed:", e); }
+  }
+  function loadEventLog(){
+    try {
+      const raw = localStorage.getItem("eventLog");
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) window.eventLog = arr;
+      }
+    } catch(e) { console.warn("loadEventLog failed:", e); }
+  }
+  function addEventLog({player, kind, text, time}){
+    window.eventLog.unshift({
+      player: player || "Spieler",
+      kind: kind || "",                   // "card" | "shop" | "trophy"
+      text: String(text || ""),
+      time: time || new Date().toLocaleTimeString()
+    });
+    saveEventLog();
+  }
+
+  // public machen
+  window.saveEventLog = saveEventLog;
+  window.addEventLog  = addEventLog;
+
+  // Komfort-Wrapper
+  window.logEreigniskarte = (player, cardText)=> addEventLog({ player, kind:"card",   text: cardText });
+  window.logArtefaktum    = (player, itemName)=> addEventLog({ player, kind:"shop",   text: itemName });
+  window.logTrophies      = (player, n)       => addEventLog({ player, kind:"trophy", text: `${n} Trophäe${n>1?"n":""}` });
+
+  // Laden beim Start
+  loadEventLog();
+  // Sicherheitsspeicher vorm Tab-Schließen
+  window.addEventListener("beforeunload", saveEventLog);
+})();
+
+// Einheitliches Logging für Ereigniskarten
+window.logEreigniskarte = function(player, cardTitle, cardBody="") {
+  // hübscher Text ohne doppelten Prefix
+  const text = cardBody
+    ? `${cardTitle}: ${cardBody}`   // z.B. "Ereigniskarte XY: Zahle 10 €"
+    : `${cardTitle}`;
+
+  // schreibe als "card", damit showEventLog sicher labelt
+  if (typeof addEventLog === "function") {
+    addEventLog({
+      player: player || "Spieler",
+      kind: "card",
+      text: text
+    });
+  }
+};
+
+/* ========= ARTEFAKTUM ========= */
+
+const ARTEFAKTUM_ITEMS = [
+  { id:"owl",      name:"versteinerte Eule",              		emoji:"🦉" },   // Weisheit
+  { id:"infty",    name:"versteinertes Unendlichkeitssymbol", 	emoji:"♾️" }, // Unendlichkeit
+  { id:"puzzle",   name:"versteinertes Puzzleteil",       		emoji:"🧩" },   // Rätsel
+  { id:"shooting", name:"versteinerte Sternschnuppe",     		emoji:"🌠" },   // Hoffnung
+  { id:"brain",    name:"versteinertes Gehirn",          		emoji:"🧠" },   // Erinnerung
+  { id:"hourglass",name:"versteinerte Sanduhr",          		emoji:"⏳" },   // Zeit
+  { id:"book",     name:"versteinertes Buch",             		emoji:"📖" },   // Wissen
+  { id:"scale",    name:"versteinerte Waage",             		emoji:"⚖️" },   // Harmonie
+  { id:"eye",      name:"versteinertes Auge",             		emoji:"👁️" },   // Wahrheit
+  { id:"dice",     name:"versteinerter Würfel",          		emoji:"🎲" },   // Schicksal
+  { id:"bell",     name:"versteinerte Glocke",            		emoji:"🔔" },   // Stille
+  { id:"hands",    name:"versteinerter Hände-Abdruck", 	  		emoji:"🤝" }, // Freundschaft
+  { id:"clover",   name:"versteinertes Kleeblatt",        		emoji:"🍀" },   // Glück
+  { id:"drop",     name:"versteinerter Tropfen",          		emoji:"💧" },   // Reinheit
+  { id:"moon",     name:"versteinerter Halbmond",         		emoji:"🌙" },   // Dunkelheit
+  { id:"sun",      name:"versteinerte Sonne",             		emoji:"☀️" },   // Licht
+  { id:"yin",      name:"versteinertes Yin-Yang-Symbol",  		emoji:"☯️" },   // Balance
+  { id:"pigeon",   name:"versteinerte Taube",             		emoji:"🕊️" },   // Frieden
+  { id:"ring",     name:"versteinerter Ring",             		emoji:"💍" },   // Treue
+  { id:"crystal",  name:"versteinerte Kristallkugel",    		emoji:"🔮" }    // Zukunft
+];
+
+/* Cache (Items + Zeitstempel) – 60 Sekunden gültig */
+window._arteCache = window._arteCache || { items: [], ts: 0 };
+
+function _pickUniqueRandom(arr, n){
+  const a = arr.slice();
+  for (let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a.slice(0, Math.min(n, a.length));
+}
+
+// ==== Artefaktum öffnen: IMMER Käufer-Auswahl zeigen ====
+window.startArtefaktum = function(){
+  currentContext = "artefaktum";
+
+  // Angebote ggf. neu ziehen (Cache ~60s)
+  const now = Date.now();
+  const elapsed = now - (window._arteCache.ts || 0);
+  if (elapsed > 60*1000 || !Array.isArray(window._arteCache.items) || window._arteCache.items.length===0) {
+    window._arteCache.items = _pickUniqueRandom(ARTEFAKTUM_ITEMS, 3);
+    window._arteCache.ts = now;
+  }
+
+  // Seite rendern …
+  renderArtefaktum(window._arteCache.items);
+
+  // … und JEDES MAL die Käufer-Auswahl öffnen
+  openArteBuyerModal();
+};
+
+function renderArtefaktum(offers){
+  const until = new Date(window._arteCache.ts + 60000).toLocaleTimeString();
+
+  // kleiner Header mit aktuellem Käufer + Button zum Wechseln
+  const buyerLine = `
+  `;
+
+  const cards = (offers||[]).map((it,idx)=>{
+    const bought = it._bought;
+    return `
+      <div class="arte-card">
+        <div class="arte-emoji">${it.emoji}</div>
+        <div class="arte-name">${it.name}</div>
+        <div class="arte-price">50 €</div>
+        <div class="button arte-buy ${bought ? "disabled" : ""}"
+             onclick="${bought ? "" : `buyArtefakt(${idx})`}">
+          ${bought ? "Gekauft" : "Kaufen"}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("app-section").innerHTML = `
+    <div class="auction-header">
+      <div class="auction-title">🗿 Artefaktum</div>
+      <div class="icon-btn" onclick="showHome()">✖</div>
+    </div>
+    <div class="arte-wrap">
+      ${buyerLine}
+      <div class="arte-col">${cards}</div>
+      <div class="arte-foot">Angebote gültig bis ${until}.</div>
+    </div>
+  `;
+  window._currentArte = offers;
+}
+
+window.buyArtefakt = function(idx){
+  const item = (window._currentArte || [])[idx];
+  if (!item || item._bought) return;
+
+  // Sicherstellen, dass ein Käufer gewählt ist
+  if (!arteState.started || arteState.currentBuyerIdx === null) {
+    openArteBuyerModal(); // erst Käufer wählen lassen
+    return;
+  }
+
+  item._bought = true;
+
+  const buyer = arteState.currentBuyerName || "Spieler";
+
+  // Log mit Emoji statt „(50 €)“
+  if (typeof logArtefaktum === "function") {
+    logArtefaktum(buyer, `${item.name} ${item.emoji}`);
+  } else {
+    addEventLog({ player: buyer, kind:"shop", text:`${item.name} ${item.emoji}` });
+  }
+
+  renderArtefaktum(window._currentArte);
+};
+
+// ==== Artefaktum-State (wer kauft?) ====
+window.arteState = window.arteState || {
+  started: false,
+  currentBuyerIdx: null,
+  currentBuyerName: null
+};
+
+/* === Artefaktum: Käufer wählen (Lucky-Streak-Style) === */
+function openArteBuyerModal() {
+  closeArteBuyerModal();
+
+  const overlay = document.createElement("div");
+  overlay.id = "arteBuyerModal";
+  overlay.className = "modal-backdrop";
+  overlay.style.display = "flex";
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Käufer wählen</h2>
+      <div class="hint">Wer kauft was?</div>
+      <div class="field">
+        <label for="arteBuyerSel">Käufer</label>
+        <select id="arteBuyerSel">
+          <option value="" disabled selected>Bitte wählen</option>
+          ${playerNames.map((n,i)=>`<option value="${i}">${n}</option>`).join("")}
+        </select>
+      </div>
+      <div id="arteBuyerErr" class="error"></div>
+
+      <div class="modal-actions centered">
+        <button class="btn equal" onclick="closeArteBuyerModalAndBack()">Abbrechen</button>
+        <button class="btn primary equal" onclick="confirmArteBuyerFromModal()">Übernehmen</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const sel = document.getElementById("arteBuyerSel");
+  if (sel) sel.focus();
+}
+
+function closeArteBuyerModal(){ const m=document.getElementById("arteBuyerModal"); if(m) m.remove(); }
+
+function closeArteBuyerModalAndBack(){
+showHome()
+}
+
+function confirmArteBuyerFromModal(){
+  const sel = document.getElementById("arteBuyerSel");
+  const err = document.getElementById("arteBuyerErr");
+  const idx = sel ? parseInt(sel.value,10) : NaN;
+
+  if (Number.isNaN(idx)) {
+    if (err) err.textContent = "Bitte zuerst einen Käufer wählen.";
+    return;
+  }
+
+  arteState.currentBuyerIdx  = idx;
+  arteState.currentBuyerName = playerNames[idx] || "Spieler";
+  arteState.started = true;
+
+  closeArteBuyerModal();
+  // UI aktualisieren, damit oben der Käufer sichtbar ist
+  renderArtefaktum(window._currentArte || []);
+}
+
+// global, falls du direkt binden willst:
+window.openArteBuyerModal = openArteBuyerModal;
+window.confirmArteBuyerFromModal = confirmArteBuyerFromModal;
+
+  </script>
+</body>
+</html>
