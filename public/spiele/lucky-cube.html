@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Lucky Cube</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#05080f" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <style>
 /* ===== Base ===== */
 body {
@@ -880,7 +883,7 @@ select, input {
   word-break:break-word;
 }
 
-/* bei Ereigniskarten
+// bei Ereigniskarten
 eventLog.unshift({
   player: player,
   text: "Ereigniskarte: Goldregen: jeder +10 €, du +20 €",
@@ -912,6 +915,10 @@ eventLog.unshift({
   box-shadow:0 4px 15px rgba(0,0,0,0.1);
   max-width:400px;         /* gleiche Breite wie .settings-section */
   margin:0 auto;           /* zentriert */
+}
+
+/* Statistik nutzt den gleichen Kasten wie die Settings */
+.stats-section{ /* nur Alias – falls du später abweichende Abstände brauchst */
 }
 
 /* Tabelle kompakt und zentriert im Panel */
@@ -1032,6 +1039,105 @@ select option{ background:#0b1326 !important; color:var(--text) !important; }
   border-color:rgba(46,232,143,.45) !important;
   box-shadow:0 14px 40px rgba(46,232,143,.18) !important;
 }
+
+/* Fixed background (verhindert "Cuts"/Streifen bei wenig Inhalt) */
+html{ background: var(--bg0); }
+body{ margin:0; min-height:100vh; background: none; padding: clamp(14px, 2.2vw, 22px);
+      padding-top: calc(clamp(14px, 2.2vw, 22px) + env(safe-area-inset-top));
+      padding-left: calc(clamp(14px, 2.2vw, 22px) + env(safe-area-inset-left));
+      padding-right: calc(clamp(14px, 2.2vw, 22px) + env(safe-area-inset-right));
+      padding-bottom: calc(clamp(14px, 2.2vw, 22px) + env(safe-area-inset-bottom));
+}
+body:not(.light)::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(1200px 600px at 15% 0%, rgba(38,255,168,.18), transparent 60%),
+              radial-gradient(900px 600px at 100% 20%, rgba(80,140,255,.16), transparent 55%),
+              linear-gradient(180deg, var(--bg0), var(--bg1));
+}
+
+body.light::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(1000px 520px at 10% 0%, rgba(38,255,168,.10), transparent 60%),
+              radial-gradient(900px 520px at 100% 10%, rgba(80,140,255,.10), transparent 55%),
+              linear-gradient(180deg, #e9f5ff, #ffffff);
+}
+
+/* Buttons (einheitlicher Stil) */
+.btn-action{ padding:10px 14px; border-radius:14px; font-weight:900; }
+.btn-sm{ padding:9px 12px; border-radius:12px; font-weight:800; font-size: 14px; }
+.btn.wide, .btn-primary.wide{ width:100%; max-width:360px; }
+
+/* Rundenliste */
+.round-item{
+  display:flex; align-items:center; gap:12px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  margin: 10px 0;
+}
+.round-item.active{ border-color: rgba(46,232,143,.55); box-shadow: 0 0 0 2px rgba(46,232,143,.12) inset; }
+.round-icon{ font-size:22px; width:34px; height:34px; display:grid; place-items:center; border-radius:12px;
+  background: rgba(46,232,143,.10); border:1px solid rgba(46,232,143,.22);
+}
+.round-meta{ flex:1; min-width: 180px; text-align:left; }
+.round-name{ font-weight: 950; }
+.round-players{ color: var(--mut); font-size: 13px; margin-top:2px; }
+.round-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+
+@media (max-width: 520px){
+  .round-item{ padding: 12px; }
+  .round-meta{ min-width: 0; width: 100%; }
+  .round-actions{ width:100%; justify-content:stretch; }
+  .round-actions button{ flex:1; }
+}
+
+/* Popups/Modals -> Dark */
+.modal, .help-overlay{
+  background: rgba(0,0,0,.55) !important;
+}
+.modal .modal-content, .help-box, .result{
+  background: var(--panel2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.55) !important;
+}
+.help-header h2{ color: var(--text) !important; }
+.help-close{ background: rgba(255,255,255,.06) !important; border:1px solid var(--border) !important; }
+.help-close:hover{ background: rgba(255,255,255,.10) !important; }
+
+/* Eventkarten Vorschau */
+.card-preview{
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 16px auto;
+  max-width: 520px;
+  font-size: 1.05em;
+  line-height: 1.35;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+/* Inputs/Selects im Dark-Mode (Dropdown am PC nicht hellgrau) */
+input, select, textarea{
+  background: rgba(8,14,28,.65);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+option{ background: #0b1226; color: #fff; }
+
+/* iOS: verhindert weißen Rand oben */
+@supports (padding: max(0px)){
+  body{ background-color: var(--bg0); }
+}
+
 
 /* Light theme (wenn Dark Mode aus) */
 body.light{
@@ -1284,18 +1390,20 @@ function renderRoundsMenu() {
     const active = (g.id === cloudData.currentId);
     const players = (g.playerNames||[]).length ? g.playerNames.join(", ") : "—";
     return `
-      <div class="player-row" style="display:flex;align-items:center;gap:10px;${active?'outline:2px solid rgba(46,232,143,.35);border-radius:16px;padding:10px;':''}">
-        <div style="font-size:22px;">🎲</div>
-        <div style="flex:1;">
-          <div style="font-weight:900;">${escapeHtml(g.name||"Runde")}</div>
-          <div style="color:var(--mut);font-size:13px;">${escapeHtml(players)} • ${new Date(g.updatedAt||g.createdAt).toLocaleString("de-DE")}</div>
+      <div class="round-item ${active ? 'active' : ''}">
+        <div class="round-icon">🎲</div>
+        <div class="round-meta">
+          <div class="round-name">${escapeHtml(g.name||"Runde")}</div>
+          <div class="round-players">Spieler: ${escapeHtml(players)}</div>
         </div>
-        <button class="btn-primary" style="padding:10px 12px;border-radius:12px;" onclick="openRound('${g.id}')">Öffnen</button>
-        <button class="btn" style="padding:10px 12px;border-radius:12px;" onclick="renameRoundPrompt('${g.id}')">Umbenennen</button>
-        <button class="btn" style="padding:10px 12px;border-radius:12px;" onclick="deleteRoundPrompt('${g.id}')">Löschen</button>
+        <div class="round-actions">
+          <button class="btn-primary btn-sm" onclick="openRound('${g.id}')">Öffnen</button>
+          <button class="btn btn-sm" onclick="renameRoundPrompt('${g.id}')">Umbenennen</button>
+          <button class="btn btn-sm danger" onclick="deleteRoundPrompt('${g.id}')">Löschen</button>
+        </div>
       </div>
     `;
-  }).join("") : `<div style="color:var(--mut);">Keine Runden vorhanden.</div>`;
+}).join("") : `<div style="color:var(--mut);">Keine Runden vorhanden.</div>`;
 
   const last = cloudData.lastPlayerCount || "";
   el.innerHTML = `
@@ -1318,7 +1426,7 @@ function renderRoundsMenu() {
         ${[2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${String(n)===String(last)?"selected":""}>${n} Spieler</option>`).join("")}
       </select>
       <br><br>
-      <button class="btn-primary" onclick="createRound()">Runde erstellen</button>
+      <button class="btn-primary wide" onclick="createRound()">🎲 Runde erstellen</button>
 
       <h2 style="margin-top:18px;">Aktuelle Spiele</h2>
       ${list}
@@ -1779,11 +1887,7 @@ function confirmEventDraw() {
 
   let html = `
     <div style="font-size:1.4em;margin-top:12px;">${playerNames[idx]} zieht:</div>
-    <div style="background:#fff;border:2px solid #333;border-radius:12px;
-                padding:20px;margin:20px auto;max-width:420px;
-                font-size:1.2em;box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-      ${card.text}
-    </div>
+    <div class="card-preview">${card.text}</div>
   `;
 
   if (card.mode === "instant") {
@@ -1946,8 +2050,8 @@ function showSettings() {
       </div>
 
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 6px 0;">
-        <button class="btn" onclick="goRoundsMenu()">Runden-Menü</button>
-        <button class="btn" onclick="endGameFromSettings()">Spiel beenden</button>
+        <button class="btn btn-action" onclick="goRoundsMenu()">📋 Runden-Menü</button>
+        <button class="btn danger btn-action" onclick="endGameFromSettings()">⛔ Spiel beenden</button>
       </div>
 
       <!-- Extern würfeln -->
@@ -4407,7 +4511,7 @@ async function doBattleAnimated() {
   }
 }
 
-//<!-- ===== 50-50 ===== -->
+<!-- ===== 50-50 ===== -->
 let allnothingStats = { win: 0, lose: 0 };
 let allnothingState = { playerIdx: null, trophyLine: "" };
 

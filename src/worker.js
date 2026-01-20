@@ -978,6 +978,140 @@ if (path === "/api/home/reset" && req.method === "POST") {
       return json({ error: "not_found", path }, 404);
     }
 
+    // ===== LUCKY CUBE (D1) =====
+    // Tables (D1):
+    // luckycube_rounds(id TEXT PRIMARY KEY, user_id TEXT, name TEXT, players_json TEXT, state_json TEXT, updated_at INTEGER)
+    if (path.startsWith("/api/luckycube/")) {
+      if (!env.DB) return json({ error: "DB not bound" }, 500);
+
+      const uid = await readToken(env, req);
+      if (!uid) return json({ error: "unauthorized" }, 401);
+
+      const parts = path.split("/").filter(Boolean); // ["api","luckycube",...]
+      const action = parts[2] || "";
+
+      // helper: safe JSON
+      const readJson = async () => {
+        try { return await req.json(); } catch { return null; }
+      };
+
+      // /api/luckycube/rounds
+      if (action === "rounds" && parts.length === 3) {
+        if (req.method === "GET") {
+          const rows = await env.DB.prepare(
+            "SELECT id, name, players_json, updated_at FROM luckycube_rounds WHERE user_id = ? ORDER BY updated_at DESC"
+          ).bind(String(uid)).all();
+
+          const rounds = (rows.results || []).map(r => ({
+            id: r.id,
+            name: r.name || "Runde",
+            players: (() => { try { return JSON.parse(r.players_json || "[]"); } catch { return []; } })(),
+            updatedAt: r.updated_at || 0
+          }));
+          return json({ ok: true, rounds });
+        }
+
+        if (req.method === "POST") {
+          const body = await readJson();
+          if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+          const name = String(body.name || "Runde").slice(0, 80);
+          const players = Array.isArray(body.players) ? body.players.slice(0, 20).map(String) : [];
+          const id = (crypto?.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
+
+          const now = Date.now();
+          await env.DB.prepare(
+            "INSERT INTO luckycube_rounds (id, user_id, name, players_json, state_json, updated_at) VALUES (?,?,?,?,?,?)"
+          ).bind(id, String(uid), name, JSON.stringify(players), JSON.stringify(body.state || {}), now).run();
+
+          return json({ ok: true, id }, 201);
+        }
+
+        return json({ error: "method_not_allowed" }, 405);
+      }
+
+      // /api/luckycube/rounds/:id
+      if (action === "rounds" && parts.length >= 4) {
+        const rid = parts[3];
+
+        if (req.method === "GET") {
+          const row = await env.DB.prepare(
+            "SELECT id, name, players_json, state_json, updated_at FROM luckycube_rounds WHERE user_id = ? AND id = ?"
+          ).bind(String(uid), rid).first();
+
+          if (!row) return json({ error: "not_found" }, 404);
+
+          return json({
+            ok: true,
+            round: {
+              id: row.id,
+              name: row.name || "Runde",
+              players: (() => { try { return JSON.parse(row.players_json || "[]"); } catch { return []; } })(),
+              state: (() => { try { return JSON.parse(row.state_json || "{}"); } catch { return {}; } })(),
+              updatedAt: row.updated_at || 0
+            }
+          });
+        }
+
+        if (req.method === "PUT") {
+          const body = await readJson();
+          if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+          const jsonStr = JSON.stringify(body.state ?? body ?? {});
+          if (jsonStr.length > 500000) return json({ error: "too_large" }, 413);
+
+          const now = Date.now();
+          await env.DB.prepare(
+            "UPDATE luckycube_rounds SET state_json = ?, updated_at = ? WHERE user_id = ? AND id = ?"
+          ).bind(jsonStr, now, String(uid), rid).run();
+
+          return json({ ok: true });
+        }
+
+        if (req.method === "PATCH") {
+          const body = await readJson();
+          if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+
+          const name = body.name != null ? String(body.name).slice(0, 80) : null;
+          const players = body.players != null
+            ? (Array.isArray(body.players) ? body.players.slice(0, 20).map(String) : [])
+            : null;
+
+          const now = Date.now();
+          if (name !== null && players !== null) {
+            await env.DB.prepare(
+              "UPDATE luckycube_rounds SET name = ?, players_json = ?, updated_at = ? WHERE user_id = ? AND id = ?"
+            ).bind(name, JSON.stringify(players), now, String(uid), rid).run();
+          } else if (name !== null) {
+            await env.DB.prepare(
+              "UPDATE luckycube_rounds SET name = ?, updated_at = ? WHERE user_id = ? AND id = ?"
+            ).bind(name, now, String(uid), rid).run();
+          } else if (players !== null) {
+            await env.DB.prepare(
+              "UPDATE luckycube_rounds SET players_json = ?, updated_at = ? WHERE user_id = ? AND id = ?"
+            ).bind(JSON.stringify(players), now, String(uid), rid).run();
+          } else {
+            return json({ error: "nothing_to_update" }, 400);
+          }
+
+          return json({ ok: true });
+        }
+
+        if (req.method === "DELETE") {
+          await env.DB.prepare(
+            "DELETE FROM luckycube_rounds WHERE user_id = ? AND id = ?"
+          ).bind(String(uid), rid).run();
+          return json({ ok: true });
+        }
+
+        return json({ error: "method_not_allowed" }, 405);
+      }
+
+      return json({ error: "not_found" }, 404);
+    }
+
+
+
 
     // Resolve Google Maps short links (maps.app.goo.gl) -> coordinates
     if (path === "/api/resolve-maps" && req.method === "GET") {
@@ -1367,54 +1501,6 @@ if (path === "/api/home/reset" && req.method === "POST") {
 
       return json({ error: "not_found", path }, 404);
     }
-    // ===== Lucky Cube API =====
-    if (path.startsWith("/api/luckycube/")) {
-      if (!env.DB) return json({ error: "DB not bound" }, 500);
-
-      const uid = await readToken(env, req);
-      if (!uid) return json({ error: "unauthorized" }, 401);
-
-      // Ensure table exists (safe; optional)
-      await env.DB.prepare(
-        "CREATE TABLE IF NOT EXISTS luckycube_data (user_id TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL)"
-      ).run();
-
-      if (path === "/api/luckycube/data" && req.method === "GET") {
-        const row = await env.DB.prepare(
-          "SELECT json FROM luckycube_data WHERE user_id = ?"
-        ).bind(uid).first();
-
-        let parsed = null;
-        if (row && row.json) {
-          try { parsed = JSON.parse(row.json); } catch {}
-        }
-
-        return json(
-          { ok: true, data: parsed || { currentId: null, order: [], games: {}, lastPlayerCount: "" } },
-          200,
-          { "Cache-Control": "no-store" }
-        );
-      }
-
-      if (path === "/api/luckycube/data" && req.method === "PUT") {
-        const body = await safeReadJson(req);
-        if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
-
-        const jsonStr = JSON.stringify(body);
-        if (jsonStr.length > 250000) return json({ error: "too_large" }, 413);
-
-        const now = new Date().toISOString();
-        await env.DB.prepare(
-          "INSERT INTO luckycube_data (user_id, json, updated_at) VALUES (?, ?, ?) " +
-          "ON CONFLICT(user_id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at"
-        ).bind(uid, jsonStr, now).run();
-
-        return json({ ok: true }, 200, { "Cache-Control": "no-store" });
-      }
-
-      return json({ error: "not_found", path }, 404);
-    }
-
 
 
     return json({ error: "not_found", path }, 404);
